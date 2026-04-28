@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>LlmsTxt.Umbraco</PackageId>
+    <Product>LlmsTxt.Umbraco</Product>
+    <Title>LlmsTxt.Umbraco</Title>
+    <Version>0.1.0-alpha</Version>
+    <Description>Expose Umbraco published content to LLMs and AI search engines. Auto-generates per-page Markdown at {url}.md, /llms.txt, and /llms-full.txt — plus Accept: text/markdown content negotiation, Link: rel=alternate headers, and a robots.txt audit. Built for Umbraco v17+.</Description>
+    <Authors>Adam Shallcross</Authors>
+    <PackageTags>umbraco-marketplace;umbraco;llms-txt;ai;markdown;geo;ai-search;chatgpt;claude;perplexity</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/ashallcross/LlmsTxt.Umbraco</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ashallcross/LlmsTxt.Umbraco.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Umbraco.Cms.Api.Common" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" />
+    <PackageReference Include="Umbraco.Cms.Web.Common" />
+    <PackageReference Include="Umbraco.Cms.Web.Website" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LlmsTxt.Umbraco.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Don't include the Client folder as part of packaging nuget build -->
+    <Content Remove="Client\**" />
+
+    <!-- However make the umbraco-package.json included for dotnet pack or nuget package and visible to the solution -->
+    <None Include="Client\public\umbraco-package.json" Pack="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\README.md')" />
+  </ItemGroup>
+
+</Project>

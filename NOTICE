@@ -1,0 +1,13 @@
+LlmsTxt.Umbraco
+Copyright 2026 Adam Shallcross
+
+This product includes software developed by:
+- The Umbraco Foundation (https://umbraco.com)
+- The .NET Foundation
+- Mick Schroeder for ReverseMarkdown (https://github.com/mysticmind/reversemarkdown-net)
+- AngleSharp contributors (https://anglesharp.github.io)
+- The SmartReader contributors (https://github.com/Strumenta/SmartReader)
+- Cogworks for the Clean Starter Kit (https://github.com/CogworksLtd/Clean.Core) — TestSite only
+
+Each of the above is licensed under terms permissive of redistribution; see the
+respective project's LICENSE for details.

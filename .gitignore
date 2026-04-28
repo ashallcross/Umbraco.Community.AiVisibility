@@ -1,0 +1,180 @@
+##
+## LlmsTxt.Umbraco repo-split exclusions (CRITICAL — do not edit without reading CLAUDE.md)
+##
+## The following folders are symlinks into the sibling private planning repo
+## at ../LlmsTxt-planning/. They MUST NOT be tracked by the public repo.
+## See ./CLAUDE.md for the full two-repo development split rules.
+##
+_bmad-output
+_bmad
+.agents
+.claude
+
+##
+## Build artefacts (not source, don't commit)
+##
+nupkg/
+
+##
+## TestSite local runtime state (Adam's local Umbraco instance — db, logs, media)
+##
+LlmsTxt.Umbraco.TestSite/App_Data/
+LlmsTxt.Umbraco.TestSite/umbraco/Data/
+LlmsTxt.Umbraco.TestSite/umbraco/Logs/
+LlmsTxt.Umbraco.TestSite/wwwroot/media/
+
+##
+## Visual Studio / .NET standard ignores
+## (https://github.com/github/gitignore/blob/master/VisualStudio.gitignore)
+##
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Mono auto generated files
+mono_crash.*
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options directory
+.vs/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Coverlet
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Visual Studio code coverage results
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Node
+node_modules/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+##
+## Umbraco CMS
+##
+
+# JSON schema files for appsettings.json
+appsettings-schema.json
+appsettings-schema.*.json
+
+# JSON schema for umbraco-package.json
+umbraco-package-schema.json
+
+# Packages created from the backoffice
+**/umbraco/Data/CreatedPackages/
+
+# Temp folder (Examine indexes, NuCache, MediaCache, etc.)
+**/umbraco/Data/TEMP/
+
+# SQLite database files
+**/umbraco/Data/*.sqlite.db
+**/umbraco/Data/*.sqlite.db-shm
+**/umbraco/Data/*.sqlite.db-wal
+
+##
+## macOS / Windows
+##
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
