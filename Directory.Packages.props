@@ -4,31 +4,28 @@
     <!-- Allow floating versions so the package can align with the host Umbraco project's package versions -->
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
-
   <ItemGroup>
     <!-- Umbraco core (TestSite host) -->
     <PackageVersion Include="Umbraco.Cms" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="17.3.2" />
-
     <!-- Umbraco APIs (LlmsTxt.Umbraco package) -->
     <PackageVersion Include="Umbraco.Cms.Api.Common" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Api.Management" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Web.Common" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Web.Website" Version="17.3.2" />
-
-    <!-- TestSite theme (Cogworks Clean Starter) -->
+    <!-- TestSite theme (Cogworks Clean Starter): meta-package "Clean" drives the
+         demo-content package migration and install hooks; "Clean.Core" is the
+         components library it depends on. Pinned in lockstep — both required. -->
+    <PackageVersion Include="Clean" Version="7.0.5" />
     <PackageVersion Include="Clean.Core" Version="7.0.5" />
-
     <!-- Globalization (TestSite) -->
     <PackageVersion Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
-
     <!-- Test infrastructure -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.7.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
-
     <!-- Package implementation dependencies (added when coding starts) -->
     <!-- <PackageVersion Include="AngleSharp" Version="1.4.0" /> -->
     <!-- <PackageVersion Include="ReverseMarkdown" Version="4.6.0" /> -->

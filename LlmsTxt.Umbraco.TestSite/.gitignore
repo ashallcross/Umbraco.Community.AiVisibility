@@ -480,3 +480,8 @@ umbraco-package-schema.json
 
 # Media files
 /wwwroot/media/
+
+# SPIKE 0.A — local rendered-HTML evidence captures, not for source control.
+# The verdict + reproducible-evidence pointers live in
+# _bmad-output/implementation-artifacts/0-a-spike-outcome.md instead.
+Spikes/evidence/
