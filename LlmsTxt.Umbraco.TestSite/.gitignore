@@ -485,3 +485,12 @@ umbraco-package-schema.json
 # The verdict + reproducible-evidence pointers live in
 # _bmad-output/implementation-artifacts/0-a-spike-outcome.md instead.
 Spikes/evidence/
+
+# SPIKE 0.B — local-only appsettings overrides for the two-instance shared-DB
+# run. Contains a hardcoded SQL Server password for a throwaway docker container,
+# safe locally but not for the public repo. Pattern documented in
+# Spikes/README.md § 0.B Stage 2. Both casings to defend against case-sensitive
+# Linux CI when a developer fat-fingers `appsettings.spike.A.json`.
+appsettings.Spike.*.json
+appsettings.spike.*.json
+appsettings.SPIKE.*.json
