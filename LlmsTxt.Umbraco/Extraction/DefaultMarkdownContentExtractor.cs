@@ -205,8 +205,12 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
             StripWithinRegion(region);
         }
 
+        LiftHeadingsOutOfAnchors(region);
         AbsolutifyUrls(region, sourceUri);
         DropImagesWithEmptyAltOrSrc(region);
+        // Removing images can leave anchors empty (e.g. <a><img alt=""/></a>) which
+        // would render as link-shaped noise [](url). Sweep them up.
+        RemoveEmptyAnchors(region);
 
         // Trim trailing whitespace on each line — ReverseMarkdown emits stray
         // trailing spaces on blockquote-paragraph wrappers (`> `) that editors with
@@ -377,6 +381,121 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
                 metadata.ContentKey);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Hoist <c>&lt;h1&gt;</c>–<c>&lt;h6&gt;</c> elements out of any wrapping
+    /// <c>&lt;a&gt;</c> ancestor — Clean.Core BlockList card markup wraps each card
+    /// heading in an anchor (<c>&lt;a&gt;&lt;h2&gt;Title&lt;/h2&gt;…&lt;/a&gt;</c>),
+    /// which ReverseMarkdown faithfully encodes as a Markdown link whose visible text
+    /// contains heading markers (<c>[## Heading](url)</c>) — technically correct, but
+    /// unreadable for AI crawlers that look for top-level headings.
+    ///
+    /// <para>
+    /// Transformation: each affected heading is moved to be a sibling immediately
+    /// before its wrapping anchor; the anchor's remaining content stays in place.
+    /// Headings nested at any depth inside the anchor are still lifted (intermediate
+    /// wrappers like <c>&lt;div class="card"&gt;</c> are preserved). Heading order is
+    /// preserved by walking matches in document order.
+    /// </para>
+    /// <para>
+    /// If the lift empties the anchor entirely (the heading was the anchor's only
+    /// content), the now-empty anchor is removed — preserving <c>[]</c>-shaped
+    /// orphan links in Markdown is worse than dropping them.
+    /// </para>
+    /// </summary>
+    private static void LiftHeadingsOutOfAnchors(IElement region)
+    {
+        var headings = region.QuerySelectorAll("a h1, a h2, a h3, a h4, a h5, a h6").ToArray();
+        var emptiedAnchors = new HashSet<IElement>();
+
+        foreach (var heading in headings)
+        {
+            // Walk to the OUTERMOST <a> ancestor that is still within the region.
+            // Two reasons to bound the walk:
+            //  - the descendant combinator in the selector matches against the document
+            //    tree, not the region — so a region nested inside an <a> ancestor
+            //    (pathological adopter selector, or SmartReader fallback wrapping the
+            //    extracted body) would otherwise let `Closest("a")` lift the heading
+            //    OUT of the region and silently drop it from the converted output.
+            //  - nested anchors (`<a outer><a inner><h2/></a></a>` — invalid HTML but
+            //    parseable) need the heading to escape the OUTER anchor, not just the
+            //    inner one. Using the outermost-in-region anchor handles both.
+            var anchor = FindOutermostAnchorInRegion(heading, region);
+            if (anchor is null)
+            {
+                continue;
+            }
+
+            var anchorParent = anchor.ParentElement;
+            if (anchorParent is null)
+            {
+                continue;
+            }
+
+            // Detach the heading from its current location and insert it immediately
+            // before the wrapping anchor as a sibling. AngleSharp's InsertBefore moves
+            // the node when it's already in the DOM (per the spec), so an explicit
+            // remove-from-old-parent step isn't required.
+            anchorParent.InsertBefore(heading, anchor);
+
+            if (HasNoMeaningfulContent(anchor))
+            {
+                emptiedAnchors.Add(anchor);
+            }
+        }
+
+        foreach (var anchor in emptiedAnchors)
+        {
+            anchor.Remove();
+        }
+    }
+
+    private static IElement? FindOutermostAnchorInRegion(IElement element, IElement region)
+    {
+        IElement? outermost = null;
+        IElement? current = element.ParentElement;
+        while (current is not null)
+        {
+            if (ReferenceEquals(current, region))
+            {
+                return outermost;
+            }
+            if (string.Equals(current.LocalName, "a", StringComparison.OrdinalIgnoreCase))
+            {
+                outermost = current;
+            }
+            current = current.ParentElement;
+        }
+        // Walked off the document tree without hitting region — heading is not inside
+        // region (selector matched via document-tree descendant combinator). Skip.
+        return null;
+    }
+
+    private static void RemoveEmptyAnchors(IElement region)
+    {
+        foreach (var anchor in region.QuerySelectorAll("a").ToArray())
+        {
+            if (HasNoMeaningfulContent(anchor))
+            {
+                anchor.Remove();
+            }
+        }
+    }
+
+    /// <summary>
+    /// True when the element has no element children and no non-whitespace text —
+    /// after a heading lift, an anchor whose only content was the heading is left
+    /// either empty or with whitespace nodes. ReverseMarkdown would emit
+    /// <c>[](url)</c> for that, which is link-shaped noise; drop instead.
+    /// </summary>
+    private static bool HasNoMeaningfulContent(IElement element)
+    {
+        if (element.ChildElementCount > 0)
+        {
+            return false;
+        }
+        return string.IsNullOrWhiteSpace(element.TextContent);
     }
 
     private void AbsolutifyUrls(IElement region, Uri sourceUri)

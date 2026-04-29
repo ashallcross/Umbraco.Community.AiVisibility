@@ -1,0 +1,7 @@
+# Extraction quality benchmark fixtures must compare byte-equal across platforms.
+# Pin LF line endings so Windows checkouts don't rewrite expected.md / input.html
+# on `git checkout` (autocrlf default). The benchmark's ReplaceLineEndings("\n")
+# handles in-memory normalisation, but consistent-on-disk avoids ambiguity.
+* text eol=lf
+*.md text eol=lf
+*.html text eol=lf

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<title>Architecture deep-dive | Clean.Core</title>
+<link rel="stylesheet" href="/css/site.css" />
+<script src="/js/analytics.js"></script>
+</head>
+<body>
+<header>
+<nav><a href="/">Home</a> <a href="/articles">Articles</a></nav>
+</header>
+<main>
+<article>
+<h1>Architecture deep-dive</h1>
+<p>A long-form walk through the package's runtime topology, with the trade-offs we considered along the way.</p>
+
+<figure>
+<img src="/media/topology-diagram.png" alt="Diagram of the runtime topology including Umbraco frontends, the host database, and the cache refresher broadcast" />
+<figcaption>Figure 1 — Runtime topology in a load-balanced deployment.</figcaption>
+</figure>
+
+<h2>Request pipeline</h2>
+<p>Two surfaces serve Markdown: the suffix route and the canonical-URL Accept-header negotiation middleware.</p>
+
+<h3>The .md suffix route</h3>
+<p>A custom route registered via <code>UmbracoPipelineFilter.Endpoints</code> handles every <code>GET /{path}.md</code>. It resolves <code>IPublishedContent</code> via <code>IPublishedRouter</code>, then delegates to the extractor.</p>
+
+<h4>Resolution edge cases</h4>
+<p>URL-encoded paths decode before lookup; trailing-slash and <code>index.html.md</code> variants normalise to a single canonical form.</p>
+
+<h3>Accept-header negotiation</h3>
+<p>A <code>PostRouting</code> middleware reads <code>UmbracoRouteValues</code> from <code>HttpContext.Features</code> and, when the client prefers <code>text/markdown</code>, calls the same extractor + cache decorator the suffix route uses.</p>
+
+<h4>q-value resolution</h4>
+<p>Highest quality wins; ties break on first-listed; <code>*/*</code> is treated as no-preference and HTML is served.</p>
+
+<h2>Caching topology</h2>
+<p>One in-memory cache per instance, invalidated by Umbraco's <code>ContentCacheRefresherNotification</code>.</p>
+
+<table>
+<thead>
+<tr><th>Cache key</th><th>Lifetime</th><th>Invalidator</th></tr>
+</thead>
+<tbody>
+<tr><td><code>llms:page:{nodeKey}:{culture}</code></td><td>Configurable TTL (default 60s)</td><td>Per-node refresh</td></tr>
+<tr><td><code>llms:llmstxt:{hostname}:{culture}</code></td><td>Pessimistic clear on any node change</td><td>Hostname-scoped</td></tr>
+<tr><td><code>llms:llmsfull:{hostname}:{culture}</code></td><td>Pessimistic clear on any node change</td><td>Hostname-scoped</td></tr>
+</tbody>
+</table>
+
+<p>The cache key deliberately omits the content version. Every successful publish triggers an invalidation event, so the entry under a stable key is always the latest version. Including the version would just leak stale entries that never get cleared.</p>
+
+<h3>ETag derivation</h3>
+<p>The ETag <em>does</em> include the content version. Clients use it for <code>If-None-Match</code> revalidation, and the package emits <code>304 Not Modified</code> for matching tokens.</p>
+
+<figure>
+<img src="/media/etag-flow.png" alt="Sequence diagram of an If-None-Match revalidation against a cached Markdown response" />
+<figcaption>Figure 2 — Revalidation flow with conditional GET.</figcaption>
+</figure>
+
+<h2>Extension points</h2>
+<p>Two layered DI seams cover the extraction pipeline.</p>
+
+<table>
+<thead>
+<tr><th>Interface</th><th>Scope</th><th>Default impl</th></tr>
+</thead>
+<tbody>
+<tr><td><code>IMarkdownContentExtractor</code></td><td>Full pipeline</td><td><code>DefaultMarkdownContentExtractor</code></td></tr>
+<tr><td><code>IContentRegionSelector</code></td><td>Region selection only</td><td><code>DefaultContentRegionSelector</code></td></tr>
+</tbody>
+</table>
+
+<h3>When to override which</h3>
+<p>If you need a different HTML parser or Markdown converter, override <code>IMarkdownContentExtractor</code> and accept that the package's caching decorator will <em>not</em> wrap your extractor. If you only need to change which DOM region is selected, override <code>IContentRegionSelector</code> and keep the rest of the pipeline.</p>
+
+<h2>What's deliberately excluded</h2>
+<ul>
+<li>User-Agent sniffing (cloaking; Google penalty)</li>
+<li><code>rel="canonical"</code> from <code>.md</code> back to HTML (Cloudflare and Evil Martians both say no)</li>
+<li>Property-walking content reconstruction (the template is the canonical visual form)</li>
+</ul>
+
+<aside aria-hidden="true">
+<p>Decorative sidebar — never extracted.</p>
+</aside>
+
+<div data-llms-ignore>
+<h3>Private notes</h3>
+<p>This region is excluded via <code>data-llms-ignore</code>.</p>
+</div>
+</article>
+</main>
+<footer><p>&copy; 2026 Clean.Core demo</p></footer>
+</body>
+</html>

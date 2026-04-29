@@ -1,6 +1,6 @@
 ---
 title: Welcome to Clean.Core
-url: https://example.test/home
+url: https://example.test/clean-core-home
 updated: 2026-04-29T12:00:00Z
 ---
 # Welcome home

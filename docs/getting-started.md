@@ -2,7 +2,7 @@
 
 LlmsTxt.Umbraco exposes Umbraco published content to AI crawlers and large-language-model search engines via per-page Markdown rendering, a `/llms.txt` index, and a `/llms-full.txt` bulk export.
 
-This document covers what ships in **v0.1 (Stories 1.1 + 1.2 + 1.3)** — the per-page Markdown route, per-page caching with publish-driven invalidation, and `Accept: text/markdown` content negotiation on canonical URLs. The manifests and the Backoffice surface land in later stories.
+This document covers what ships in **v0.1 (Stories 1.1 + 1.2 + 1.3 + 1.4)** — the per-page Markdown route, per-page caching with publish-driven invalidation, `Accept: text/markdown` content negotiation on canonical URLs, and the public `IMarkdownContentExtractor` / `IContentRegionSelector` extension points with a parameterised quality-benchmark fixture catalogue. The manifests and the Backoffice surface land in later stories.
 
 ## What you get
 
@@ -99,6 +99,73 @@ The middleware runs in `UmbracoPipelineFilter.PostRouting`, after Umbraco's rout
 
 Cloaking. Google's documentation explicitly calls it out as a penalty risk; the package will never ship UA-based delivery. `Accept` header negotiation is the only supported mechanism.
 
+## Customising extraction
+
+Story 1.4 documents the two layered DI seams adopters can override. Pick the **lighter** one when you want to keep the rest of the pipeline intact.
+
+### `IContentRegionSelector` — region-only override
+
+Use this when your templates have a non-standard "main content" boundary that the package's default chain — `[data-llms-content]` → `<main>` → `<article>` → `LlmsTxt:MainContentSelectors` (configurable list) — does not catch. The default extractor still runs AngleSharp parse, strip-inside-region, URL absolutification, ReverseMarkdown convert, and YAML frontmatter prepend; only the region selection is yours.
+
+```csharp
+using Umbraco.Cms.Core.Composing;
+using Umbraco.Cms.Core.DependencyInjection;
+using LlmsTxt.Umbraco.Composers;
+using LlmsTxt.Umbraco.Extraction;
+using Microsoft.Extensions.DependencyInjection;
+using AngleSharp.Dom;
+
+[ComposeAfter(typeof(RoutingComposer))]
+public sealed class AcmeRegionSelectorComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder builder) =>
+        builder.Services.AddTransient<IContentRegionSelector, AcmeRegionSelector>();
+}
+
+internal sealed class AcmeRegionSelector : IContentRegionSelector
+{
+    public IElement? SelectRegion(IDocument document, IReadOnlyList<string> configuredSelectors)
+        => document.QuerySelector("[data-acme-content]")
+           ?? document.QuerySelector("main");
+}
+```
+
+Returning `null` triggers the package's SmartReader fallback. Returning a deliberately empty element (`document.CreateElement("div")`) bypasses the fallback and produces an empty Markdown body — useful for adopters who want explicit "no content" semantics on certain pages.
+
+### `IMarkdownContentExtractor` — full pipeline replacement
+
+Use this when you need a different HTML parser, a different Markdown converter, or radically different extraction logic. The signature is small — one `ExtractAsync(IPublishedContent, string? culture, CancellationToken)` method that returns a `MarkdownExtractionResult`.
+
+```csharp
+[ComposeAfter(typeof(RoutingComposer))]
+public sealed class AcmeExtractorComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder builder) =>
+        builder.Services.AddTransient<IMarkdownContentExtractor, AcmeExtractor>();
+}
+```
+
+The package's defaults are registered via `services.TryAddTransient`, so your registration overrides ours without a `services.Remove(...)` step. `[ComposeAfter(typeof(RoutingComposer))]` is recommended but not strictly required: when your composer runs before ours, the package's `TryAddTransient` no-ops against your existing registration — you still win.
+
+**Caching interaction:** when you override `IMarkdownContentExtractor`, the package's caching decorator (Story 1.2) is **not** wrapped around your implementation. The bypass is logged once at startup as an `Information`-level entry (`Adopter has overridden IMarkdownContentExtractor; skipping caching decorator wrap`). If you want caching with your own extractor, wrap our `CachingMarkdownExtractorDecorator` yourself in your composer.
+
+If you want that bypass log to fire reliably, decorate your composer with `[ComposeBefore(typeof(LlmsTxt.Umbraco.Composers.CachingComposer))]` in addition to `[ComposeAfter(typeof(RoutingComposer))]`. Without it, the override still wins (DI's last-registration-wins rule applies) but the log line is non-deterministic.
+
+### Lifetime guidance
+
+Both interfaces are registered as `Transient` by default — the default extractor and selector may hold AngleSharp DOM state across an extraction call. You can register `Singleton` if your implementation is stateless and thread-safe; the DI container respects your declaration. Document the reasoning in your composer when going `Singleton`.
+
+### Quality benchmark fixtures
+
+The package ships [`ExtractionQualityBenchmarkTests`](../LlmsTxt.Umbraco.Tests/Extraction/ExtractionQualityBenchmarkTests.cs) — a parameterised NUnit test that iterates `LlmsTxt.Umbraco.Tests/Fixtures/Extraction/<scenario>/{input.html, expected.md}` pairs and pins the default extractor's output. Drift fails the test with a unified diff. v0.1 ships four scenarios:
+
+- `clean-core-home` — strip selectors, GFM tables, fenced code, blockquote, image alt-drop, URL absolutification
+- `clean-core-blog-list` — BlockList rich content with heading-inside-anchor lift
+- `clean-core-blockgrid-cards` — BlockGrid card layout with multi-column grid items
+- `clean-core-nested-tables-images` — long-form nested headings, GFM tables, figure/figcaption, `data-llms-ignore`
+
+Adopters who fork the package can extend the catalogue with their own fixture pairs — see [`Fixtures/Extraction/README.md`](../LlmsTxt.Umbraco.Tests/Fixtures/Extraction/README.md) for the workflow.
+
 ## Cold-start cost
 
 The first Markdown render of a given template JIT-compiles the Razor view — observed at ~6 seconds against Clean.Core 7.0.5 in the Story 0.A spike. Subsequent renders are 170–600 ms. **Story 1.2's cache absorbs this from the second hit onwards** — pre-warming on app startup is out of scope for v1.
@@ -106,10 +173,6 @@ The first Markdown render of a given template JIT-compiles the Razor view — ob
 If first-hit latency matters at deploy time, hit `/your-most-important-pages.md` once after a deployment so the JIT cache (and the LlmsTxt cache) are warm.
 
 ## What's not in v0.1
-
-Coming in later stories of Epic 1:
-
-- **Public adopter override pattern + benchmark fixture catalogue** — Story 1.4 (`IMarkdownContentExtractor` is already public; Story 1.4 adds documentation, override tests, and BlockGrid/nested-content/table fixtures)
 
 Coming in later epics:
 

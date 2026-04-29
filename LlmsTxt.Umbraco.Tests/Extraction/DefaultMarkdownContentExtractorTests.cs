@@ -326,6 +326,222 @@ public class DefaultMarkdownContentExtractorTests
         return line;
     }
 
+    [Test]
+    public async Task ExtractFromHtmlAsync_HeadingInsideAnchor_LiftsHeadingAndPreservesLink()
+    {
+        // Clean.Core BlockList card markup wraps each card heading in an anchor.
+        // ReverseMarkdown's default encoding produces unreadable [## Heading](url) output.
+        // The pre-conversion lift hoists the heading out so the Markdown reads cleanly:
+        // a heading line followed by a link wrapping the rest of the card content.
+        var html = """
+            <main>
+              <div class="card">
+                <a href="/articles/post">
+                  <img src="https://example.test/img.jpg" alt="post hero" />
+                  <h2>Post title</h2>
+                  <p>Card body</p>
+                </a>
+              </div>
+            </main>
+            """;
+
+        var result = await ExtractAsync(html);
+        var md = result.Markdown!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(md, Does.Contain("## Post title"),
+                "heading must appear at the line level, not embedded inside link text");
+            // The heading line stands on its own; no '[## Post title' inside-link pattern.
+            Assert.That(md, Does.Not.Contain("[## Post title"),
+                "heading must NOT remain inside the link text");
+            Assert.That(md, Does.Contain("/articles/post"),
+                "the link's href is preserved on the remainder of the anchor's content");
+        });
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_PlainAnchor_NotAffected()
+    {
+        // Anchors that don't wrap a heading must pass through unmolested.
+        var html = """
+            <main>
+              <p><a href="/about">About us</a> — visit our about page.</p>
+            </main>
+            """;
+
+        var result = await ExtractAsync(html);
+
+        Assert.That(result.Markdown, Does.Contain("[About us](https://example.test/about)"),
+            "ordinary anchor renders as a single Markdown link");
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_NestedHeadingInDeepAnchor_StillLifted()
+    {
+        // The lift must reach headings nested at any depth inside an anchor — wrappers
+        // like <div class="card-body"> are common in real Clean.Core templates and
+        // must not block the heading from being hoisted out.
+        var html = """
+            <main>
+              <a href="/deep">
+                <div class="card-body">
+                  <div class="card-header">
+                    <h3>Deeply nested heading</h3>
+                  </div>
+                  <p>Card body text</p>
+                </div>
+              </a>
+            </main>
+            """;
+
+        var result = await ExtractAsync(html);
+        var md = result.Markdown!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(md, Does.Contain("### Deeply nested heading"),
+                "heading hoists out of the anchor regardless of intermediate wrappers");
+            Assert.That(md, Does.Not.Contain("[### Deeply nested heading"),
+                "heading must NOT remain inside the link text");
+        });
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_AnchorWithOnlyHeading_AnchorRemovedAfterLift()
+    {
+        // Edge case: when the heading is the anchor's only child, hoisting it leaves the
+        // anchor empty. Emitting an empty [](url) link is link-shaped noise — drop it.
+        var html = """
+            <main>
+              <p>Intro paragraph.</p>
+              <a href="/orphan"><h2>Orphan heading</h2></a>
+              <p>Outro paragraph.</p>
+            </main>
+            """;
+
+        var result = await ExtractAsync(html);
+        var md = result.Markdown!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(md, Does.Contain("## Orphan heading"));
+            Assert.That(md, Does.Not.Contain("[](https://example.test/orphan)"),
+                "empty anchor must be dropped — no link-shaped noise");
+        });
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_HeadingInRegionButAnchorAncestorOutsideRegion_HeadingNotLifted()
+    {
+        // Region-escape guard. The descendant combinator in the selector matches the
+        // document tree, not the region — so without bounding the ancestor walk to
+        // region, a heading inside region whose <a> ancestor lives OUTSIDE region
+        // would be silently lifted out of region and dropped from converted output.
+        // We use an adopter selector that targets <main>; the surrounding <a> is the
+        // ancestor that must NOT be the lift target.
+        var html = """
+            <a href="/outer">
+              <main>
+                <h2>Heading inside region</h2>
+                <p>Body inside region.</p>
+              </main>
+            </a>
+            """;
+
+        // The default content-region selector picks <main>, leaving the surrounding
+        // <a> outside the chosen region.
+        var result = await ExtractAsync(html);
+        var md = result.Markdown!;
+
+        // The heading must remain inside region — and therefore appear in the output.
+        Assert.That(md, Does.Contain("## Heading inside region"),
+            "lift must not escape region; heading must stay inside the converted output");
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_NestedAnchorsBothWrapHeading_HeadingLiftedOutOfOutermostAnchor()
+    {
+        // Pathological-but-parseable: anchors nested inside anchors. AngleSharp's HTML
+        // parser accepts the structure even though it's invalid HTML5. The lift must
+        // hoist the heading past the OUTERMOST in-region anchor — not just the inner
+        // one — otherwise the heading ends up inside the outer anchor as link text.
+        var html = """
+            <main>
+              <a href="/outer">
+                <a href="/inner">
+                  <h2>Nested heading</h2>
+                </a>
+              </a>
+            </main>
+            """;
+
+        var result = await ExtractAsync(html);
+        var md = result.Markdown!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(md, Does.Contain("## Nested heading"),
+                "heading must appear at the line level");
+            Assert.That(md, Does.Not.Contain("[## Nested heading"),
+                "heading must NOT remain inside any link text");
+            Assert.That(md, Does.Not.Contain("[\n## Nested heading"),
+                "heading must NOT remain inside multi-line link text either");
+        });
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_AnchorWithOnlyEmptyAltImage_AnchorRemovedAfterImageDrop()
+    {
+        // <a><img alt=""/></a> — empty-alt image is dropped by DropImagesWithEmptyAltOrSrc.
+        // Without a post-image-drop empty-anchor sweep, the anchor would render as
+        // [](url) — link-shaped noise.
+        var html = """
+            <main>
+              <p>Intro paragraph.</p>
+              <a href="/decorative-link"><img src="/d.png" alt="" /></a>
+              <p>Outro paragraph.</p>
+            </main>
+            """;
+
+        var result = await ExtractAsync(html);
+        var md = result.Markdown!;
+
+        Assert.That(md, Does.Not.Contain("[](https://example.test/decorative-link)"),
+            "post-image-drop empty anchor must be swept up");
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_MultipleHeadingsInOneAnchor_AllLiftedInDocumentOrder()
+    {
+        // Pathological but possible — multiple headings inside one anchor. All must
+        // lift, in document order.
+        var html = """
+            <main>
+              <a href="/multi">
+                <h2>First heading</h2>
+                <p>Mid paragraph</p>
+                <h3>Second heading</h3>
+                <p>End paragraph</p>
+              </a>
+            </main>
+            """;
+
+        var result = await ExtractAsync(html);
+        var md = result.Markdown!;
+
+        // Both headings out at the line level, in document order. The two paragraphs
+        // and the surrounding link wrapping are preserved as ReverseMarkdown emits them.
+        var firstHeadingIdx = md.IndexOf("## First heading", StringComparison.Ordinal);
+        var secondHeadingIdx = md.IndexOf("### Second heading", StringComparison.Ordinal);
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstHeadingIdx, Is.GreaterThan(0), "first heading must be present");
+            Assert.That(secondHeadingIdx, Is.GreaterThan(firstHeadingIdx),
+                "second heading must come after the first (document order preserved)");
+        });
+    }
+
     private async Task<MarkdownExtractionResult> ExtractAsync(string html, Uri? sourceUri = null)
     {
         sourceUri ??= new Uri("https://example.test/home");
