@@ -18,6 +18,14 @@ namespace LlmsTxt.Umbraco.Extraction;
 /// In-process Razor page renderer — locked by Spike 0.A.
 ///
 /// <para>
+/// Story 1.2 moved route resolution UP to <see cref="Controllers.MarkdownController"/>;
+/// this renderer now accepts an already-resolved <see cref="IPublishedContent"/> and
+/// builds the <see cref="IPublishedRequest"/> directly via <see cref="PublishedRequestBuilder"/>'s
+/// <c>SetPublishedContent</c> + <c>Build</c> path. No second routing call — the controller's
+/// <see cref="IPublishedRouter.RouteRequestAsync"/> already produced the content.
+/// </para>
+///
+/// <para>
 /// Concurrent renders inside one HTTP request are NOT supported by Umbraco's
 /// <c>IScopeProvider</c> (AsyncLocal-managed ambient scope races on worker threads).
 /// Single render per request only; cross-request concurrency works naturally via the
@@ -27,9 +35,9 @@ namespace LlmsTxt.Umbraco.Extraction;
 internal sealed class PageRenderer
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IPublishedRouter _publishedRouter;
     private readonly IUmbracoContextFactory _umbracoContextFactory;
     private readonly IFileService _fileService;
+    private readonly ITemplateService _templateService;
     private readonly IRazorViewEngine _razorViewEngine;
     private readonly ITempDataProvider _tempDataProvider;
     private readonly IVariationContextAccessor _variationContextAccessor;
@@ -37,18 +45,18 @@ internal sealed class PageRenderer
 
     public PageRenderer(
         IHttpContextAccessor httpContextAccessor,
-        IPublishedRouter publishedRouter,
         IUmbracoContextFactory umbracoContextFactory,
         IFileService fileService,
+        ITemplateService templateService,
         IRazorViewEngine razorViewEngine,
         ITempDataProvider tempDataProvider,
         IVariationContextAccessor variationContextAccessor,
         ILogger<PageRenderer> logger)
     {
         _httpContextAccessor = httpContextAccessor;
-        _publishedRouter = publishedRouter;
         _umbracoContextFactory = umbracoContextFactory;
         _fileService = fileService;
+        _templateService = templateService;
         _razorViewEngine = razorViewEngine;
         _tempDataProvider = tempDataProvider;
         _variationContextAccessor = variationContextAccessor;
@@ -56,6 +64,7 @@ internal sealed class PageRenderer
     }
 
     public async Task<PageRenderResult> RenderAsync(
+        IPublishedContent content,
         Uri absoluteUri,
         string? culture,
         CancellationToken cancellationToken)
@@ -70,14 +79,31 @@ internal sealed class PageRenderer
         var previousVariationContext = _variationContextAccessor.VariationContext;
         var variationContextMutated = false;
 
-        IPublishedRequest? routedRequest = null;
-        IPublishedContent? publishedContent = null;
-        string? templateAlias = null;
-        string? resolvedCulture = null;
+        var templateAlias = content.ContentType.Alias;
 
         try
         {
+            // Build an IPublishedRequest directly from the resolved content — no second
+            // RouteRequestAsync call. The builder's URI ctor is needed for any URL-derived
+            // template helpers (Url.Action, etc.) that inspect Request.Url.
             var builder = new PublishedRequestBuilder(absoluteUri, _fileService);
+            builder.SetPublishedContent(content);
+
+            // Preserve the content's chosen template so doctypes whose default template
+            // alias differs from the doctype alias still resolve to the correct view.
+            // `PublishedRequestBuilder.Build()` doesn't perform implicit template lookup —
+            // that's `IPublishedRouter.RouteRequestAsync`'s job, which the controller
+            // already called once (Story 1.2 moved routing up). Re-resolving the template
+            // by `TemplateId` here keeps the routed-template branch reachable.
+            if (content.TemplateId is int templateId && templateId > 0)
+            {
+                var template = await _templateService.GetAsync(templateId);
+                if (template is not null)
+                {
+                    builder.SetTemplate(template);
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(culture))
             {
                 builder.SetCulture(culture);
@@ -85,41 +111,31 @@ internal sealed class PageRenderer
                 variationContextMutated = true;
             }
 
-            routedRequest = await _publishedRouter.RouteRequestAsync(
-                builder,
-                new RouteRequestOptions(global::Umbraco.Cms.Core.Routing.RouteDirection.Inbound));
+            var publishedRequest = builder.Build();
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            resolvedCulture = routedRequest.Culture;
+            // The template alias picked by the route may differ from the doctype alias
+            // (e.g. when a doctype has multiple templates). Prefer the routed template
+            // alias if present; otherwise the doctype alias is the conventional fallback
+            // (ASP.NET MVC's view-resolution chain still finds `~/Views/{doctypeAlias}.cshtml`).
+            templateAlias = publishedRequest.Template?.Alias ?? content.ContentType.Alias;
 
-            if (routedRequest.PublishedContent is null)
-            {
-                _logger.LogInformation(
-                    "PageRenderer: route resolved no content {Path} {Culture}",
-                    absoluteUri.AbsolutePath,
-                    culture);
-                return PageRenderResult.NotFound(resolvedCulture);
-            }
-
-            publishedContent = routedRequest.PublishedContent;
-            templateAlias = routedRequest.Template?.Alias ?? publishedContent.ContentType.Alias;
-
-            // Mount the routed request on the active context so layouts and partials
+            // Mount the published request on the active context so layouts and partials
             // resolve content from `IUmbracoContext.PublishedRequest` rather than `Model`.
             // Save/restore the previous value to avoid leaking into the outer HTTP request
             // when `EnsureUmbracoContext()` reuses the existing context — fixes the leak
             // documented in deferred-work.md from Spike 0.A code review.
-            umbracoContext.PublishedRequest = routedRequest;
+            umbracoContext.PublishedRequest = publishedRequest;
 
             var html = await RenderRazorAsync(
                 httpContext,
-                routedRequest,
-                publishedContent,
+                publishedRequest,
+                content,
                 templateAlias,
                 cancellationToken);
 
-            return PageRenderResult.Ok(html, publishedContent, templateAlias, resolvedCulture);
+            return PageRenderResult.Ok(html, content, templateAlias, culture);
         }
         catch (OperationCanceledException)
         {
@@ -131,15 +147,14 @@ internal sealed class PageRenderer
                 ex,
                 "PageRenderer: rendering {TemplateAlias} for {ContentKey} {Path} failed",
                 templateAlias,
-                publishedContent?.Key,
+                content.Key,
                 absoluteUri.AbsolutePath);
-            return PageRenderResult.Failed(ex, publishedContent, templateAlias, resolvedCulture);
+            return PageRenderResult.Failed(ex, content, templateAlias, culture);
         }
         finally
         {
-            // Always restore — on success, NotFound, AND failure — so the outer request
-            // keeps its original PublishedRequest and VariationContext. Skipping the
-            // VariationContext restore on the NotFound path was flagged at code review.
+            // Always restore — on success AND failure — so the outer request keeps its
+            // original PublishedRequest and VariationContext.
             umbracoContext.PublishedRequest = previousPublishedRequest;
             if (variationContextMutated)
             {
@@ -155,6 +170,7 @@ internal sealed class PageRenderer
         string templateAlias,
         CancellationToken cancellationToken)
     {
+        _ = publishedRequest; // mounted on UmbracoContext above; unused here directly
         var routeData = new RouteData();
         var actionContext = new ActionContext(httpContext, routeData, new ActionDescriptor());
 

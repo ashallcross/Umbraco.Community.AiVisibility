@@ -31,6 +31,7 @@ public class FixtureCaptureHelper
             regionSelector: new DefaultContentRegionSelector(NullLogger<DefaultContentRegionSelector>.Instance),
             converter: new MarkdownConverter(),
             publishedUrlProvider: null!,
+            httpContextAccessor: null!,
             settings: options,
             logger: NullLogger<DefaultMarkdownContentExtractor>.Instance);
 

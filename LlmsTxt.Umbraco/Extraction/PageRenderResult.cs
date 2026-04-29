@@ -5,6 +5,12 @@ namespace LlmsTxt.Umbraco.Extraction;
 /// <summary>
 /// Internal outcome of <see cref="PageRenderer.RenderAsync"/>. Promoted to
 /// <see cref="MarkdownExtractionResult"/> by <see cref="DefaultMarkdownContentExtractor"/>.
+///
+/// <para>
+/// Story 1.2 dropped the <c>NotFound</c> state from this type — route resolution moved
+/// up to <see cref="Controllers.MarkdownController"/>, so the renderer never sees an
+/// unresolved route.
+/// </para>
 /// </summary>
 internal sealed record PageRenderResult
 {
@@ -33,12 +39,6 @@ internal sealed record PageRenderResult
             ResolvedCulture = resolvedCulture,
         };
 
-    public static PageRenderResult NotFound(string? resolvedCulture)
-        => new(PageRenderStatus.NotFound)
-        {
-            ResolvedCulture = resolvedCulture,
-        };
-
     public static PageRenderResult Failed(
         Exception error,
         IPublishedContent? content,
@@ -56,6 +56,5 @@ internal sealed record PageRenderResult
 internal enum PageRenderStatus
 {
     Ok,
-    NotFound,
     Error,
 }

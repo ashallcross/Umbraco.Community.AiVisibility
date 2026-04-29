@@ -2,6 +2,7 @@ using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using LlmsTxt.Umbraco.Configuration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartReader;
@@ -49,6 +50,7 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
     private readonly IContentRegionSelector _regionSelector;
     private readonly MarkdownConverter _converter;
     private readonly IPublishedUrlProvider _publishedUrlProvider;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IOptionsSnapshot<LlmsTxtSettings> _settings;
     private readonly ILogger<DefaultMarkdownContentExtractor> _logger;
 
@@ -57,6 +59,7 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
         IContentRegionSelector regionSelector,
         MarkdownConverter converter,
         IPublishedUrlProvider publishedUrlProvider,
+        IHttpContextAccessor httpContextAccessor,
         IOptionsSnapshot<LlmsTxtSettings> settings,
         ILogger<DefaultMarkdownContentExtractor> logger)
     {
@@ -64,30 +67,28 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
         _regionSelector = regionSelector;
         _converter = converter;
         _publishedUrlProvider = publishedUrlProvider;
+        _httpContextAccessor = httpContextAccessor;
         _settings = settings;
         _logger = logger;
     }
 
-    public async Task<MarkdownExtractionResult> ExtractAsync(Uri absoluteUri, CancellationToken cancellationToken)
+    public async Task<MarkdownExtractionResult> ExtractAsync(
+        IPublishedContent content,
+        string? culture,
+        CancellationToken cancellationToken)
     {
-        var renderResult = await _pageRenderer.RenderAsync(absoluteUri, culture: null, cancellationToken);
+        var absoluteUri = ResolveAbsoluteUri(content, culture);
 
-        switch (renderResult.Status)
+        var renderResult = await _pageRenderer.RenderAsync(content, absoluteUri, culture, cancellationToken);
+
+        if (renderResult.Status == PageRenderStatus.Error)
         {
-            case PageRenderStatus.NotFound:
-                return MarkdownExtractionResult.NotFound(absoluteUri.AbsolutePath);
-
-            case PageRenderStatus.Error:
-                return MarkdownExtractionResult.Failed(
-                    renderResult.Error
-                        ?? new InvalidOperationException("PageRenderer reported failure with no exception."),
-                    absoluteUri.ToString(),
-                    renderResult.Content?.Key);
+            return MarkdownExtractionResult.Failed(
+                renderResult.Error
+                    ?? new InvalidOperationException("PageRenderer reported failure with no exception."),
+                absoluteUri.ToString(),
+                content.Key);
         }
-
-        var content = renderResult.Content
-            ?? throw new InvalidOperationException(
-                "PageRenderer returned Ok but no IPublishedContent — invariant violated.");
 
         var sourceUrl = ResolveAbsoluteContentUrl(content, absoluteUri) ?? absoluteUri.ToString();
         var metadata = new ContentMetadata(
@@ -95,9 +96,52 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
             AbsoluteUrl: sourceUrl,
             UpdatedUtc: ToUtc(content.UpdateDate),
             ContentKey: content.Key,
-            Culture: renderResult.ResolvedCulture ?? string.Empty);
+            Culture: renderResult.ResolvedCulture ?? culture ?? string.Empty);
 
         return await ExtractFromHtmlAsync(renderResult.Html!, absoluteUri, metadata, cancellationToken);
+    }
+
+    /// <summary>
+    /// Derive the absolute URI for the content under the active request. Prefer
+    /// <see cref="IPublishedUrlProvider"/> (host-aware via current
+    /// <see cref="HttpContext"/>) and fall back to building from the request scheme +
+    /// host + content URL when the URL provider returns a relative or missing value.
+    /// </summary>
+    private Uri ResolveAbsoluteUri(IPublishedContent content, string? culture)
+    {
+        try
+        {
+            var resolved = _publishedUrlProvider.GetUrl(content, UrlMode.Absolute, culture);
+            if (!string.IsNullOrWhiteSpace(resolved)
+                && Uri.TryCreate(resolved, UriKind.Absolute, out var asAbsolute))
+            {
+                return asAbsolute;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "IPublishedUrlProvider.GetUrl threw for {ContentKey}; falling back to request-derived URI",
+                content.Key);
+        }
+
+        var request = _httpContextAccessor.HttpContext?.Request
+            ?? throw new InvalidOperationException(
+                "DefaultMarkdownContentExtractor requires an active HttpContext to derive an absolute URI.");
+
+        var scheme = request.Scheme;
+        var host = request.Host.HasValue ? request.Host.Value! : "localhost";
+
+        // Use the content's relative URL under the host to compose an absolute URI.
+        // GetUrl(...) without UrlMode.Absolute returns the host-relative path.
+        var relative = _publishedUrlProvider.GetUrl(content, UrlMode.Relative, culture);
+        if (string.IsNullOrWhiteSpace(relative))
+        {
+            relative = "/";
+        }
+
+        return new Uri($"{scheme}://{host}{relative}");
     }
 
     /// <summary>

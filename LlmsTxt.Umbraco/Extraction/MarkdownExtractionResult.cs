@@ -2,9 +2,14 @@ namespace LlmsTxt.Umbraco.Extraction;
 
 /// <summary>
 /// Discriminated outcome of <see cref="IMarkdownContentExtractor.ExtractAsync"/>.
-/// One of three states — <see cref="MarkdownExtractionStatus.Found"/> (success),
-/// <see cref="MarkdownExtractionStatus.NotFound"/> (route resolved no content),
-/// or <see cref="MarkdownExtractionStatus.Error"/> (render or extraction failed).
+/// One of two states — <see cref="MarkdownExtractionStatus.Found"/> (success) or
+/// <see cref="MarkdownExtractionStatus.Error"/> (render or extraction failed).
+///
+/// <para>
+/// Story 1.2 dropped <c>NotFound</c> from the public surface: route resolution now
+/// happens in <see cref="Controllers.MarkdownController"/> before the extractor is
+/// invoked, so the extractor never sees an unresolved route.
+/// </para>
 /// </summary>
 public sealed record MarkdownExtractionResult
 {
@@ -20,8 +25,6 @@ public sealed record MarkdownExtractionResult
     public string? Culture { get; private init; }
     public DateTime? UpdatedUtc { get; private init; }
     public string? SourceUrl { get; private init; }
-
-    public string? PathThatFailedToResolve { get; private init; }
 
     public Exception? Error { get; private init; }
 
@@ -40,12 +43,6 @@ public sealed record MarkdownExtractionResult
             SourceUrl = sourceUrl,
         };
 
-    public static MarkdownExtractionResult NotFound(string path)
-        => new(MarkdownExtractionStatus.NotFound)
-        {
-            PathThatFailedToResolve = path,
-        };
-
     public static MarkdownExtractionResult Failed(
         Exception error,
         string? sourceUrl,
@@ -61,6 +58,5 @@ public sealed record MarkdownExtractionResult
 public enum MarkdownExtractionStatus
 {
     Found,
-    NotFound,
     Error,
 }

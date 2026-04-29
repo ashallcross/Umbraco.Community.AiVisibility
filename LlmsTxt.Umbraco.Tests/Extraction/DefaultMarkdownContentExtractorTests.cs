@@ -17,13 +17,16 @@ public class DefaultMarkdownContentExtractorTests
         var optionsSnapshot = new StubOptionsSnapshot<LlmsTxtSettings>(settings);
 
         // The internal `ExtractFromHtmlAsync` seam exercised by these tests does not
-        // touch `_pageRenderer` or `_publishedUrlProvider` — passing `null!` is
-        // intentional and documented at code review (decision: accept the smell).
+        // touch `_pageRenderer`, `_publishedUrlProvider`, or `_httpContextAccessor` —
+        // passing `null!` is intentional and documented at code review (decision:
+        // accept the smell). Story 1.2's `ExtractAsync(content, culture, ct)` IS
+        // covered by integration tests at the controller layer.
         _extractor = new DefaultMarkdownContentExtractor(
             pageRenderer: null!,
             regionSelector: new DefaultContentRegionSelector(NullLogger<DefaultContentRegionSelector>.Instance),
             converter: new MarkdownConverter(),
             publishedUrlProvider: null!,
+            httpContextAccessor: null!,
             settings: optionsSnapshot,
             logger: NullLogger<DefaultMarkdownContentExtractor>.Instance);
     }

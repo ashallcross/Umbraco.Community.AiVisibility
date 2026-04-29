@@ -82,6 +82,7 @@ public class ExtractionQualityBenchmarkTests
             regionSelector: new DefaultContentRegionSelector(NullLogger<DefaultContentRegionSelector>.Instance),
             converter: new MarkdownConverter(),
             publishedUrlProvider: null!, // unused in ExtractFromHtmlAsync
+            httpContextAccessor: null!, // unused in ExtractFromHtmlAsync
             settings: options,
             logger: NullLogger<DefaultMarkdownContentExtractor>.Instance);
     }

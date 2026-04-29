@@ -46,6 +46,10 @@ public sealed class RoutingComposer : IComposer
         // HttpContextAccessor needed by PageRenderer to derive scheme/host.
         builder.Services.AddHttpContextAccessor();
 
+        // Route resolution seam — controller calls this; default impl wraps
+        // IPublishedRouter + IUmbracoContextFactory + IFileService.
+        builder.Services.TryAddTransient<IMarkdownRouteResolver, MarkdownRouteResolver>();
+
         // Extraction pipeline — TryAdd* per AR17 so adopters can override before our
         // composer runs by registering their own implementation first.
         builder.Services.TryAddTransient<PageRenderer>();
