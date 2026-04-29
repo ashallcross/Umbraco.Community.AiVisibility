@@ -37,7 +37,7 @@ Story 1.2 adds an in-memory cache layer over the per-page Markdown extraction.
 | What | Detail |
 |---|---|
 | **Where** | `IAppPolicyCache` via `AppCaches.RuntimeCache` — Umbraco's standard runtime cache. No bespoke layer, no Redis. |
-| **Cache key** | `llms:page:{nodeKey:N}:{culture}` — `nodeKey` is `IPublishedContent.Key` (Guid), culture is BCP-47 lowercased (or `_` for invariant content). |
+| **Cache key** | `llms:page:{nodeKey:N}:{host}:{culture}` — `nodeKey` is `IPublishedContent.Key` (Guid), host is the request host lowercased (or `_` if no ambient `HttpContext`), culture is BCP-47 lowercased (or `_` for invariant content). Host segment ensures multi-domain bindings on the same node never collide on a CDN fronting both hosts. |
 | **TTL** | Configured by `LlmsTxt:CachePolicySeconds`; default `60` seconds. Set to `0` to disable caching. |
 | **Invalidation** | `INotificationAsyncHandler<ContentCacheRefresherNotification>` keyed off Umbraco's distributed cache refresher — fires on every load-balanced instance independently when content publishes, moves, or unpublishes. The handler walks branch descendants via `IDocumentNavigationQueryService` for branch-publish events. |
 | **Per-instance** | The cache and its node-to-key index are per-process in-memory. Cross-instance invalidation works via the broadcast notification — no Redis or shared state required. |
@@ -48,7 +48,7 @@ Successful `.md` responses carry:
 
 - `Cache-Control: public, max-age={CachePolicySeconds}` — `public` because Markdown is stateless.
 - `Vary: Accept` — required so downstream caches don't return Markdown to a caller that sent `Accept: text/html`. Now load-bearing: Story 1.3's content negotiation means the same canonical URL can return either Markdown or HTML.
-- `ETag: "<hash>"` — strong validator computed from `(route + culture + contentVersion)`, where `contentVersion` is the page's `IPublishedContent.UpdateDate`. Every successful publish bumps it.
+- `ETag: "<hash>"` — strong validator computed from `(host + route + culture + contentVersion)`, where `contentVersion` is the page's `IPublishedContent.UpdateDate`. Every successful publish bumps it; multi-domain bindings on the same node produce distinct ETags.
 - `X-Markdown-Tokens: <count>` — Cloudflare-convention character-based token estimate.
 
 A `GET` with a matching `If-None-Match: "<etag>"` header returns `304 Not Modified` with no body. The `ETag`, `Cache-Control`, and `Vary` headers stay set on the 304 per RFC 7232.
@@ -165,6 +165,33 @@ The package ships [`ExtractionQualityBenchmarkTests`](../LlmsTxt.Umbraco.Tests/E
 - `clean-core-nested-tables-images` — long-form nested headings, GFM tables, figure/figcaption, `data-llms-ignore`
 
 Adopters who fork the package can extend the catalogue with their own fixture pairs — see [`Fixtures/Extraction/README.md`](../LlmsTxt.Umbraco.Tests/Fixtures/Extraction/README.md) for the workflow.
+
+## Reverse proxy / load balancer
+
+The cache key and ETag both include the request host (`HttpContext.Request.Host`) so multi-domain bindings on the same Umbraco node produce distinct cache entries and distinct ETags — preventing a CDN or proxy fronting both hosts from serving siteA's body to siteB clients on a 304 revalidation.
+
+Behind a reverse proxy or load balancer (the typical production topology), `HttpContext.Request.Host` reflects the **internal** host (pod IP, internal hostname) by default — not the public-facing host the client sent. Without forwarded-headers middleware in place, every public host collapses onto the same internal host and the per-host ETag separation degrades to a single shared entry.
+
+**Adopter contract:** if you run behind a reverse proxy or load balancer, configure `app.UseForwardedHeaders(...)` with `ForwardedHeaders.XForwardedHost` (and any other forwarded headers your topology requires) **before** `app.UseUmbraco()` in your `Program.cs`:
+
+```csharp
+using Microsoft.AspNetCore.HttpOverrides;
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor
+        | ForwardedHeaders.XForwardedProto
+        | ForwardedHeaders.XForwardedHost;
+    // KnownProxies / KnownNetworks per your environment.
+});
+
+var app = builder.Build();
+app.UseForwardedHeaders();
+app.UseUmbraco()...
+```
+
+This is standard ASP.NET Core deployment hygiene; LlmsTxt does not configure forwarded-headers itself because the trusted-proxy list is environment-specific. If you skip this step, single-domain deployments still work correctly — only the multi-domain per-host ETag/cache separation is affected.
 
 ## Cold-start cost
 

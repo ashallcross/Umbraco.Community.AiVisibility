@@ -101,6 +101,40 @@ public class LlmsCacheKeysTests
     }
 
     [Test]
+    public void Page_WithWhitespaceHost_UsesInvariantSentinel()
+    {
+        // Story 1.5 review: defensive against malformed Host headers / misbehaving
+        // clients. IsNullOrWhiteSpace routes a single-space host to the "_" sentinel
+        // rather than allowing " " to become a distinct cache-key segment.
+        Assert.That(
+            LlmsCacheKeys.Page(Node, "   ", "en-GB"),
+            Is.EqualTo(LlmsCacheKeys.Page(Node, null, "en-GB")));
+    }
+
+    [Test]
+    public void Page_HostWithPort_StripsPort()
+    {
+        // Story 1.5 review: NormaliseHost is public and may be called from future
+        // Epic 2 manifest builders that pull host strings from IDomain entries that
+        // include port. The helper must produce the same key regardless of whether
+        // the caller passes "sitea.example" or "sitea.example:443".
+        var withoutPort = LlmsCacheKeys.Page(Node, "sitea.example", "en-GB");
+        var withPort = LlmsCacheKeys.Page(Node, "sitea.example:443", "en-GB");
+        Assert.That(withPort, Is.EqualTo(withoutPort));
+    }
+
+    [Test]
+    public void Page_HostWithPortOnly_UsesInvariantSentinel()
+    {
+        // Edge case: a malformed input like ":443" (port without host) strips to an
+        // empty string, which must route to the "_" sentinel rather than colliding
+        // with a missing-host entry under an empty segment.
+        Assert.That(
+            LlmsCacheKeys.Page(Node, ":443", "en-GB"),
+            Is.EqualTo(LlmsCacheKeys.Page(Node, null, "en-GB")));
+    }
+
+    [Test]
     public void Page_DifferentCulture_DifferentKey()
     {
         var en = LlmsCacheKeys.Page(Node, Host, "en-GB");

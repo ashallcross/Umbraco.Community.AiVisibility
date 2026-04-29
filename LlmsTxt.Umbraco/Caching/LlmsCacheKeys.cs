@@ -50,14 +50,27 @@ public static class LlmsCacheKeys
 
     /// <summary>
     /// Normalises a host for cache-key composition: lowercases the host portion so
-    /// <c>SiteA.Example</c> and <c>sitea.example</c> share an entry, and represents
-    /// a missing host (null/empty — background scenarios with no ambient
-    /// <see cref="Microsoft.AspNetCore.Http.HttpContext"/>) as <c>"_"</c> so it never
-    /// collides with a real hostname. Public so <see cref="MarkdownResponseWriter"/>
-    /// can reuse the same normalisation when building ETag input — alignment between
-    /// cache key and ETag input is what keeps <c>If-None-Match</c> revalidation working
-    /// across host casings.
+    /// <c>SiteA.Example</c> and <c>sitea.example</c> share an entry, strips an explicit
+    /// port (so <c>sitea.example:443</c> and <c>sitea.example</c> share an entry — the
+    /// request-pipeline reads <c>HttpContext.Request.Host.Host</c> which is already
+    /// port-stripped, but the helper is public and may be called by future Epic 2
+    /// manifest builders that pull host strings from <c>IDomain</c> entries that
+    /// include port), and represents a missing host (null/empty/whitespace — background
+    /// scenarios with no ambient <see cref="Microsoft.AspNetCore.Http.HttpContext"/> or
+    /// malformed <c>Host</c> header) as <c>"_"</c> so it never collides with a real
+    /// hostname. Public so <see cref="MarkdownResponseWriter"/> can reuse the same
+    /// normalisation when building ETag input — alignment between cache key and ETag
+    /// input is what keeps <c>If-None-Match</c> revalidation working across host casings.
     /// </summary>
     public static string NormaliseHost(string? host)
-        => string.IsNullOrEmpty(host) ? "_" : host.ToLowerInvariant();
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return "_";
+        }
+
+        var portIndex = host.IndexOf(':', StringComparison.Ordinal);
+        var hostOnly = portIndex >= 0 ? host[..portIndex] : host;
+        return string.IsNullOrWhiteSpace(hostOnly) ? "_" : hostOnly.ToLowerInvariant();
+    }
 }
