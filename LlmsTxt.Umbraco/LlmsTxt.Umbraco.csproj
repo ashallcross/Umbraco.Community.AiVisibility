@@ -29,6 +29,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Story 1.1 — Markdown extraction pipeline -->
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="ReverseMarkdown" />
+    <PackageReference Include="SmartReader" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="LlmsTxt.Umbraco.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>

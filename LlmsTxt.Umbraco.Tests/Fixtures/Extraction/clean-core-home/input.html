@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<title>Welcome to Clean.Core</title>
+<link rel="stylesheet" href="/css/site.css" />
+<style>body { font-family: sans-serif; }</style>
+<script>console.log('analytics');</script>
+</head>
+<body>
+<header>
+<nav><a href="/">Home</a> <a href="/about">About</a></nav>
+</header>
+<article>
+<h1>Welcome home</h1>
+<p>This is the Clean.Core demo content for the LlmsTxt.Umbraco package. The extractor's job is to render this page and convert it to clean Markdown.</p>
+
+<h2>What this package does</h2>
+<p>It exposes Umbraco published content to AI crawlers via three surfaces:</p>
+<ul>
+<li><a href="/blog">A per-page Markdown route</a> at <code>/{path}.md</code></li>
+<li>A <code>/llms.txt</code> manifest</li>
+<li>A <code>/llms-full.txt</code> bulk export</li>
+</ul>
+
+<h2>Hero image</h2>
+<p><img src="/media/hero.jpg" alt="Clean.Core hero illustration" /></p>
+<p><img src="/media/decorative.png" alt="" /> A decorative image with empty alt is dropped from the output entirely.</p>
+
+<h2>A table</h2>
+<table>
+<thead>
+<tr><th>Surface</th><th>URL</th></tr>
+</thead>
+<tbody>
+<tr><td>Per-page</td><td><a href="/page.md">/page.md</a></td></tr>
+<tr><td>Manifest</td><td><a href="/llms.txt">/llms.txt</a></td></tr>
+<tr><td>Bulk</td><td><a href="/llms-full.txt">/llms-full.txt</a></td></tr>
+</tbody>
+</table>
+
+<h2>A code block</h2>
+<pre><code class="language-csharp">services.TryAddTransient&lt;IMarkdownContentExtractor, DefaultMarkdownContentExtractor&gt;();</code></pre>
+
+<h2>A blockquote</h2>
+<blockquote><p>Render through Umbraco's normal pipeline, never walk properties.</p></blockquote>
+
+<div data-llms-ignore>
+<h2>This region is excluded</h2>
+<p>The data-llms-ignore attribute strips this entire region from the Markdown output.</p>
+</div>
+
+<aside aria-hidden="true"><p>This is hidden from assistive tech and from extraction.</p></aside>
+<div hidden>This element has the hidden attribute.</div>
+</article>
+<footer><p>&copy; 2026 LlmsTxt.Umbraco</p></footer>
+</body>
+</html>
