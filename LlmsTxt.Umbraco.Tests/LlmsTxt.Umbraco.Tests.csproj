@@ -6,6 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Story 1.5 — required by Microsoft.AspNetCore.Mvc.Testing's WebApplicationFactory.
+         Without this, the Umbraco integration test harness fails on first boot with
+         'Can't find Umbraco.Tests.Integration.deps.json' because the deps.json for the
+         referenced test-host assembly isn't preserved into the test bin. -->
+    <PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +20,7 @@
     <PackageReference Include="NUnit.Analyzers" />
     <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Umbraco.Cms.Tests.Integration" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,5 +30,29 @@
   <ItemGroup>
     <Using Include="NUnit.Framework" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Story 1.5 — appsettings for the Umbraco integration test harness. The package
+         ships a sample as <contentFiles> but Central Package Management can suppress
+         that copy; pinning the file in-project + CopyToOutputDirectory=Always is
+         deterministic and survives clean rebuilds. -->
+    <None Update="appsettings.Tests.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Story 1.5 — UmbracoWebApplicationFactory<TStartup> uses TStartup from
+       Umbraco.Tests.Integration.dll, so Microsoft.AspNetCore.Mvc.Testing's
+       WebApplicationFactory looks for `Umbraco.Tests.Integration.deps.json` in the
+       test bin. We don't ship that assembly as the test entry point; alias our own
+       test project's deps.json under the expected name post-build so EnsureDepsFile()
+       resolves successfully. PreserveCompilationContext=true ensures our deps.json
+       carries the compilation-context records the harness needs. -->
+  <Target Name="CopyDepsJsonForUmbracoTestHarness" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).deps.json"
+          DestinationFiles="$(TargetDir)Umbraco.Tests.Integration.deps.json"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)$(AssemblyName).deps.json')" />
+  </Target>
 
 </Project>

@@ -2,6 +2,7 @@ using System.Linq;
 using LlmsTxt.Umbraco.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -96,6 +97,7 @@ public sealed class CachingComposer : IComposer
                 sp.GetRequiredService<DefaultMarkdownContentExtractor>(),
                 sp.GetRequiredService<AppCaches>(),
                 sp.GetRequiredService<ILlmsCacheKeyIndex>(),
+                sp.GetRequiredService<IHttpContextAccessor>(),
                 sp.GetRequiredService<IOptionsMonitor<LlmsTxtSettings>>(),
                 sp.GetRequiredService<ILogger<CachingMarkdownExtractorDecorator>>()));
     }

@@ -22,12 +22,14 @@
     <PackageVersion Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
     <!-- Test infrastructure -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.7.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
     <!-- Story 1.2 — mocking lib for caching decorator + handler tests -->
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
+    <!-- Story 1.5 — Umbraco integration-test harness; pinned to exact runtime version (17.3.2) per Winston (2026-04-29) to avoid silent test-vs-runtime drift -->
+    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="17.3.2" />
     <!-- Package implementation dependencies (Story 1.1 — Markdown extraction pipeline) -->
     <PackageVersion Include="AngleSharp" Version="1.4.0" />
     <PackageVersion Include="ReverseMarkdown" Version="5.3.0" />

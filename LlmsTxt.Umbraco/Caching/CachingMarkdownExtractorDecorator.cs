@@ -1,5 +1,6 @@
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Cache;
@@ -33,6 +34,7 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
     private readonly IMarkdownContentExtractor _inner;
     private readonly AppCaches _appCaches;
     private readonly ILlmsCacheKeyIndex _index;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
     private readonly ILogger<CachingMarkdownExtractorDecorator> _logger;
 
@@ -40,12 +42,14 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
         IMarkdownContentExtractor inner,
         AppCaches appCaches,
         ILlmsCacheKeyIndex index,
+        IHttpContextAccessor httpContextAccessor,
         IOptionsMonitor<LlmsTxtSettings> settings,
         ILogger<CachingMarkdownExtractorDecorator> logger)
     {
         _inner = inner;
         _appCaches = appCaches;
         _index = index;
+        _httpContextAccessor = httpContextAccessor;
         _settings = settings;
         _logger = logger;
     }
@@ -68,7 +72,14 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
             return _inner.ExtractAsync(content, culture, cancellationToken);
         }
 
-        var key = LlmsCacheKeys.Page(content.Key, culture);
+        // Story 1.5: include request host in cache key so multi-domain bindings
+        // on the same node never collide (a CDN fronting both hosts could otherwise
+        // serve siteA's body to siteB clients). Background scenarios with no ambient
+        // HttpContext fall back to the "_" sentinel host via NormaliseHost.
+        var host = _httpContextAccessor.HttpContext?.Request.Host.HasValue == true
+            ? _httpContextAccessor.HttpContext.Request.Host.Host
+            : null;
+        var key = LlmsCacheKeys.Page(content.Key, host, culture);
         var ttl = TimeSpan.FromSeconds(seconds);
 
         // sync-over-async inside the factory: IAppPolicyCache.Get is sync, and Umbraco's

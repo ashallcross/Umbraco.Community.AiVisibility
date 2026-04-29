@@ -16,6 +16,7 @@ public class ContentCacheRefresherHandlerTests
     private static readonly Guid Child1 = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
     private static readonly Guid Child2 = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
     private static readonly Guid Stranger = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+    private const string TestHost = "test.example";
 
     private LlmsCacheKeyIndex _index = null!;
     private AppCaches _appCaches = null!;
@@ -116,7 +117,7 @@ public class ContentCacheRefresherHandlerTests
         // a publish for that node arrives. The handler clears by `llms:page:{nodeKey:N}:`
         // prefix, so an in-flight cache write that hasn't yet reached the index is
         // still cleared.
-        var orphanKey = LlmsCacheKeys.Page(Root, "en-GB");
+        var orphanKey = LlmsCacheKeys.Page(Root, TestHost, "en-GB");
         _appCaches.RuntimeCache.Insert(orphanKey, () => "cached", TimeSpan.FromMinutes(5));
         // Note: NOT registered in the index — simulates the race window.
 
@@ -293,23 +294,25 @@ public class ContentCacheRefresherHandlerTests
 
     private void SeedCacheAndIndex(Guid nodeKey)
     {
-        // Use the realistic page-cache key shape so the handler's prefix-clear
-        // (`llms:page:{nodeKey:N}:`) actually exercises the prefix matcher.
-        var key = LlmsCacheKeys.Page(nodeKey, "en-GB");
+        // Use the realistic page-cache key shape (Story 1.5: includes host) so the
+        // handler's prefix-clear (`llms:page:{nodeKey:N}:`) actually exercises the
+        // prefix matcher. nodeKey stays as the second segment so per-host entries
+        // for the same node all share the prefix and get cleared together.
+        var key = LlmsCacheKeys.Page(nodeKey, TestHost, "en-GB");
         _appCaches.RuntimeCache.Insert(key, () => "cached", TimeSpan.FromMinutes(5));
         _index.Register(nodeKey, key);
     }
 
     private void AssertCacheCleared(Guid nodeKey)
     {
-        var key = LlmsCacheKeys.Page(nodeKey, "en-GB");
+        var key = LlmsCacheKeys.Page(nodeKey, TestHost, "en-GB");
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Null,
             $"expected cache key '{key}' to have been cleared");
     }
 
     private void AssertCacheStillPresent(Guid nodeKey)
     {
-        var key = LlmsCacheKeys.Page(nodeKey, "en-GB");
+        var key = LlmsCacheKeys.Page(nodeKey, TestHost, "en-GB");
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Not.Null,
             $"expected cache key '{key}' to still be present");
     }

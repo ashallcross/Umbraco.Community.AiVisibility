@@ -1,6 +1,7 @@
 using LlmsTxt.Umbraco.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -15,9 +16,11 @@ public class CachingMarkdownExtractorDecoratorTests
     private static readonly Guid NodeA = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static readonly Guid NodeB = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
     private static readonly DateTime UpdatedUtc = new(2026, 4, 29, 0, 0, 0, DateTimeKind.Utc);
+    private const string TestHost = "test.example";
 
     private LlmsCacheKeyIndex _index = null!;
     private AppCaches _appCaches = null!;
+    private IHttpContextAccessor _httpContextAccessor = null!;
     private IOptionsMonitor<LlmsTxtSettings> _settings = null!;
 
     [SetUp]
@@ -28,6 +31,10 @@ public class CachingMarkdownExtractorDecoratorTests
             new ObjectCacheAppCache(),
             Substitute.For<IRequestCache>(),
             new IsolatedCaches(_ => new ObjectCacheAppCache()));
+        _httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext { Request = { Host = new HostString(TestHost) } },
+        };
         _settings = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
         _settings.CurrentValue.Returns(new LlmsTxtSettings { CachePolicySeconds = 60 });
     }
@@ -59,7 +66,7 @@ public class CachingMarkdownExtractorDecoratorTests
 
         await decorator.ExtractAsync(content, "en-GB", CancellationToken.None);
 
-        var key = LlmsCacheKeys.Page(NodeA, "en-GB");
+        var key = LlmsCacheKeys.Page(NodeA, TestHost, "en-GB");
         Assert.That(_index.GetKeysFor(NodeA), Contains.Item(key));
     }
 
@@ -151,7 +158,7 @@ public class CachingMarkdownExtractorDecoratorTests
         await decorator.ExtractAsync(content, null, CancellationToken.None);
 
         Assert.That(inner.CallCount, Is.EqualTo(1));
-        Assert.That(_index.GetKeysFor(NodeA), Contains.Item(LlmsCacheKeys.Page(NodeA, null)));
+        Assert.That(_index.GetKeysFor(NodeA), Contains.Item(LlmsCacheKeys.Page(NodeA, TestHost, null)));
     }
 
     [Test, CancelAfter(5000)]
@@ -246,7 +253,7 @@ public class CachingMarkdownExtractorDecoratorTests
     // ────────────────────────────────────────────────────────────────────────
 
     private CachingMarkdownExtractorDecorator MakeDecorator(IMarkdownContentExtractor inner)
-        => new(inner, _appCaches, _index, _settings, NullLogger<CachingMarkdownExtractorDecorator>.Instance);
+        => new(inner, _appCaches, _index, _httpContextAccessor, _settings, NullLogger<CachingMarkdownExtractorDecorator>.Instance);
 
     private static MarkdownExtractionResult BuildFound(string body) =>
         MarkdownExtractionResult.Found(

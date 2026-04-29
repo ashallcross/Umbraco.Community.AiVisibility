@@ -12,12 +12,30 @@ public static class LlmsCacheKeys
     public const string PagePrefix = "llms:page:";
 
     /// <summary>
-    /// Per-page cache key. Culture is normalised to lowercase BCP-47;
-    /// invariant content (no culture variation) keys with <c>"_"</c> — distinct
-    /// from any real BCP-47 tag and stable across the <c>culture: null</c> path.
+    /// Per-page cache key. <para>
+    /// Shape: <c>llms:page:{nodeKey:N}:{host}:{culture}</c>. Story 1.5 added
+    /// <paramref name="host"/> to the key so multi-domain bindings against the
+    /// same content node never collide on a CDN/proxy fronting both hosts.
+    /// </para>
+    /// <para>
+    /// <paramref name="nodeKey"/> stays as the second segment (immediately after the
+    /// <c>llms:page:</c> prefix) so <see cref="ContentCacheRefresherHandler"/>'s
+    /// race-mitigating prefix-clear (<c>llms:page:{nodeKey:N}:</c>) still finds and
+    /// clears every per-host entry for that node, regardless of how many hostnames
+    /// have warmed entries against it.
+    /// </para>
+    /// <para>
+    /// Culture is normalised to lowercase BCP-47; invariant content (no culture
+    /// variation) keys with <c>"_"</c> — distinct from any real BCP-47 tag and stable
+    /// across the <c>culture: null</c> path. Host is normalised similarly: lowercased,
+    /// port stripped (matches the request-host shape <see cref="MarkdownResponseWriter"/>
+    /// extracts from <c>HttpContext.Request.Host.Host</c>); a null/empty host
+    /// (background scenarios where no <see cref="Microsoft.AspNetCore.Http.HttpContext"/>
+    /// is ambient) falls back to <c>"_"</c>.
+    /// </para>
     /// </summary>
-    public static string Page(Guid nodeKey, string? culture)
-        => $"{PagePrefix}{nodeKey:N}:{NormaliseCulture(culture)}";
+    public static string Page(Guid nodeKey, string? host, string? culture)
+        => $"{PagePrefix}{nodeKey:N}:{NormaliseHost(host)}:{NormaliseCulture(culture)}";
 
     /// <summary>
     /// Normalises a culture for cache-key composition: lowercases BCP-47 tags so
@@ -29,4 +47,17 @@ public static class LlmsCacheKeys
     /// </summary>
     public static string NormaliseCulture(string? culture)
         => string.IsNullOrEmpty(culture) ? "_" : culture.ToLowerInvariant();
+
+    /// <summary>
+    /// Normalises a host for cache-key composition: lowercases the host portion so
+    /// <c>SiteA.Example</c> and <c>sitea.example</c> share an entry, and represents
+    /// a missing host (null/empty — background scenarios with no ambient
+    /// <see cref="Microsoft.AspNetCore.Http.HttpContext"/>) as <c>"_"</c> so it never
+    /// collides with a real hostname. Public so <see cref="MarkdownResponseWriter"/>
+    /// can reuse the same normalisation when building ETag input — alignment between
+    /// cache key and ETag input is what keeps <c>If-None-Match</c> revalidation working
+    /// across host casings.
+    /// </summary>
+    public static string NormaliseHost(string? host)
+        => string.IsNullOrEmpty(host) ? "_" : host.ToLowerInvariant();
 }

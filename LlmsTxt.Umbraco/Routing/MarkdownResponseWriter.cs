@@ -42,7 +42,14 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
         // ETag inputs for the same logical resource regardless of percent-
         // encoding or trailing-slash variants the client used.
         var normalisedPath = LlmsCanonicalPath.Normalise(canonicalPath);
-        var etag = ComputeETag(normalisedPath, culture, result.UpdatedUtc ?? DateTime.UnixEpoch);
+        // Story 1.5: include request host in ETag input so multi-domain
+        // bindings on the same node produce distinct ETags. Without this, a
+        // CDN fronting both hosts could serve siteA's body to siteB clients
+        // on a 304 revalidation. Host shape mirrors the cache-key normalisation
+        // (lowercase, port stripped via Request.Host.Host) so cache hit / ETag
+        // alignment is preserved across the controller and the writer.
+        var host = httpContext.Request.Host.HasValue ? httpContext.Request.Host.Host : null;
+        var etag = ComputeETag(host, normalisedPath, culture, result.UpdatedUtc ?? DateTime.UnixEpoch);
 
         var response = httpContext.Response;
         var headers = response.Headers;
@@ -121,16 +128,19 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
     }
 
     /// <summary>
-    /// Stable ETag derived from <c>(route + normalised-culture + contentVersion)</c>.
-    /// Reuses <see cref="LlmsCacheKeys.NormaliseCulture"/> so the ETag input shares
-    /// casing with the cache key — without alignment, a follow-up request whose
-    /// culture casing differs (e.g. <c>en-GB</c> vs <c>en-gb</c>) would compute a
-    /// different ETag against the same cached body and break <c>If-None-Match</c>
-    /// revalidation.
+    /// Stable ETag derived from <c>(host + route + normalised-culture + contentVersion)</c>.
+    /// Reuses <see cref="LlmsCacheKeys.NormaliseHost"/> and
+    /// <see cref="LlmsCacheKeys.NormaliseCulture"/> so the ETag input shares casing with the
+    /// cache key — without alignment, a follow-up request whose culture or host casing
+    /// differs (e.g. <c>en-GB</c> vs <c>en-gb</c>, <c>SiteA.Example</c> vs
+    /// <c>sitea.example</c>) would compute a different ETag against the same cached body
+    /// and break <c>If-None-Match</c> revalidation.
     /// </summary>
-    private static string ComputeETag(string canonicalPath, string? culture, DateTime updatedUtc)
+    private static string ComputeETag(string? host, string canonicalPath, string? culture, DateTime updatedUtc)
     {
         var input = string.Concat(
+            LlmsCacheKeys.NormaliseHost(host),
+            "|",
             canonicalPath,
             "|",
             LlmsCacheKeys.NormaliseCulture(culture),
