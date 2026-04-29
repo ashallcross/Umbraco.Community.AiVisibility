@@ -23,18 +23,23 @@ public class MarkdownControllerTests
     {
         var extractor = new StubExtractor(BuildFound("# Home\n"));
         var resolver = MakeStubResolver(content: BuildContent(), culture: "en-GB");
-        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md");
+        var body = new MemoryStream();
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md", body: body);
 
         var result = await controller.Render(path: "/home.md", CancellationToken.None);
 
-        Assert.That(result, Is.InstanceOf<ContentResult>());
-        var content = (ContentResult)result;
-        Assert.That(content.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
-        Assert.That(content.ContentType, Is.EqualTo(Constants.HttpHeaders.MarkdownContentType));
-        Assert.That(content.Content, Does.Contain("# Home"));
+        // Story 1.3: response is now written through IMarkdownResponseWriter; controller
+        // returns EmptyResult after the writer has flushed headers + body to the response.
+        Assert.That(result, Is.InstanceOf<EmptyResult>());
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        Assert.That(controller.Response.ContentType, Is.EqualTo(Constants.HttpHeaders.MarkdownContentType));
+
+        body.Position = 0;
+        var rendered = await new StreamReader(body, Encoding.UTF8).ReadToEndAsync();
+        Assert.That(rendered, Does.Contain("# Home"));
 
         Assert.That(controller.Response.Headers.ContainsKey(Constants.HttpHeaders.XMarkdownTokens), Is.True);
-        // Story 1.2 — Vary, Cache-Control, ETag now ARE emitted.
+        // Story 1.2 — Vary, Cache-Control, ETag emitted via the response writer.
         Assert.That(controller.Response.Headers["Vary"].ToString(), Is.EqualTo("Accept"));
         Assert.That(controller.Response.Headers["Cache-Control"].ToString(),
             Does.StartWith("public, max-age="));
@@ -259,21 +264,24 @@ public class MarkdownControllerTests
     {
         var etag = await RunAndCaptureETag("/home.md", "en-GB", HomeUpdated);
 
+        var body = new MemoryStream();
         var controller = MakeController(
             new StubExtractor(BuildFound("# x\n", culture: "en-GB", updatedUtc: HomeUpdated)),
             MakeStubResolver(content: BuildContent(), culture: "en-GB"),
-            "GET", "https", "example.test", "/home.md");
+            "GET", "https", "example.test", "/home.md", body: body);
         controller.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = etag;
 
         var result = await controller.Render(path: "/home.md", CancellationToken.None);
 
-        Assert.That(result, Is.InstanceOf<StatusCodeResult>());
-        Assert.That(((StatusCodeResult)result).StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        Assert.That(result, Is.InstanceOf<EmptyResult>());
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        Assert.That(body.Length, Is.EqualTo(0), "304 must have no body");
         // RFC 7232 § 4.1 — ETag, Cache-Control, Vary preserved on 304.
         Assert.That(controller.Response.Headers["ETag"].ToString(), Is.EqualTo(etag));
         Assert.That(controller.Response.Headers["Vary"].ToString(), Is.EqualTo("Accept"));
         Assert.That(controller.Response.Headers["Cache-Control"].ToString(), Does.StartWith("public, max-age="));
         // No Content-Type on 304; X-Markdown-Tokens is a 200-only header.
+        Assert.That(controller.Response.ContentType, Is.Null);
         Assert.That(controller.Response.Headers.ContainsKey(Constants.HttpHeaders.XMarkdownTokens), Is.False);
     }
 
@@ -288,8 +296,8 @@ public class MarkdownControllerTests
 
         var result = await controller.Render(path: "/home.md", CancellationToken.None);
 
-        Assert.That(result, Is.InstanceOf<ContentResult>());
-        Assert.That(((ContentResult)result).StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        Assert.That(result, Is.InstanceOf<EmptyResult>());
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
     }
 
     [Test]
@@ -303,8 +311,8 @@ public class MarkdownControllerTests
 
         var result = await controller.Render(path: "/home.md", CancellationToken.None);
 
-        Assert.That(result, Is.InstanceOf<ContentResult>());
-        Assert.That(((ContentResult)result).StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        Assert.That(result, Is.InstanceOf<EmptyResult>());
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
     }
 
     [Test]
@@ -318,8 +326,8 @@ public class MarkdownControllerTests
 
         var result = await controller.Render(path: "/home.md", CancellationToken.None);
 
-        Assert.That(result, Is.InstanceOf<StatusCodeResult>());
-        Assert.That(((StatusCodeResult)result).StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        Assert.That(result, Is.InstanceOf<EmptyResult>());
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
     }
 
     [Test]
@@ -337,9 +345,9 @@ public class MarkdownControllerTests
             "GET", "https", "example.test", "/home.md");
         controller.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = weakened;
 
-        var result = await controller.Render(path: "/home.md", CancellationToken.None);
+        await controller.Render(path: "/home.md", CancellationToken.None);
 
-        Assert.That(((StatusCodeResult)result).StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
     }
 
     [Test]
@@ -406,22 +414,31 @@ public class MarkdownControllerTests
         string scheme,
         string host,
         string path,
-        LlmsTxtSettings? settings = null)
+        LlmsTxtSettings? settings = null,
+        MemoryStream? body = null)
     {
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = method;
         httpContext.Request.Scheme = scheme;
         httpContext.Request.Host = new HostString(host);
         httpContext.Request.Path = path;
+        if (body is not null)
+        {
+            httpContext.Response.Body = body;
+        }
 
         var resolvedSettings = settings ?? new LlmsTxtSettings();
         var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
         optionsMonitor.CurrentValue.Returns(resolvedSettings);
+        // Real writer — Story 1.3 keeps the .md route + Accept-negotiation paths in
+        // sync by routing both through the same response writer; controller tests
+        // exercise the writer end-to-end rather than mocking it.
+        var writer = new MarkdownResponseWriter(optionsMonitor);
 
         var controller = new MarkdownController(
             extractor,
             resolver,
-            optionsMonitor,
+            writer,
             NullLogger<MarkdownController>.Instance);
         controller.ControllerContext = new ControllerContext
         {

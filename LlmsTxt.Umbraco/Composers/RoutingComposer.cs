@@ -50,6 +50,16 @@ public sealed class RoutingComposer : IComposer
         // IPublishedRouter + IUmbracoContextFactory + IFileService.
         builder.Services.TryAddTransient<IMarkdownRouteResolver, MarkdownRouteResolver>();
 
+        // Story 1.3 — shared response writer. Single source of truth for the
+        // ETag / Cache-Control / Vary / 304 shape across the .md route AND the
+        // Accept-header negotiation middleware. Stateless ⇒ singleton.
+        builder.Services.TryAddSingleton<IMarkdownResponseWriter, MarkdownResponseWriter>();
+
+        // Story 1.3 — factory-activated middleware (IMiddleware). Transient because
+        // it depends on the transient IMarkdownContentExtractor; one instance per
+        // request keeps the cache decorator's per-request semantics intact.
+        builder.Services.AddTransient<AcceptHeaderNegotiationMiddleware>();
+
         // Extraction pipeline — TryAdd* per AR17 so adopters can override before our
         // composer runs by registering their own implementation first.
         builder.Services.TryAddTransient<PageRenderer>();

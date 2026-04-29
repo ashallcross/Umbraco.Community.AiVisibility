@@ -16,6 +16,10 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
         : base("LlmsTxt")
     {
         Endpoints = MapEndpoints;
+        // Story 1.3 — Accept-header content negotiation runs after Umbraco's routing
+        // middleware (so UmbracoRouteValues is populated on HttpContext.Features) and
+        // before authentication/authorization. PostRouting is the canonical stage.
+        PostRouting = MapPostRouting;
     }
 
     private static void MapEndpoints(IApplicationBuilder app)
@@ -28,6 +32,11 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
                 defaults: new { controller = "Markdown", action = "Render" },
                 constraints: new { path = new MarkdownSuffixRouteConstraint() });
         });
+    }
+
+    private static void MapPostRouting(IApplicationBuilder app)
+    {
+        app.UseMiddleware<AcceptHeaderNegotiationMiddleware>();
     }
 
     /// <summary>

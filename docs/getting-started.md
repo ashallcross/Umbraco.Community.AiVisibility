@@ -2,7 +2,7 @@
 
 LlmsTxt.Umbraco exposes Umbraco published content to AI crawlers and large-language-model search engines via per-page Markdown rendering, a `/llms.txt` index, and a `/llms-full.txt` bulk export.
 
-This document covers what ships in **v0.1 (Stories 1.1 + 1.2)** — the per-page Markdown route, plus per-page caching with publish-driven invalidation. Content negotiation, the manifests, and the Backoffice surface land in later stories.
+This document covers what ships in **v0.1 (Stories 1.1 + 1.2 + 1.3)** — the per-page Markdown route, per-page caching with publish-driven invalidation, and `Accept: text/markdown` content negotiation on canonical URLs. The manifests and the Backoffice surface land in later stories.
 
 ## What you get
 
@@ -47,7 +47,7 @@ Story 1.2 adds an in-memory cache layer over the per-page Markdown extraction.
 Successful `.md` responses carry:
 
 - `Cache-Control: public, max-age={CachePolicySeconds}` — `public` because Markdown is stateless.
-- `Vary: Accept` — required so downstream caches don't return Markdown to a caller that sent `Accept: text/html`. (Story 1.3 lands the Accept-header negotiation; the `Vary` header is already correct.)
+- `Vary: Accept` — required so downstream caches don't return Markdown to a caller that sent `Accept: text/html`. Now load-bearing: Story 1.3's content negotiation means the same canonical URL can return either Markdown or HTML.
 - `ETag: "<hash>"` — strong validator computed from `(route + culture + contentVersion)`, where `contentVersion` is the page's `IPublishedContent.UpdateDate`. Every successful publish bumps it.
 - `X-Markdown-Tokens: <count>` — Cloudflare-convention character-based token estimate.
 
@@ -59,6 +59,46 @@ The caching decorator wraps `IMarkdownContentExtractor` — adopters who replace
 
 `CachePolicySeconds=0` short-circuits the TTL to zero; depending on `IAppPolicyCache` semantics this means "do not cache" or "evict immediately" — either way, every request re-renders.
 
+## Accept-header content negotiation
+
+Story 1.3 adds `Accept: text/markdown` content negotiation on canonical (non-`.md`) URLs — for AI crawlers that don't append `.md`.
+
+### How it works
+
+```
+GET /home
+Accept: text/markdown
+```
+
+…returns the same Markdown body, ETag, and headers as `GET /home.md`. The middleware reads Umbraco's resolved `IPublishedRequest` from `HttpContext.Features`, calls the same extractor + cache decorator the `.md` route uses, and writes the response through the same writer — so AC1's "byte-identical bodies + same cache entry consulted" guarantee holds by construction.
+
+### Resolution rules
+
+| `Accept` value | Result |
+|---|---|
+| `text/markdown` | Markdown response |
+| `text/markdown,text/html;q=0.9` | Markdown — higher quality wins |
+| `text/html,text/markdown;q=0.5` | HTML — higher quality wins |
+| `text/markdown,text/html` (q-tied) | Markdown — first listed wins |
+| `text/html` | HTML response |
+| `*/*` (browser default) | HTML — `*/*` is treated as "no preference" |
+| Missing / empty / malformed | HTML |
+| `text/markdown;q=0` (explicit refusal) | HTML |
+
+Method gates: only `GET` and `HEAD` negotiate. `POST` / `PUT` / `DELETE` / `PATCH` pass through unchanged. Paths ending in `.md` pass through too — those are owned by the suffix route.
+
+### `Vary: Accept` is added to every response that touches this middleware
+
+Including responses where we don't divert — required so downstream caches and CDNs don't return a stale Markdown body to an HTML caller (or vice versa). The header is appended (not overwritten), and deduped, so it composes safely with adopters' own `Vary` settings.
+
+### Adopter ordering
+
+The middleware runs in `UmbracoPipelineFilter.PostRouting`, after Umbraco's routing middleware (which populates `UmbracoRouteValues`) and before authentication/authorization. Adopters who register their own `UmbracoPipelineFilter` with a `PostRouting` callback that mutates `Accept` (or short-circuits the response) will see their changes win or lose by composer-registration order — `[ComposeAfter(typeof(LlmsTxt.Umbraco.Composers.RoutingComposer))]` puts an adopter's filter after ours.
+
+### Why not User-Agent sniffing?
+
+Cloaking. Google's documentation explicitly calls it out as a penalty risk; the package will never ship UA-based delivery. `Accept` header negotiation is the only supported mechanism.
+
 ## Cold-start cost
 
 The first Markdown render of a given template JIT-compiles the Razor view — observed at ~6 seconds against Clean.Core 7.0.5 in the Story 0.A spike. Subsequent renders are 170–600 ms. **Story 1.2's cache absorbs this from the second hit onwards** — pre-warming on app startup is out of scope for v1.
@@ -69,7 +109,6 @@ If first-hit latency matters at deploy time, hit `/your-most-important-pages.md`
 
 Coming in later stories of Epic 1:
 
-- **`Accept: text/markdown` content negotiation** on canonical (non-`.md`) URLs — Story 1.3
 - **Public adopter override pattern + benchmark fixture catalogue** — Story 1.4 (`IMarkdownContentExtractor` is already public; Story 1.4 adds documentation, override tests, and BlockGrid/nested-content/table fixtures)
 
 Coming in later epics:
