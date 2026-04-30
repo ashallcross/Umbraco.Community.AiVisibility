@@ -71,6 +71,42 @@ public static class LlmsCacheKeys
         => $"{LlmsTxtPrefix}{NormaliseHost(host)}:";
 
     /// <summary>
+    /// Story 2.2 — <c>/llms-full.txt</c> manifest cache prefix. Architecture line
+    /// 288 pins the shape: <c>llms:llmsfull:{hostname}:{culture}</c> (lowercase, no
+    /// internal hyphen — matches <see cref="LlmsTxtPrefix"/> convention; the
+    /// hyphenated form in <c>package-spec.md</c> § 11 is stale spec drift,
+    /// architecture wins). Manifest invalidation in
+    /// <see cref="ContentCacheRefresherHandler"/> uses prefix-clear
+    /// (<c>llms:llmsfull:{host}:</c>) to nuke all cultures for an affected
+    /// hostname in one call — same pattern as <see cref="LlmsTxtPrefix"/>.
+    /// </summary>
+    public const string LlmsFullPrefix = "llms:llmsfull:";
+
+    /// <summary>
+    /// <c>/llms-full.txt</c> manifest cache key. Shape:
+    /// <c>llms:llmsfull:{host}:{culture}</c>. Reuses <see cref="NormaliseHost"/>
+    /// and <see cref="NormaliseCulture"/> so casing/port-stripping aligns with
+    /// the per-page key shape and the <c>/llms.txt</c> shape — adopters
+    /// inspecting cache contents see one set of rules, not three.
+    /// <para>
+    /// Pessimistic invalidation in <c>ContentCacheRefresherHandler</c> calls
+    /// <c>IAppPolicyCache.ClearByKey(LlmsCacheKeys.LlmsFullHostPrefix(host))</c> to
+    /// drop every culture entry for a hostname in one call (manifests are cheap
+    /// to rebuild and any node change can change the manifest output).
+    /// </para>
+    /// </summary>
+    public static string LlmsFull(string? host, string? culture)
+        => $"{LlmsFullPrefix}{NormaliseHost(host)}:{NormaliseCulture(culture)}";
+
+    /// <summary>
+    /// Per-host prefix for <c>/llms-full.txt</c> invalidation. Shape:
+    /// <c>llms:llmsfull:{host}:</c>. Same shape as
+    /// <see cref="LlmsTxtHostPrefix"/> applied to the <c>llms-full</c> namespace.
+    /// </summary>
+    public static string LlmsFullHostPrefix(string? host)
+        => $"{LlmsFullPrefix}{NormaliseHost(host)}:";
+
+    /// <summary>
     /// Normalises a culture for cache-key composition: lowercases BCP-47 tags so
     /// <c>en-GB</c>/<c>en-gb</c>/<c>EN-GB</c> share an entry, and represents
     /// invariant content (null/empty culture) as <c>"_"</c> so it never collides

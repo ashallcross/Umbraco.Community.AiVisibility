@@ -110,6 +110,105 @@ public class BuildersComposerTests
             "last-registration-wins: adopter's post-composer registration is what GetService returns");
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 2.2 — ILlmsFullBuilder lifetime + adopter override
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public void Compose_RegistersILlmsFullBuilderAsTransient()
+    {
+        // Same captive-dependency reasoning as ILlmsTxtBuilder (Story 2.1 Spec Drift
+        // Note #7). DefaultLlmsFullBuilder pulls IMarkdownContentExtractor (transient
+        // with scoped sub-deps) so Singleton would form a captive dependency on the
+        // root provider. This test pins the lifetime so a future change can't
+        // silently re-introduce the bug for /llms-full.txt.
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        var descriptor = services.Single(d => d.ServiceType == typeof(ILlmsFullBuilder));
+        Assert.Multiple(() =>
+        {
+            Assert.That(descriptor.Lifetime, Is.EqualTo(ServiceLifetime.Transient),
+                "ILlmsFullBuilder must be Transient (same captive-dependency reason as ILlmsTxtBuilder)");
+            Assert.That(descriptor.ImplementationType, Is.EqualTo(typeof(DefaultLlmsFullBuilder)));
+        });
+    }
+
+    [Test]
+    public void AdopterOverride_LlmsFullBuilder_PreRegistered_DefaultDoesNotReplace()
+    {
+        var (composer, builder, services) = BuildComposer();
+        services.AddTransient<ILlmsFullBuilder, NoOpAdopterFullBuilder>();
+
+        composer.Compose(builder);
+
+        var registrations = services.Where(d => d.ServiceType == typeof(ILlmsFullBuilder)).ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(registrations, Has.Length.EqualTo(1));
+            Assert.That(registrations[0].ImplementationType, Is.EqualTo(typeof(NoOpAdopterFullBuilder)),
+                "adopter's pre-registration wins");
+        });
+    }
+
+    [Test]
+    public void AdopterOverride_LlmsFullBuilder_PostRegistered_LastWinsResolvesAdopter()
+    {
+        var (composer, builder, services) = BuildComposer();
+        composer.Compose(builder);
+
+        services.AddTransient<ILlmsFullBuilder, NoOpAdopterFullBuilder>();
+
+        services.AddTransient<IPublishedUrlProvider>(_ => Substitute.For<IPublishedUrlProvider>());
+        services.AddTransient<IMarkdownContentExtractor>(_ => Substitute.For<IMarkdownContentExtractor>());
+        services.AddSingleton(_ => Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
+        services.AddTransient(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(Microsoft.Extensions.Logging.Logger<>));
+
+        using var provider = services.BuildServiceProvider();
+        var resolved = provider.GetRequiredService<ILlmsFullBuilder>();
+
+        Assert.That(resolved, Is.InstanceOf<NoOpAdopterFullBuilder>());
+    }
+
+    [Test]
+    public void Compose_StartupValidation_LlmsFullBuilder_NoCaptiveDependency()
+    {
+        // ValidateOnBuild + ValidateScopes catches captive dependencies at
+        // service-provider construction time. If a future refactor flips
+        // ILlmsFullBuilder back to Singleton (or its dependency graph grows a
+        // scoped service), this assertion fails before any request runs — same
+        // belt-and-braces guard the Story 2.1 review added for ILlmsTxtBuilder.
+        var (composer, builder, services) = BuildComposer();
+        composer.Compose(builder);
+
+        // Stub the dep graph for BOTH builders the composer registers (the test
+        // is about ILlmsFullBuilder, but ValidateOnBuild walks every descriptor
+        // in the collection and would flag missing deps for ILlmsTxtBuilder too).
+        services.AddTransient<IPublishedUrlProvider>(_ => Substitute.For<IPublishedUrlProvider>());
+        services.AddTransient<IPublishedValueFallback>(_ => Substitute.For<IPublishedValueFallback>());
+        services.AddTransient<IMarkdownContentExtractor>(_ => Substitute.For<IMarkdownContentExtractor>());
+        // Stubs for HostnameRootResolver's ctor as well — it's registered as
+        // Singleton by the composer so ValidateOnBuild walks its graph too.
+        services.AddSingleton(_ => Substitute.For<global::Umbraco.Cms.Core.Services.IDomainService>());
+#pragma warning disable CS0618 // ILocalizationService is obsolete — pinned by architecture line 81 for now (project-context.md)
+        services.AddSingleton(_ => Substitute.For<global::Umbraco.Cms.Core.Services.ILocalizationService>());
+#pragma warning restore CS0618
+        services.AddSingleton(_ => Substitute.For<global::Umbraco.Cms.Core.Services.Navigation.IDocumentNavigationQueryService>());
+        services.AddLogging();
+
+        Assert.DoesNotThrow(() =>
+        {
+            using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateScopes = true,
+                ValidateOnBuild = true,
+            });
+            var resolved = provider.GetRequiredService<ILlmsFullBuilder>();
+            Assert.That(resolved, Is.Not.Null);
+        }, "validation must succeed — Transient lifetime keeps the dep graph captive-free");
+    }
+
     private static (BuildersComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)
         BuildComposer()
     {
@@ -123,5 +222,11 @@ public class BuildersComposerTests
     {
         public Task<string> BuildAsync(LlmsTxtBuilderContext context, CancellationToken cancellationToken)
             => Task.FromResult("OVERRIDDEN");
+    }
+
+    private sealed class NoOpAdopterFullBuilder : ILlmsFullBuilder
+    {
+        public Task<string> BuildAsync(LlmsFullBuilderContext context, CancellationToken cancellationToken)
+            => Task.FromResult("FULL OVERRIDDEN");
     }
 }

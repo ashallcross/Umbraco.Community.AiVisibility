@@ -17,6 +17,13 @@ public static class Constants
         public const string LlmsTxtPath = "/llms.txt";
         public const string LlmsTxtRouteName = "Llms.LlmsTxtRoute";
         public const string LlmsTxtRoutePattern = "llms.txt";
+
+        // Story 2.2 — /llms-full.txt manifest route. Same registration shape as
+        // /llms.txt: discrete endpoint, registered before the .md catch-all,
+        // case-insensitive path matching.
+        public const string LlmsFullPath = "/llms-full.txt";
+        public const string LlmsFullRouteName = "Llms.LlmsFullTxtRoute";
+        public const string LlmsFullRoutePattern = "llms-full.txt";
     }
 
     public static class HttpHeaders
@@ -37,5 +44,6 @@ public static class Constants
         public const string Prefix = "llms:";
         public const string PagePrefix = "llms:page:";
         public const string LlmsTxtPrefix = "llms:llmstxt:";
+        public const string LlmsFullPrefix = "llms:llmsfull:";
     }
 }

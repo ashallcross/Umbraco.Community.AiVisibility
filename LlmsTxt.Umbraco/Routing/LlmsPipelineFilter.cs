@@ -35,6 +35,13 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
                 pattern: Constants.Routes.LlmsTxtRoutePattern,
                 defaults: new { controller = "LlmsTxt", action = "Render" });
 
+            // Story 2.2 — /llms-full.txt route. Same registration shape as /llms.txt:
+            // discrete endpoint registered before the .md catch-all.
+            endpoints.MapControllerRoute(
+                name: Constants.Routes.LlmsFullRouteName,
+                pattern: Constants.Routes.LlmsFullRoutePattern,
+                defaults: new { controller = "LlmsFullTxt", action = "Render" });
+
             endpoints.MapControllerRoute(
                 name: Constants.Routes.MarkdownRouteName,
                 pattern: Constants.Routes.MarkdownRoutePattern,
@@ -68,6 +75,15 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
            && string.Equals(path.Value, Constants.Routes.LlmsTxtPath, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Story 2.2 — exact-match predicate for the <c>/llms-full.txt</c> manifest
+    /// route. Same shape as <see cref="IsLlmsTxtManifestPath"/> applied to the
+    /// <c>/llms-full.txt</c> path.
+    /// </summary>
+    internal static bool IsLlmsFullManifestPath(PathString path)
+        => path.HasValue
+           && string.Equals(path.Value, Constants.Routes.LlmsFullPath, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Composes the package's <c>.md</c> predicate with any pre-existing
     /// <see cref="Umbraco.Cms.Web.Common.AspNetCore.UmbracoRequestOptions"/>
     /// <c>HandleAsServerSideRequest</c> delegate (per AR2 — never overwrite).
@@ -86,7 +102,9 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
                 return true;
             }
 
-            return IsMarkdownPath(req.Path) || IsLlmsTxtManifestPath(req.Path);
+            return IsMarkdownPath(req.Path)
+                   || IsLlmsTxtManifestPath(req.Path)
+                   || IsLlmsFullManifestPath(req.Path);
         };
     }
 

@@ -366,6 +366,88 @@ public class ContentCacheRefresherHandlerTests
         AssertCacheCleared(Root);
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 2.2 — /llms-full.txt manifest invalidation (parallel to /llms.txt)
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task PerNodePayload_ClearsLlmsFullForBoundHostnames()
+    {
+        SeedFullManifestCache("sitea.example", "en-gb");
+        SeedFullManifestCache("siteb.example", "en-gb");
+        SeedDomains("sitea.example", "siteb.example");
+        SeedCacheAndIndex(Root);
+        var handler = MakeHandler();
+        var payload = new ContentCacheRefresher.JsonPayload
+        {
+            Key = Root,
+            ChangeTypes = TreeChangeTypes.RefreshNode,
+        };
+
+        await handler.HandleAsync(BuildNotification(payload), CancellationToken.None);
+
+        AssertFullManifestCleared("sitea.example", "en-gb");
+        AssertFullManifestCleared("siteb.example", "en-gb");
+    }
+
+    [Test]
+    public async Task RefreshAll_AlsoClearsLlmsFullManifestCache()
+    {
+        SeedFullManifestCache("sitea.example", "en-gb");
+        SeedDomains("sitea.example");
+        var handler = MakeHandler();
+        var notification = new ContentCacheRefresherNotification(
+            messageObject: Array.Empty<ContentCacheRefresher.JsonPayload>(),
+            messageType: MessageType.RefreshAll);
+
+        await handler.HandleAsync(notification, CancellationToken.None);
+
+        AssertFullManifestCleared("sitea.example", "en-gb");
+    }
+
+    [Test]
+    public async Task PerNodePayload_ClearsBothLlmsTxtAndLlmsFullPrefixes()
+    {
+        // Single per-node payload must drop both manifest namespaces in one pass.
+        SeedManifestCache("sitea.example", "en-gb");
+        SeedFullManifestCache("sitea.example", "en-gb");
+        SeedDomains("sitea.example");
+        SeedCacheAndIndex(Root);
+        var handler = MakeHandler();
+        var payload = new ContentCacheRefresher.JsonPayload
+        {
+            Key = Root,
+            ChangeTypes = TreeChangeTypes.RefreshNode,
+        };
+
+        await handler.HandleAsync(BuildNotification(payload), CancellationToken.None);
+
+        AssertManifestCleared("sitea.example", "en-gb");
+        AssertFullManifestCleared("sitea.example", "en-gb");
+    }
+
+    [Test]
+    public async Task WildcardDomainBinding_LlmsFull_TtlOnlyInvalidation_DocumentedTradeoff()
+    {
+        // Same trade-off as the /llms.txt wildcard test (deferred-work.md § Story 2.1
+        // first bullet) — wildcards have no concrete request host to invalidate by,
+        // so subdomain manifests cached under llms:llmsfull:foo.example.com:* survive
+        // until TTL.
+        SeedFullManifestCache("foo.example.com", "en-gb");
+        SeedDomainsRaw(Domain("*.example.com"));
+        SeedCacheAndIndex(Root);
+        var handler = MakeHandler();
+        var payload = new ContentCacheRefresher.JsonPayload
+        {
+            Key = Root,
+            ChangeTypes = TreeChangeTypes.RefreshNode,
+        };
+
+        await handler.HandleAsync(BuildNotification(payload), CancellationToken.None);
+
+        AssertFullManifestStillPresent("foo.example.com", "en-gb");
+    }
+
     [Test]
     public async Task WildcardDomainBinding_NoConcreteHostInvalidation()
     {
@@ -451,6 +533,26 @@ public class ContentCacheRefresherHandlerTests
         var key = LlmsCacheKeys.LlmsTxt(host, culture);
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Not.Null,
             $"expected manifest cache key '{key}' to still be present");
+    }
+
+    private void SeedFullManifestCache(string host, string culture)
+    {
+        var key = LlmsCacheKeys.LlmsFull(host, culture);
+        _appCaches.RuntimeCache.Insert(key, () => $"full-manifest-{host}-{culture}", TimeSpan.FromMinutes(5));
+    }
+
+    private void AssertFullManifestCleared(string host, string culture)
+    {
+        var key = LlmsCacheKeys.LlmsFull(host, culture);
+        Assert.That(_appCaches.RuntimeCache.Get(key), Is.Null,
+            $"expected /llms-full.txt cache key '{key}' to have been cleared");
+    }
+
+    private void AssertFullManifestStillPresent(string host, string culture)
+    {
+        var key = LlmsCacheKeys.LlmsFull(host, culture);
+        Assert.That(_appCaches.RuntimeCache.Get(key), Is.Not.Null,
+            $"expected /llms-full.txt cache key '{key}' to still be present");
     }
 
     private void SeedDomains(params string[] hostnames)

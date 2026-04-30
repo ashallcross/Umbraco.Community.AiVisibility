@@ -81,4 +81,31 @@ public class LlmsPipelineFilterTests
         Assert.That(composed(ctx.Request), Is.True);
         Assert.That(previousInvoked, Is.EqualTo(1), "previous delegate is consulted exactly once per call");
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 2.2 — /llms-full.txt path predicate + composition
+    // ────────────────────────────────────────────────────────────────────────
+
+    [TestCase("/llms-full.txt", ExpectedResult = true)]
+    [TestCase("/LLMS-FULL.TXT", ExpectedResult = true)]
+    [TestCase("/Llms-Full.Txt", ExpectedResult = true)]
+    [TestCase("/llms-full", ExpectedResult = false)]
+    [TestCase("/llms-full.txt/", ExpectedResult = false)]
+    [TestCase("/llms-full.txtx", ExpectedResult = false)]
+    [TestCase("/llms.txt", ExpectedResult = false)]
+    [TestCase("/", ExpectedResult = false)]
+    [TestCase("", ExpectedResult = false)]
+    public bool IsLlmsFullManifestPath_RecognisesExactPathCaseInsensitive(string path)
+        => LlmsPipelineFilter.IsLlmsFullManifestPath(new PathString(string.IsNullOrEmpty(path) ? null : path));
+
+    [Test]
+    public void HandleAsServerSideRequest_ComposesWithLlmsFullPath()
+    {
+        var composed = LlmsPipelineFilter.ComposeHandleAsServerSideRequest(previous: null);
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Path = "/llms-full.txt";
+
+        Assert.That(composed(ctx.Request), Is.True,
+            "/llms-full.txt path is handled as a server-side request");
+    }
 }

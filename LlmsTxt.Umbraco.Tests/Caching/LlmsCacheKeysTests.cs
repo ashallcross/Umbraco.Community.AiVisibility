@@ -217,4 +217,92 @@ public class LlmsCacheKeysTests
         var b = LlmsCacheKeys.LlmsTxt("siteb.example", "en-GB");
         Assert.That(b, Is.Not.EqualTo(a));
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 2.2 — /llms-full.txt manifest keys (parallel to LlmsTxt cases)
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public void LlmsFull_DefaultHostAndCulture_FormatsCorrectly()
+    {
+        var key = LlmsCacheKeys.LlmsFull(Host, "en-GB");
+        Assert.That(key, Is.EqualTo("llms:llmsfull:sitea.example:en-gb"));
+    }
+
+    [Test]
+    public void LlmsFull_HostUppercased_NormalisedToLower()
+    {
+        var lower = LlmsCacheKeys.LlmsFull("sitea.example", "en-GB");
+        var upper = LlmsCacheKeys.LlmsFull("SiteA.Example", "en-GB");
+        Assert.That(upper, Is.EqualTo(lower));
+    }
+
+    [Test]
+    public void LlmsFull_HostWithPort_PortStripped()
+    {
+        var withoutPort = LlmsCacheKeys.LlmsFull("sitea.example", "en-GB");
+        var withPort = LlmsCacheKeys.LlmsFull("sitea.example:443", "en-GB");
+        Assert.That(withPort, Is.EqualTo(withoutPort));
+    }
+
+    [Test]
+    public void LlmsFull_NullHost_UsesUnderscore()
+    {
+        var key = LlmsCacheKeys.LlmsFull(null, "en-GB");
+        Assert.That(key, Is.EqualTo("llms:llmsfull:_:en-gb"));
+    }
+
+    [Test]
+    public void LlmsFull_NullCulture_UsesUnderscore()
+    {
+        var key = LlmsCacheKeys.LlmsFull(Host, null);
+        Assert.That(key, Is.EqualTo("llms:llmsfull:sitea.example:_"));
+    }
+
+    [Test]
+    public void LlmsFull_StartsWithGlobalPrefix()
+    {
+        Assert.That(LlmsCacheKeys.LlmsFull(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.Prefix));
+    }
+
+    [Test]
+    public void LlmsFull_StartsWithLlmsFullPrefix()
+    {
+        Assert.That(LlmsCacheKeys.LlmsFull(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.LlmsFullPrefix));
+    }
+
+    [Test]
+    public void LlmsFull_NamespaceDoesNotCollideWithLlmsTxt()
+    {
+        // Architectural drift item #1 reconciled: architecture's no-hyphen shape
+        // (`llms:llmsfull:`) must produce a strictly different prefix from
+        // `llms:llmstxt:` so a single ClearByKey cannot accidentally drop both.
+        Assert.Multiple(() =>
+        {
+            Assert.That(LlmsCacheKeys.LlmsFullPrefix, Is.Not.EqualTo(LlmsCacheKeys.LlmsTxtPrefix));
+            Assert.That(LlmsCacheKeys.LlmsFull(Host, "en-GB"), Does.Not.StartWith(LlmsCacheKeys.LlmsTxtPrefix));
+            Assert.That(LlmsCacheKeys.LlmsTxt(Host, "en-GB"), Does.Not.StartWith(LlmsCacheKeys.LlmsFullPrefix));
+        });
+    }
+
+    [Test]
+    public void LlmsFullHostPrefix_BuildsClearByKeyArgument()
+    {
+        var prefix = LlmsCacheKeys.LlmsFullHostPrefix("sitea.example");
+        Assert.Multiple(() =>
+        {
+            Assert.That(prefix, Is.EqualTo("llms:llmsfull:sitea.example:"));
+            Assert.That(LlmsCacheKeys.LlmsFull("sitea.example", "en-GB"), Does.StartWith(prefix));
+            Assert.That(LlmsCacheKeys.LlmsFull("sitea.example", "fr-FR"), Does.StartWith(prefix));
+            Assert.That(LlmsCacheKeys.LlmsFull("siteb.example", "en-GB"), Does.Not.StartWith(prefix));
+        });
+    }
+
+    [Test]
+    public void LlmsFull_DifferentHost_DifferentKey()
+    {
+        var a = LlmsCacheKeys.LlmsFull("sitea.example", "en-GB");
+        var b = LlmsCacheKeys.LlmsFull("siteb.example", "en-GB");
+        Assert.That(b, Is.Not.EqualTo(a));
+    }
 }

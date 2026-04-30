@@ -184,6 +184,12 @@ internal sealed class ContentCacheRefresherHandler
             foreach (var host in hostnames)
             {
                 _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsTxtHostPrefix(host));
+                // Story 2.2 — also drop the /llms-full.txt manifest cache for the
+                // same hostname. Same pessimistic-clear reasoning: any node change
+                // can change the manifest output, manifests are cheap to rebuild,
+                // wildcard bindings continue to rely on TTL-only invalidation
+                // (documented trade-off carried over from Story 2.1).
+                _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsFullHostPrefix(host));
             }
         }
         catch (Exception ex)

@@ -211,7 +211,7 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
             {
                 return null;
             }
-            return TruncateBody(StripFrontmatter(result.Markdown!));
+            return TruncateBody(MarkdownEscaping.StripFrontmatter(result.Markdown!));
         }
         catch (OperationCanceledException)
         {
@@ -230,7 +230,7 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
 
     private void AppendLink(StringBuilder manifest, IPublishedContent page, string? summary, string? culture)
     {
-        var title = EscapeMarkdownLinkText(page.Name ?? string.Empty);
+        var title = MarkdownEscaping.EscapeMarkdownLinkText(page.Name ?? string.Empty);
         var url = ResolveManifestLink(page, culture);
         if (url is null)
         {
@@ -289,27 +289,6 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
     }
 
     /// <summary>
-    /// Escape Markdown link-text special characters (<c>[</c>, <c>]</c>, <c>(</c>,
-    /// <c>)</c>, <c>\</c>, <c>`</c>) per CommonMark § 6.6 inline-link grammar so a
-    /// page title like <c>"Foo [bar] (baz)"</c> or <c>"How to use `git`"</c> doesn't
-    /// produce a broken link or render with embedded inline-code spans.
-    /// </summary>
-    internal static string EscapeMarkdownLinkText(string title)
-    {
-        if (string.IsNullOrEmpty(title)) return string.Empty;
-        var sb = new StringBuilder(title.Length);
-        foreach (var c in title)
-        {
-            if (c is '\\' or '[' or ']' or '(' or ')' or '`')
-            {
-                sb.Append('\\');
-            }
-            sb.Append(c);
-        }
-        return sb.ToString();
-    }
-
-    /// <summary>
     /// Replace CR/LF with single spaces so a multi-line <c>SiteName</c> or
     /// <c>SiteSummary</c> setting doesn't drop out of the H1/blockquote line and
     /// produce invalid llms.txt body shape. Returns <see cref="string.Empty"/>
@@ -352,30 +331,6 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
             }
         }
         return sb.ToString().TrimEnd();
-    }
-
-    /// <summary>
-    /// Strip a leading YAML frontmatter block (<c>---\n…\n---\n</c>) from extracted
-    /// Markdown so the body fallback summarises content, not metadata.
-    /// </summary>
-    internal static string StripFrontmatter(string markdown)
-    {
-        if (!markdown.StartsWith("---", StringComparison.Ordinal))
-        {
-            return markdown;
-        }
-        var closeIdx = markdown.IndexOf("\n---", 3, StringComparison.Ordinal);
-        if (closeIdx < 0)
-        {
-            return markdown;
-        }
-        var afterClose = closeIdx + 4; // skip "\n---"
-        // Skip the trailing newline if present.
-        while (afterClose < markdown.Length && (markdown[afterClose] == '\n' || markdown[afterClose] == '\r'))
-        {
-            afterClose++;
-        }
-        return markdown[afterClose..];
     }
 
     /// <summary>

@@ -3,10 +3,12 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// <summary>
 /// Strongly-typed binding for the <c>LlmsTxt:</c> section of <c>appsettings.json</c>.
 /// Story 1.1 shipped a minimal surface; Story 1.2 added the per-page cache TTL.
-/// Story 2.1 added the manifest configuration surface (<see cref="SiteName"/>,
-/// <see cref="SiteSummary"/>, <see cref="LlmsTxtBuilder"/>). Story 3.1 fills out the
-/// rest of the surface and introduces <c>ILlmsSettingsResolver</c> for the
-/// doctype-overlay resolution.
+/// Story 2.1 added the <c>/llms.txt</c> manifest configuration surface
+/// (<see cref="SiteName"/>, <see cref="SiteSummary"/>, <see cref="LlmsTxtBuilder"/>).
+/// Story 2.2 added the <c>/llms-full.txt</c> manifest configuration surface
+/// (<see cref="MaxLlmsFullSizeKb"/>, <see cref="LlmsFullScope"/>,
+/// <see cref="LlmsFullBuilder"/>). Story 3.1 fills out the rest of the surface and
+/// introduces <c>ILlmsSettingsResolver</c> for the doctype-overlay resolution.
 /// </summary>
 public sealed class LlmsTxtSettings
 {
@@ -64,6 +66,43 @@ public sealed class LlmsTxtSettings
     /// alias, and the manifest's HTTP <c>Cache-Control</c> max-age.
     /// </summary>
     public LlmsTxtBuilderSettings LlmsTxtBuilder { get; init; } = new();
+
+    /// <summary>
+    /// Hard byte cap for the <c>/llms-full.txt</c> manifest body (Story 2.2). Default
+    /// 5120 KB (5 MB) per <c>package-spec.md</c> § 10. Pages are emitted in the
+    /// configured <see cref="LlmsFullBuilderSettings.Order"/> until the next page
+    /// would push the running total over <c>MaxLlmsFullSizeKb * 1024</c> bytes; the
+    /// builder then appends a truncation footer documenting how many pages were
+    /// emitted of the total in scope.
+    /// <para>
+    /// Setting to <c>0</c> or a negative value triggers a defensive fallback: the
+    /// cap is treated as unlimited and a <c>Warning</c> is logged. Configuration
+    /// validation belongs to Story 3.3 onboarding, not the hot path.
+    /// </para>
+    /// <para>
+    /// Source in Story 2.2: <c>appsettings.json</c> only. Story 3.1's
+    /// <c>ILlmsSettingsResolver</c> may overlay this with a Settings doctype value
+    /// without changing the contract here.
+    /// </para>
+    /// </summary>
+    public int MaxLlmsFullSizeKb { get; init; } = 5120;
+
+    /// <summary>
+    /// Configuration sub-section binding the <c>/llms-full.txt</c> manifest's
+    /// <b>scope</b>: the subset of pages eligible for inclusion. Default scope is
+    /// the whole site (every published descendant under the matched hostname's
+    /// root) minus the default <c>ExcludedDocTypeAliases</c>.
+    /// </summary>
+    public LlmsFullScopeSettings LlmsFullScope { get; init; } = new();
+
+    /// <summary>
+    /// Configuration sub-section binding the <c>/llms-full.txt</c> manifest
+    /// builder's behaviour: the page <see cref="LlmsFullBuilderSettings.Order"/>
+    /// and the manifest's HTTP <c>Cache-Control</c> max-age. Distinct from
+    /// <see cref="LlmsTxtBuilder"/> (the index manifest) and
+    /// <see cref="CachePolicySeconds"/> (per-page Markdown).
+    /// </summary>
+    public LlmsFullBuilderSettings LlmsFullBuilder { get; init; } = new();
 }
 
 /// <summary>
@@ -119,4 +158,106 @@ public sealed class SectionGroupingEntry
     /// Doctype aliases (case-insensitive) that route pages into this section.
     /// </summary>
     public IReadOnlyList<string> DocTypeAliases { get; init; } = Array.Empty<string>();
+}
+
+/// <summary>
+/// Scope configuration for the <c>/llms-full.txt</c> manifest (Story 2.2). Pre-page
+/// inclusion is filtered in the controller before the builder sees the page list:
+/// the controller resolves the hostname's root via <c>IDomainService</c>, optionally
+/// narrows to a doctype-aliased descendant via <see cref="RootContentTypeAlias"/>,
+/// then walks descendants and applies the include / exclude doctype filters.
+/// <para>
+/// All doctype matching is case-insensitive against
+/// <c>IPublishedContent.ContentType.Alias</c>.
+/// </para>
+/// <para>
+/// Per-doctype / per-page exclusion bools (<c>ExcludeFromLlmExports</c>) are Epic 3
+/// (Story 3.1) territory. Story 2.2 honours <see cref="ExcludedDocTypeAliases"/>
+/// from <c>appsettings</c> only.
+/// </para>
+/// </summary>
+public sealed class LlmsFullScopeSettings
+{
+    /// <summary>
+    /// Optional doctype alias narrowing the manifest scope. When non-null, the
+    /// builder's descendant walk starts at the first descendant under the
+    /// hostname's root whose <c>ContentType.Alias</c> matches (case-insensitive).
+    /// When <c>null</c> (default) the scope is the whole hostname tree.
+    /// <para>
+    /// If the alias matches no descendant under the hostname's root, the controller
+    /// falls back to the hostname root and logs a <c>Warning</c>.
+    /// </para>
+    /// </summary>
+    public string? RootContentTypeAlias { get; init; }
+
+    /// <summary>
+    /// Optional positive doctype filter. When non-empty, only pages whose
+    /// <c>ContentType.Alias</c> appears in this list (case-insensitive) are
+    /// included. When empty (default) all doctypes are eligible.
+    /// </summary>
+    public IReadOnlyList<string> IncludedDocTypeAliases { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Negative doctype filter that always wins over
+    /// <see cref="IncludedDocTypeAliases"/>. Default
+    /// <c>["errorPage", "redirectPage"]</c> per <c>package-spec.md</c> § 10 — the
+    /// two doctypes that universally ship as out-of-scope on Umbraco templates.
+    /// Adopters can override the list entirely (<c>"ExcludedDocTypeAliases": []</c>
+    /// removes the defaults).
+    /// </summary>
+    public IReadOnlyList<string> ExcludedDocTypeAliases { get; init; } = new[]
+    {
+        "errorPage",
+        "redirectPage",
+    };
+}
+
+/// <summary>
+/// Configuration block for <c>DefaultLlmsFullBuilder</c>. Bound from the
+/// <c>LlmsTxt:LlmsFullBuilder</c> sub-section.
+/// </summary>
+public sealed class LlmsFullBuilderSettings
+{
+    /// <summary>
+    /// Page ordering policy for the manifest body. Default
+    /// <see cref="LlmsFullOrder.TreeOrder"/> per <c>epics.md</c> § Story 2.2 AC4.
+    /// </summary>
+    public LlmsFullOrder Order { get; init; } = LlmsFullOrder.TreeOrder;
+
+    /// <summary>
+    /// Cache TTL for the <c>/llms-full.txt</c> manifest's HTTP
+    /// <c>Cache-Control: max-age</c> header AND its in-memory cache lifetime.
+    /// Default: 300s (matches the manifest guidance in <c>architecture.md</c>
+    /// § Caching &amp; HTTP). Distinct from
+    /// <see cref="LlmsTxtSettings.CachePolicySeconds"/> (per-page Markdown,
+    /// default 60s) and from <see cref="LlmsTxtBuilderSettings.CachePolicySeconds"/>
+    /// (the index manifest, default 300s).
+    /// </summary>
+    public int CachePolicySeconds { get; init; } = 300;
+}
+
+/// <summary>
+/// Stable ordering policies for <c>/llms-full.txt</c> page emission (Story 2.2 AC4).
+/// </summary>
+public enum LlmsFullOrder
+{
+    /// <summary>
+    /// Pages appear in the published-cache descendant walk order — root first,
+    /// then descendants per
+    /// <c>IDocumentNavigationQueryService.TryGetDescendantsKeys</c>. Default.
+    /// </summary>
+    TreeOrder = 0,
+
+    /// <summary>
+    /// Pages sorted ascending by <c>IPublishedContent.Name</c> using
+    /// <c>StringComparer.OrdinalIgnoreCase</c>. Stable sort (LINQ
+    /// <c>OrderBy</c> guarantees stability per .NET docs).
+    /// </summary>
+    Alphabetical = 1,
+
+    /// <summary>
+    /// Pages sorted descending by <c>IPublishedContent.UpdateDate</c> (newest
+    /// first). Ties broken by tree-order index (stable secondary sort).
+    /// </summary>
+    RecentFirst = 2,
 }

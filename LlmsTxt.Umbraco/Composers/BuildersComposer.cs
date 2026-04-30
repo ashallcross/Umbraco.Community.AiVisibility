@@ -8,10 +8,15 @@ namespace LlmsTxt.Umbraco.Composers;
 /// <summary>
 /// Story 2.1 — registers the <c>/llms.txt</c> builder seam:
 /// <list type="bullet">
-/// <item><see cref="ILlmsTxtBuilder"/> via <c>TryAddSingleton</c> so adopters can
+/// <item><see cref="ILlmsTxtBuilder"/> via <c>TryAddTransient</c> so adopters can
 /// override before this composer runs.</item>
-/// <item><see cref="HostnameRootResolver"/> as a singleton helper consumed by the
-/// controller.</item>
+/// <item><see cref="ILlmsFullBuilder"/> (Story 2.2) — same registration shape; the
+/// captive-dependency rationale on <see cref="ILlmsTxtBuilder"/> applies
+/// identically (the default builder pulls
+/// <see cref="Extraction.IMarkdownContentExtractor"/> whose decorator factory
+/// pulls scoped <c>IOptionsSnapshot&lt;LlmsTxtSettings&gt;</c>).</item>
+/// <item><see cref="HostnameRootResolver"/> as a singleton helper consumed by both
+/// controllers.</item>
 /// </list>
 /// <para>
 /// <c>[ComposeAfter(typeof(RoutingComposer))]</c> guarantees the
@@ -48,6 +53,14 @@ public sealed class BuildersComposer : IComposer
         // of its own. Architecture's "Singleton when stateless and thread-safe"
         // (line 374) doesn't apply when the dependency graph carries scoped state.
         builder.Services.TryAddTransient<ILlmsTxtBuilder, DefaultLlmsTxtBuilder>();
+
+        // Story 2.2 — same captive-dependency reasoning as ILlmsTxtBuilder.
+        // DefaultLlmsFullBuilder pulls IMarkdownContentExtractor (transient) whose
+        // decorator factory pulls scoped IOptionsSnapshot<LlmsTxtSettings>.
+        // Singleton would form a captive dependency on the scoped options
+        // snapshot; Transient matches the extractor's lifetime.
+        builder.Services.TryAddTransient<ILlmsFullBuilder, DefaultLlmsFullBuilder>();
+
         builder.Services.TryAddSingleton<IHostnameRootResolver, HostnameRootResolver>();
     }
 }
