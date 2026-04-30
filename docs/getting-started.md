@@ -2,7 +2,7 @@
 
 LlmsTxt.Umbraco exposes Umbraco published content to AI crawlers and large-language-model search engines via per-page Markdown rendering, a `/llms.txt` index, and a `/llms-full.txt` bulk export.
 
-This document covers what ships up to **v0.4 (Story 3.1)** — the per-page Markdown route, per-page caching with publish-driven invalidation, `Accept: text/markdown` content negotiation, the `/llms.txt` and `/llms-full.txt` manifests with hot-path protection (`If-None-Match` / 304 / single-flight) and optional hreflang variants, and the Settings doctype + `ILlmsSettingsResolver` overlay + per-doctype/per-page exclusion. The Backoffice dashboard, robots audit, and AI traffic dashboard land in later stories.
+This document covers what ships up to **v0.5 (Story 3.2)** — the per-page Markdown route, per-page caching with publish-driven invalidation, `Accept: text/markdown` content negotiation, the `/llms.txt` and `/llms-full.txt` manifests with hot-path protection (`If-None-Match` / 304 / single-flight) and optional hreflang variants, the Settings doctype + `ILlmsSettingsResolver` overlay + per-doctype/per-page exclusion, **and the Backoffice Settings dashboard with its Management API for editor-driven configuration**. The robots audit and AI traffic dashboard land in later stories.
 
 ## What you get
 
@@ -306,11 +306,35 @@ public sealed class MyComposer : IComposer
 
 **Lifetime: Scoped.** The default impl reads request-scoped `IUmbracoContextAccessor`. Adopters re-registering as `Singleton` will hit a captive-dependency exception on first request. The package's `Compose_StartupValidation_LlmsSettingsResolver_NoCaptiveDependency` test pins the contract using `ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }` — adopter overrides should follow the same discipline.
 
-## What's not in v0.4
+## Backoffice Settings dashboard (Story 3.2)
+
+From v0.5, the package ships a Backoffice dashboard under **Settings → LlmsTxt** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `LlmsTxt Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of pages with `excludeFromLlmExports` toggled on.
+
+The dashboard surfaces exactly the same overlay rules `ILlmsSettingsResolver` enforces (Settings node value > appsettings value > in-code default). On first save, if no `LlmsTxt Settings` content node exists yet, the dashboard creates one at the root automatically — adopters using uSync to own the doctype lifecycle don't need to pre-create the node before opening the dashboard.
+
+**Permissions.** The dashboard is conditioned on `Umb.Section.Settings`. Editors without Settings-section access don't see the tile (UX-DR4 — graceful no-render). The Management API behind the dashboard (`/umbraco/management/api/v1/llmstxt/settings/...`) is gated by `[Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]`; calls without Settings access return HTTP 403, calls without any auth return HTTP 401.
+
+**Bearer-token auth.** The dashboard's Management API calls use `UMB_AUTH_CONTEXT.getOpenApiConfiguration()` to obtain a bearer token per call (cookie-only fetches against `/umbraco/management/api/...` return HTTP 401 — the Management API enforces OpenIddict bearer auth, not cookies). Adopters scripting the Management API for CI-driven config (e.g. setting site name from a deploy pipeline) must follow the same pattern.
+
+**Save flow.** Save writes through `IContentService.Save` + `IContentService.Publish`. Umbraco's standard `ContentCacheRefresherNotification` fires; Story 3.1's handler clears `llms:settings:` so the next `/llms.txt` request sees the new values without manual cache-bust. The dashboard round-trips the published values back into the form.
+
+**Validation.** `siteSummary` is capped at 500 characters (counter shown beneath the textarea); `excludedDoctypeAliases` cannot contain whitespace-only entries or case-insensitive duplicates. The dashboard validates client-side; the server re-validates as defence-in-depth and returns `400 ProblemDetails` for direct API callers that bypass the form.
+
+**Management API surface.**
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/umbraco/management/api/v1/llmstxt/settings/` | Returns the resolved overlay + the live Settings node key |
+| `PUT` | `/umbraco/management/api/v1/llmstxt/settings/` | Validates + persists + publishes; returns the round-tripped record |
+| `GET` | `/umbraco/management/api/v1/llmstxt/settings/doctypes` | Lists publish-eligible doctypes for the multi-select source |
+| `GET` | `/umbraco/management/api/v1/llmstxt/settings/excluded-pages?skip=0&take=100` | Read-only page list (clamped to take ≤ 200) |
+
+Operations land in the existing `/umbraco/swagger/llmstxtumbraco/swagger.json` Swagger doc.
+
+## What's not in v0.5
 
 Coming in later epics:
 
-- Backoffice Settings dashboard (Story 3.2 — first adopter-facing Backoffice surface)
 - Zero-config defaults + onboarding hint (Story 3.3)
 - HTTP `Link` discoverability header + Razor TagHelpers + robots.txt audit (Epic 4)
 - Request log + AI traffic dashboard (Epic 5)

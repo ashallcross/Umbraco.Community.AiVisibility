@@ -5,16 +5,16 @@ const t = [
     type: "backofficeEntryPoint",
     js: () => import("./entrypoint-BSlTz4-p.js")
   }
-], a = [
+], s = [
   {
     type: "dashboard",
-    alias: "Llms.Dashboard.Spike",
-    name: "LlmsTxt Spike Dashboard",
-    element: () => import("./llms-spike-dashboard.element-DkguFUaq.js"),
+    alias: "Llms.Dashboard.Settings",
+    name: "LlmsTxt Settings Dashboard",
+    element: () => import("./llms-settings-dashboard.element-dHICHNEw.js"),
     weight: 100,
     meta: {
-      label: "LlmsTxt Spike",
-      pathname: "llmstxt-spike"
+      label: "LlmsTxt",
+      pathname: "llmstxt-settings"
     },
     conditions: [
       {
@@ -23,11 +23,11 @@ const t = [
       }
     ]
   }
-], s = [
+], a = [
   ...t,
-  ...a
+  ...s
 ];
 export {
-  s as manifests
+  a as manifests
 };
 //# sourceMappingURL=llms-txt-umbraco.js.map
