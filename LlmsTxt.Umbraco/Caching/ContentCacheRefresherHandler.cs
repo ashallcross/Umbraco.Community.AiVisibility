@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Cache;
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;
+using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Services.Changes;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Sync;
@@ -32,17 +33,20 @@ internal sealed class ContentCacheRefresherHandler
     private readonly AppCaches _appCaches;
     private readonly ILlmsCacheKeyIndex _index;
     private readonly IDocumentNavigationQueryService _navigation;
+    private readonly IDomainService _domainService;
     private readonly ILogger<ContentCacheRefresherHandler> _logger;
 
     public ContentCacheRefresherHandler(
         AppCaches appCaches,
         ILlmsCacheKeyIndex index,
         IDocumentNavigationQueryService navigation,
+        IDomainService domainService,
         ILogger<ContentCacheRefresherHandler> logger)
     {
         _appCaches = appCaches;
         _index = index;
         _navigation = navigation;
+        _domainService = domainService;
         _logger = logger;
     }
 
@@ -51,6 +55,8 @@ internal sealed class ContentCacheRefresherHandler
         CancellationToken cancellationToken)
     {
         // RefreshAll arrives with MessageType=RefreshAll and no payload object.
+        // ClearAll already drops `llms:` prefix which includes both per-page AND
+        // manifest entries, so RefreshAll needs no extra manifest handling.
         if (notification.MessageType == MessageType.RefreshAll)
         {
             ClearAll();
@@ -82,6 +88,15 @@ internal sealed class ContentCacheRefresherHandler
                     payload.ChangeTypes);
             }
         }
+
+        // Story 2.1 — pessimistic manifest invalidation. Any per-node payload may
+        // change the manifest output for any hostname that maps onto the same
+        // content tree, so we drop EVERY hostname's manifest cache after the
+        // per-node loop. Trade-off: extra clears on multi-site setups where the
+        // changed node only belongs to one site; cheaper than mapping nodes to
+        // hosts at invalidation time, and manifests are cheap to rebuild
+        // (architecture line 320).
+        ClearManifestsForBoundHostnames();
 
         return Task.CompletedTask;
     }
@@ -132,6 +147,50 @@ internal sealed class ContentCacheRefresherHandler
         if (removeIndexEntry)
         {
             _index.Remove(nodeKey);
+        }
+    }
+
+    private void ClearManifestsForBoundHostnames()
+    {
+        try
+        {
+            var hostnames = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var domain in _domainService.GetAll(includeWildcards: true))
+            {
+                var raw = domain.DomainName;
+                if (string.IsNullOrWhiteSpace(raw) || raw.StartsWith('/'))
+                {
+                    // Culture-only "/en/" style binding — never carries a hostname.
+                    continue;
+                }
+
+                // Strip optional scheme then normalise (lowercase, port-stripped).
+                var schemeIdx = raw.IndexOf("://", StringComparison.Ordinal);
+                var hostPart = schemeIdx < 0 ? raw : raw[(schemeIdx + 3)..];
+                if (hostPart.StartsWith("*.", StringComparison.Ordinal))
+                {
+                    // Wildcard binding has no concrete request host to invalidate by;
+                    // matching subdomains will cache against their own host segment.
+                    continue;
+                }
+
+                var normalised = LlmsCacheKeys.NormaliseHost(hostPart);
+                if (normalised != "_")
+                {
+                    hostnames.Add(normalised);
+                }
+            }
+
+            foreach (var host in hostnames)
+            {
+                _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsTxtHostPrefix(host));
+            }
+        }
+        catch (Exception ex)
+        {
+            // Defensive — IDomainService access shouldn't throw, but if it does the
+            // per-page loop has already done its job; don't poison the broadcast.
+            _logger.LogError(ex, "Manifest cache invalidation failed during IDomainService walk");
         }
     }
 

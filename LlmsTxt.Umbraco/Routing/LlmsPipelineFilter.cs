@@ -26,6 +26,15 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
     {
         app.UseEndpoints(endpoints =>
         {
+            // Story 2.1 — /llms.txt route MUST register before the .md catch-all
+            // so the more specific endpoint wins. ASP.NET Core's endpoint matcher
+            // picks the most specific route regardless of registration order, but
+            // pinning the order reinforces intent.
+            endpoints.MapControllerRoute(
+                name: Constants.Routes.LlmsTxtRouteName,
+                pattern: Constants.Routes.LlmsTxtRoutePattern,
+                defaults: new { controller = "LlmsTxt", action = "Render" });
+
             endpoints.MapControllerRoute(
                 name: Constants.Routes.MarkdownRouteName,
                 pattern: Constants.Routes.MarkdownRoutePattern,
@@ -49,6 +58,16 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
            && path.Value!.EndsWith(Constants.Routes.MarkdownSuffix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Story 2.1 — exact-match predicate for the <c>/llms.txt</c> manifest route.
+    /// Case-insensitive, no trailing slash. Composed into the package's
+    /// <c>HandleAsServerSideRequest</c> delegate so requests reach the controller
+    /// instead of Umbraco's content fallback.
+    /// </summary>
+    internal static bool IsLlmsTxtManifestPath(PathString path)
+        => path.HasValue
+           && string.Equals(path.Value, Constants.Routes.LlmsTxtPath, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Composes the package's <c>.md</c> predicate with any pre-existing
     /// <see cref="Umbraco.Cms.Web.Common.AspNetCore.UmbracoRequestOptions"/>
     /// <c>HandleAsServerSideRequest</c> delegate (per AR2 — never overwrite).
@@ -67,7 +86,7 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
                 return true;
             }
 
-            return IsMarkdownPath(req.Path);
+            return IsMarkdownPath(req.Path) || IsLlmsTxtManifestPath(req.Path);
         };
     }
 

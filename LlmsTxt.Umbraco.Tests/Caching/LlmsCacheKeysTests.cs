@@ -141,4 +141,80 @@ public class LlmsCacheKeysTests
         var fr = LlmsCacheKeys.Page(Node, Host, "fr-FR");
         Assert.That(fr, Is.Not.EqualTo(en));
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 2.1 — /llms.txt manifest keys
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public void LlmsTxt_DefaultHostAndCulture_FormatsCorrectly()
+    {
+        var key = LlmsCacheKeys.LlmsTxt(Host, "en-GB");
+        Assert.That(key, Is.EqualTo("llms:llmstxt:sitea.example:en-gb"));
+    }
+
+    [Test]
+    public void LlmsTxt_HostUppercased_NormalisedToLower()
+    {
+        var lower = LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB");
+        var upper = LlmsCacheKeys.LlmsTxt("SiteA.Example", "en-GB");
+        Assert.That(upper, Is.EqualTo(lower));
+    }
+
+    [Test]
+    public void LlmsTxt_HostWithPort_PortStripped()
+    {
+        var withoutPort = LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB");
+        var withPort = LlmsCacheKeys.LlmsTxt("sitea.example:443", "en-GB");
+        Assert.That(withPort, Is.EqualTo(withoutPort));
+    }
+
+    [Test]
+    public void LlmsTxt_NullHost_UsesUnderscore()
+    {
+        var key = LlmsCacheKeys.LlmsTxt(null, "en-GB");
+        Assert.That(key, Is.EqualTo("llms:llmstxt:_:en-gb"));
+    }
+
+    [Test]
+    public void LlmsTxt_NullCulture_UsesUnderscore()
+    {
+        var key = LlmsCacheKeys.LlmsTxt(Host, null);
+        Assert.That(key, Is.EqualTo("llms:llmstxt:sitea.example:_"));
+    }
+
+    [Test]
+    public void LlmsTxt_StartsWithGlobalPrefix()
+    {
+        Assert.That(LlmsCacheKeys.LlmsTxt(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.Prefix));
+    }
+
+    [Test]
+    public void LlmsTxt_StartsWithLlmsTxtPrefix()
+    {
+        Assert.That(LlmsCacheKeys.LlmsTxt(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.LlmsTxtPrefix));
+    }
+
+    [Test]
+    public void LlmsTxtHostPrefix_BuildsClearByKeyArgument()
+    {
+        // Pessimistic invalidation: ClearByKey(LlmsTxtHostPrefix(host)) must drop
+        // every culture's manifest entry for that hostname.
+        var prefix = LlmsCacheKeys.LlmsTxtHostPrefix("sitea.example");
+        Assert.Multiple(() =>
+        {
+            Assert.That(prefix, Is.EqualTo("llms:llmstxt:sitea.example:"));
+            Assert.That(LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB"), Does.StartWith(prefix));
+            Assert.That(LlmsCacheKeys.LlmsTxt("sitea.example", "fr-FR"), Does.StartWith(prefix));
+            Assert.That(LlmsCacheKeys.LlmsTxt("siteb.example", "en-GB"), Does.Not.StartWith(prefix));
+        });
+    }
+
+    [Test]
+    public void LlmsTxt_DifferentHost_DifferentKey()
+    {
+        var a = LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB");
+        var b = LlmsCacheKeys.LlmsTxt("siteb.example", "en-GB");
+        Assert.That(b, Is.Not.EqualTo(a));
+    }
 }

@@ -12,6 +12,15 @@ public static class LlmsCacheKeys
     public const string PagePrefix = "llms:page:";
 
     /// <summary>
+    /// Story 2.1 — <c>/llms.txt</c> manifest cache prefix. Architecture line 287
+    /// pins the shape: <c>llms:llmstxt:{hostname}:{culture}</c> (lowercase, no
+    /// internal hyphen). Manifest invalidation in <c>ContentCacheRefresherHandler</c>
+    /// uses prefix-clear (<c>llms:llmstxt:{host}:</c>) to nuke all cultures for an
+    /// affected hostname in one call.
+    /// </summary>
+    public const string LlmsTxtPrefix = "llms:llmstxt:";
+
+    /// <summary>
     /// Per-page cache key. <para>
     /// Shape: <c>llms:page:{nodeKey:N}:{host}:{culture}</c>. Story 1.5 added
     /// <paramref name="host"/> to the key so multi-domain bindings against the
@@ -36,6 +45,30 @@ public static class LlmsCacheKeys
     /// </summary>
     public static string Page(Guid nodeKey, string? host, string? culture)
         => $"{PagePrefix}{nodeKey:N}:{NormaliseHost(host)}:{NormaliseCulture(culture)}";
+
+    /// <summary>
+    /// <c>/llms.txt</c> manifest cache key. Shape:
+    /// <c>llms:llmstxt:{host}:{culture}</c>. Reuses <see cref="NormaliseHost"/>
+    /// and <see cref="NormaliseCulture"/> so casing/port-stripping aligns with
+    /// the per-page key shape — adopters inspecting cache contents see one set of
+    /// rules, not two.
+    /// <para>
+    /// Pessimistic invalidation in <c>ContentCacheRefresherHandler</c> calls
+    /// <c>IAppPolicyCache.ClearByKey(LlmsCacheKeys.LlmsTxtHostPrefix(host))</c> to
+    /// drop every culture entry for a hostname in one call (manifests are cheap
+    /// to rebuild and any node change can change the manifest output).
+    /// </para>
+    /// </summary>
+    public static string LlmsTxt(string? host, string? culture)
+        => $"{LlmsTxtPrefix}{NormaliseHost(host)}:{NormaliseCulture(culture)}";
+
+    /// <summary>
+    /// Per-host prefix for invalidation. Shape: <c>llms:llmstxt:{host}:</c>.
+    /// Passing this to <c>IAppPolicyCache.ClearByKey</c> drops every culture's
+    /// manifest entry for the given hostname.
+    /// </summary>
+    public static string LlmsTxtHostPrefix(string? host)
+        => $"{LlmsTxtPrefix}{NormaliseHost(host)}:";
 
     /// <summary>
     /// Normalises a culture for cache-key composition: lowercases BCP-47 tags so

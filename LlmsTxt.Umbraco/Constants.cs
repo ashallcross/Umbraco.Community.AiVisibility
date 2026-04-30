@@ -10,6 +10,13 @@ public static class Constants
         public const string IndexHtmlMdSuffix = "/index.html.md";
         public const string MarkdownRouteName = "Llms.MarkdownRoute";
         public const string MarkdownRoutePattern = "{**path}";
+
+        // Story 2.1 — /llms.txt manifest route. Mounted as a discrete endpoint
+        // (NOT via the .md catch-all) so the route ordering is explicit and
+        // unambiguous. Path is case-insensitive at the constraint level.
+        public const string LlmsTxtPath = "/llms.txt";
+        public const string LlmsTxtRouteName = "Llms.LlmsTxtRoute";
+        public const string LlmsTxtRoutePattern = "llms.txt";
     }
 
     public static class HttpHeaders
@@ -29,5 +36,6 @@ public static class Constants
         // composition; these constants are for cross-folder string literals.
         public const string Prefix = "llms:";
         public const string PagePrefix = "llms:page:";
+        public const string LlmsTxtPrefix = "llms:llmstxt:";
     }
 }
