@@ -311,19 +311,137 @@ public class DefaultLlmsTxtBuilderTests
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    // Story 2.3 — hreflang variant suffixes
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task BuildAsync_HreflangVariantsNull_BodyMatchesStory21Output()
+    {
+        // Build with null and with empty separately and compare to a baseline
+        // capture taken with null variants. Both must be byte-equal.
+        var root = StubPage("Acme", "homePage", "root", relativeUrl: "/");
+        var about = StubPage("About", "contentPage", "about", relativeUrl: "/about");
+        StubExtractorReturnsBody(about, "About body content");
+        var ctx = MakeContext(root, new[] { root, about }, hreflangVariants: null);
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        Assert.That(manifest, Does.Not.Match(@"\([a-z]{2}-[a-z]{2}:"),
+            "no `(culture: ...)` variant suffix when hreflang is null");
+    }
+
+    [Test]
+    public async Task BuildAsync_HreflangVariantsEmpty_BodyMatchesStory21Output()
+    {
+        var root = StubPage("Acme", "homePage", "root", relativeUrl: "/");
+        var about = StubPage("About", "contentPage", "about", relativeUrl: "/about");
+        StubExtractorReturnsBody(about, "About body content");
+
+        // Reference: same setup with null variants.
+        var ctxNull = MakeContext(root, new[] { root, about }, hreflangVariants: null);
+        var baseline = await MakeBuilder().BuildAsync(ctxNull, CancellationToken.None);
+
+        // Now with an empty dictionary — body must be byte-identical.
+        var empty = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>(0);
+        var ctxEmpty = MakeContext(root, new[] { root, about }, hreflangVariants: empty);
+        var withEmpty = await MakeBuilder().BuildAsync(ctxEmpty, CancellationToken.None);
+
+        Assert.That(withEmpty, Is.EqualTo(baseline),
+            "empty dictionary is treated identically to null — byte-equal output");
+    }
+
+    [Test]
+    public async Task BuildAsync_HreflangVariantsForOnePage_AppendedAfterSummary()
+    {
+        var root = StubPage("Acme", "homePage", "root", relativeUrl: "/");
+        var about = StubPage("About", "contentPage", "about", relativeUrl: "/about");
+        StubExtractorReturnsBody(about, "About body content");
+        var variants = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>
+        {
+            [about.Key] = new[]
+            {
+                new HreflangVariant("nl-nl", "/nl/about.md"),
+                new HreflangVariant("fr-fr", "/fr/about.md"),
+            },
+        };
+        var ctx = MakeContext(root, new[] { root, about }, hreflangVariants: variants);
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        Assert.That(manifest, Does.Contain(
+            "- [About](/about.md): About body content (fr-fr: /fr/about.md) (nl-nl: /nl/about.md)"),
+            "variants appended after summary, in BCP-47-lexicographic culture order");
+    }
+
+    [Test]
+    public async Task BuildAsync_HreflangVariantsLexicographicOrder()
+    {
+        var root = StubPage("Acme", "homePage", "root", relativeUrl: "/");
+        StubExtractorReturnsBody(root, "Body");
+        var variants = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>
+        {
+            [root.Key] = new[]
+            {
+                new HreflangVariant("nl-nl", "/nl/index.html.md"),
+                new HreflangVariant("fr-fr", "/fr/index.html.md"),
+                new HreflangVariant("de-de", "/de/index.html.md"),
+            },
+        };
+        var ctx = MakeContext(root, new[] { root }, hreflangVariants: variants);
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        var deIdx = manifest.IndexOf("(de-de:", StringComparison.Ordinal);
+        var frIdx = manifest.IndexOf("(fr-fr:", StringComparison.Ordinal);
+        var nlIdx = manifest.IndexOf("(nl-nl:", StringComparison.Ordinal);
+
+        Assert.That(deIdx, Is.LessThan(frIdx));
+        Assert.That(frIdx, Is.LessThan(nlIdx));
+    }
+
+    [Test]
+    public async Task BuildAsync_HreflangVariantsForSomePagesOnly_OthersHaveNoSuffix()
+    {
+        var root = StubPage("Acme", "homePage", "root", relativeUrl: "/");
+        var about = StubPage("About", "contentPage", "about", relativeUrl: "/about");
+        var contact = StubPage("Contact", "contentPage", "contact", relativeUrl: "/contact");
+        StubExtractorReturnsBody(about, "About");
+        StubExtractorReturnsBody(contact, "Contact");
+        var variants = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>
+        {
+            [about.Key] = new[] { new HreflangVariant("fr-fr", "/fr/about.md") },
+        };
+        var ctx = MakeContext(root, new[] { root, about, contact }, hreflangVariants: variants);
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(manifest, Does.Contain("(fr-fr: /fr/about.md)"),
+                "About's variant emitted");
+            // Contact's link line ends without a variant suffix — assert by
+            // looking at the trailing newline immediately after Contact's URL.
+            Assert.That(manifest, Does.Contain("- [Contact](/contact.md): Contact\n"),
+                "Contact has no variant suffix — line ends after summary");
+        });
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // Helpers
     // ────────────────────────────────────────────────────────────────────────
 
     private LlmsTxtBuilderContext MakeContext(
         IPublishedContent root,
         IReadOnlyList<IPublishedContent> pages,
-        LlmsTxtSettings? settings = null)
+        LlmsTxtSettings? settings = null,
+        IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? hreflangVariants = null)
         => new(
             Hostname: Host,
             Culture: Culture,
             RootContent: root,
             Pages: pages,
-            Settings: settings ?? new LlmsTxtSettings());
+            Settings: settings ?? new LlmsTxtSettings(),
+            HreflangVariants: hreflangVariants);
 
     private IPublishedContent StubPage(
         string? name,

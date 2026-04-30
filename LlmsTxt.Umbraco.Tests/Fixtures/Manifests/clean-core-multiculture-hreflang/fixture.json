@@ -1,0 +1,50 @@
+{
+  "description": "Clean.Core 7.0.5 with two cultures (en-gb matched + fr-fr sibling) and Hreflang.Enabled. Exercises the variant-suffix path on the index manifest.",
+  "hostname": "sitea.example",
+  "culture": "en-gb",
+  "settings": {
+    "siteName": "Clean.Core",
+    "siteSummary": "A multi-culture demo site.",
+    "hreflangEnabled": true,
+    "cachePolicySecondsLlmsTxt": 300,
+    "maxLlmsFullSizeKb": 5120,
+    "cachePolicySecondsLlmsFull": 300
+  },
+  "pages": [
+    {
+      "key": "22222222-0000-0000-0000-000000000001",
+      "name": "Clean.Core",
+      "contentTypeAlias": "homePage",
+      "relativeUrl": "/",
+      "absoluteUrl": "https://sitea.example/",
+      "body": "Welcome to the multi-culture Clean.Core demo site.",
+      "updateDate": "2026-04-01T00:00:00Z"
+    },
+    {
+      "key": "22222222-0000-0000-0000-000000000002",
+      "name": "About",
+      "contentTypeAlias": "contentPage",
+      "relativeUrl": "/about",
+      "absoluteUrl": "https://sitea.example/about",
+      "body": "About the multi-culture demo.",
+      "updateDate": "2026-04-02T00:00:00Z"
+    },
+    {
+      "key": "22222222-0000-0000-0000-000000000003",
+      "name": "Contact",
+      "contentTypeAlias": "contentPage",
+      "relativeUrl": "/contact",
+      "absoluteUrl": "https://sitea.example/contact",
+      "body": "Contact info — English-only page (no fr-fr variant).",
+      "updateDate": "2026-04-03T00:00:00Z"
+    }
+  ],
+  "variants": {
+    "22222222-0000-0000-0000-000000000001": [
+      { "culture": "fr-fr", "relativeUrl": "/fr/" }
+    ],
+    "22222222-0000-0000-0000-000000000002": [
+      { "culture": "fr-fr", "relativeUrl": "/fr/about" }
+    ]
+  }
+}

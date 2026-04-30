@@ -1,0 +1,61 @@
+{
+  "description": "Clean.Core 7.0.5 default content, single language. Exercises the index manifest in its zero-config shape (Story 2.1 baseline). Hreflang disabled.",
+  "hostname": "sitea.example",
+  "culture": "en-gb",
+  "settings": {
+    "siteName": "Clean.Core",
+    "siteSummary": "A demo site for the Clean.Core starter kit.",
+    "hreflangEnabled": false,
+    "cachePolicySecondsLlmsTxt": 300,
+    "maxLlmsFullSizeKb": 5120,
+    "cachePolicySecondsLlmsFull": 300
+  },
+  "pages": [
+    {
+      "key": "11111111-0000-0000-0000-000000000001",
+      "name": "Clean.Core",
+      "contentTypeAlias": "homePage",
+      "relativeUrl": "/",
+      "absoluteUrl": "https://sitea.example/",
+      "body": "Welcome to the Clean.Core demo site.",
+      "updateDate": "2026-04-01T00:00:00Z"
+    },
+    {
+      "key": "11111111-0000-0000-0000-000000000002",
+      "name": "About",
+      "contentTypeAlias": "contentPage",
+      "relativeUrl": "/about",
+      "absoluteUrl": "https://sitea.example/about",
+      "body": "About the Clean.Core demo site and its purpose.",
+      "updateDate": "2026-04-02T00:00:00Z"
+    },
+    {
+      "key": "11111111-0000-0000-0000-000000000003",
+      "name": "Articles",
+      "contentTypeAlias": "articlesPage",
+      "relativeUrl": "/articles",
+      "absoluteUrl": "https://sitea.example/articles",
+      "body": "Index of all articles published on Clean.Core.",
+      "updateDate": "2026-04-03T00:00:00Z"
+    },
+    {
+      "key": "11111111-0000-0000-0000-000000000004",
+      "name": "First Post",
+      "contentTypeAlias": "article",
+      "relativeUrl": "/articles/first-post",
+      "absoluteUrl": "https://sitea.example/articles/first-post",
+      "body": "Body of the first article on Clean.Core.",
+      "updateDate": "2026-04-04T00:00:00Z"
+    },
+    {
+      "key": "11111111-0000-0000-0000-000000000005",
+      "name": "Contact",
+      "contentTypeAlias": "contentPage",
+      "relativeUrl": "/contact",
+      "absoluteUrl": "https://sitea.example/contact",
+      "body": "Contact information for the Clean.Core team.",
+      "updateDate": "2026-04-05T00:00:00Z"
+    }
+  ],
+  "variants": null
+}

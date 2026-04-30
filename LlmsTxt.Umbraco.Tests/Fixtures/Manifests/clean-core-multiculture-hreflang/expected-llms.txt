@@ -1,0 +1,7 @@
+# Clean.Core
+> A multi-culture demo site.
+
+## Pages
+- [Clean.Core](/index.html.md): Welcome to the multi-culture Clean.Core demo site. (fr-fr: /fr/index.html.md)
+- [About](/about.md): About the multi-culture demo. (fr-fr: /fr/about.md)
+- [Contact](/contact.md): Contact info — English-only page (no fr-fr variant).

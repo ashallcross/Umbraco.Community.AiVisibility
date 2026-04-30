@@ -39,6 +39,14 @@
     <None Update="appsettings.Tests.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+
+    <!-- Story 2.3 — manifest quality benchmark fixtures. ManifestQualityBenchmarkTests
+         walks Fixtures/Manifests/<scenario>/ via project-marker; files must be
+         copied to the test bin so the walk finds them under the test runner's
+         AppContext.BaseDirectory. -->
+    <None Include="Fixtures\Manifests\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <!-- Story 1.5 — UmbracoWebApplicationFactory<TStartup> uses TStartup from

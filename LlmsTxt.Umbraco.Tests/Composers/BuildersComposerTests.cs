@@ -209,6 +209,55 @@ public class BuildersComposerTests
         }, "validation must succeed — Transient lifetime keeps the dep graph captive-free");
     }
 
+    [Test]
+    public void Compose_RegistersHreflangVariantsResolver_AsSingleton()
+    {
+        // Story 2.3 — resolver is stateless; deps are Umbraco singleton
+        // abstractions; safe as Singleton.
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        var descriptor = services.Single(d => d.ServiceType == typeof(IHreflangVariantsResolver));
+        Assert.Multiple(() =>
+        {
+            Assert.That(descriptor.Lifetime, Is.EqualTo(ServiceLifetime.Singleton),
+                "IHreflangVariantsResolver is stateless — Singleton matches the existing IHostnameRootResolver shape");
+            Assert.That(descriptor.ImplementationType, Is.EqualTo(typeof(HreflangVariantsResolver)));
+        });
+    }
+
+    [Test]
+    public void Compose_StartupValidation_HreflangResolver_NoCaptiveDependency()
+    {
+        // Same belt-and-braces validation Story 2.1 + 2.2 added for the builders.
+        // If a future refactor adds a scoped dep to HreflangVariantsResolver,
+        // ValidateOnBuild fails at service-provider construction time.
+        var (composer, builder, services) = BuildComposer();
+        composer.Compose(builder);
+
+        services.AddTransient<IPublishedUrlProvider>(_ => Substitute.For<IPublishedUrlProvider>());
+        services.AddTransient<IPublishedValueFallback>(_ => Substitute.For<IPublishedValueFallback>());
+        services.AddTransient<IMarkdownContentExtractor>(_ => Substitute.For<IMarkdownContentExtractor>());
+        services.AddSingleton(_ => Substitute.For<global::Umbraco.Cms.Core.Services.IDomainService>());
+#pragma warning disable CS0618
+        services.AddSingleton(_ => Substitute.For<global::Umbraco.Cms.Core.Services.ILocalizationService>());
+#pragma warning restore CS0618
+        services.AddSingleton(_ => Substitute.For<global::Umbraco.Cms.Core.Services.Navigation.IDocumentNavigationQueryService>());
+        services.AddLogging();
+
+        Assert.DoesNotThrow(() =>
+        {
+            using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateScopes = true,
+                ValidateOnBuild = true,
+            });
+            var resolved = provider.GetRequiredService<IHreflangVariantsResolver>();
+            Assert.That(resolved, Is.Not.Null);
+        }, "validation must succeed — Singleton lifetime keeps the dep graph captive-free");
+    }
+
     private static (BuildersComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)
         BuildComposer()
     {

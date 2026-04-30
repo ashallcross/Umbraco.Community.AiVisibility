@@ -69,11 +69,27 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var summary = await ResolveSummaryAsync(page, context, cancellationToken).ConfigureAwait(false);
-                AppendLink(manifest, page, summary, context.Culture);
+                AppendLink(manifest, page, summary, context.Culture, ResolveVariants(context, page.Key));
             }
         }
 
         return manifest.ToString();
+    }
+
+    /// <summary>
+    /// Look up sibling-culture variants for the given page key from the
+    /// per-request <see cref="LlmsTxtBuilderContext.HreflangVariants"/> map.
+    /// Returns <c>null</c> when hreflang is disabled (the map itself is null) or
+    /// the page has no published sibling cultures (the map has no entry).
+    /// Builder treats null and empty list identically — neither emits a suffix.
+    /// </summary>
+    private static IReadOnlyList<HreflangVariant>? ResolveVariants(LlmsTxtBuilderContext context, Guid pageKey)
+    {
+        if (context.HreflangVariants is null)
+        {
+            return null;
+        }
+        return context.HreflangVariants.TryGetValue(pageKey, out var variants) ? variants : null;
     }
 
     private string ResolveSiteName(LlmsTxtBuilderContext context)
@@ -228,7 +244,26 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
         }
     }
 
-    private void AppendLink(StringBuilder manifest, IPublishedContent page, string? summary, string? culture)
+    /// <summary>
+    /// Emit one bulleted link line. Shape:
+    /// <c>- [{Title}](/{path}.md){summary?}{hreflang-variants?}\n</c>.
+    /// <para>
+    /// When <paramref name="hreflangVariants"/> is non-null and non-empty (Story 2.3,
+    /// AC3), each variant is appended after the optional summary as
+    /// <c> ({culture}: {relativeMarkdownUrl})</c> in BCP-47-lexicographic order
+    /// (sort by <see cref="HreflangVariant.Culture"/>). Variants are emitted
+    /// verbatim from the controller-supplied list — the builder does NOT
+    /// re-suffix `.md` or escape culture codes (BCP-47 is `[a-z]{2,3}-[A-Z]{2,3}`
+    /// lowercased; no Markdown specials). When hreflang is disabled or no
+    /// variants exist, the line shape is byte-identical to Story 2.1's output.
+    /// </para>
+    /// </summary>
+    private void AppendLink(
+        StringBuilder manifest,
+        IPublishedContent page,
+        string? summary,
+        string? culture,
+        IReadOnlyList<HreflangVariant>? hreflangVariants)
     {
         var title = MarkdownEscaping.EscapeMarkdownLinkText(page.Name ?? string.Empty);
         var url = ResolveManifestLink(page, culture);
@@ -245,6 +280,24 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
         {
             manifest.Append(": ").Append(summary);
         }
+
+        if (hreflangVariants is { Count: > 0 })
+        {
+            // Lexicographic order by culture (BCP-47 is already lowercased on the
+            // way in via HreflangVariantsResolver). Stable sort: LINQ OrderBy is
+            // documented stable, so two variants with the same culture (which the
+            // resolver should never emit, but defensively...) keep insertion
+            // order.
+            foreach (var variant in hreflangVariants.OrderBy(v => v.Culture, StringComparer.Ordinal))
+            {
+                manifest.Append(' ').Append('(')
+                    .Append(variant.Culture)
+                    .Append(": ")
+                    .Append(variant.RelativeMarkdownUrl)
+                    .Append(')');
+            }
+        }
+
         manifest.Append('\n');
     }
 

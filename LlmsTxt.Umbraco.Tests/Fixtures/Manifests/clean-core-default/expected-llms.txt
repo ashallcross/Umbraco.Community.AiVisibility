@@ -1,0 +1,9 @@
+# Clean.Core
+> A demo site for the Clean.Core starter kit.
+
+## Pages
+- [Clean.Core](/index.html.md): Welcome to the Clean.Core demo site.
+- [About](/about.md): About the Clean.Core demo site and its purpose.
+- [Articles](/articles.md): Index of all articles published on Clean.Core.
+- [First Post](/articles/first-post.md): Body of the first article on Clean.Core.
+- [Contact](/contact.md): Contact information for the Clean.Core team.

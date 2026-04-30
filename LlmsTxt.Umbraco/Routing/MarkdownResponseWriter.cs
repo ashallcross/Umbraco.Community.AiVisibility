@@ -63,7 +63,7 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
         headers[Constants.HttpHeaders.CacheControl] = BuildCacheControl();
         headers[Constants.HttpHeaders.ETag] = etag;
 
-        if (RequestMatchesETag(httpContext.Request, etag))
+        if (IfNoneMatchMatcher.Matches(httpContext.Request, etag))
         {
             response.StatusCode = StatusCodes.Status304NotModified;
             // Defensive: ensure no upstream-set Content-Type leaks into the 304.
@@ -86,45 +86,6 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
     {
         var seconds = Math.Max(0, _settings.CurrentValue.CachePolicySeconds);
         return $"public, max-age={seconds.ToString(CultureInfo.InvariantCulture)}";
-    }
-
-    private static bool RequestMatchesETag(HttpRequest request, string etag)
-    {
-        if (!request.Headers.TryGetValue(Constants.HttpHeaders.IfNoneMatch, out var values)
-            || values.Count == 0)
-        {
-            return false;
-        }
-
-        // RFC 7232 § 3.2 — If-None-Match can carry a comma-separated list. Match against any.
-        // We always emit strong validators (no W/ prefix); accept either form for input.
-        foreach (var raw in values)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-            foreach (var candidate in raw.Split(','))
-            {
-                var trimmed = candidate.Trim();
-
-                // Bare wildcard FIRST — RFC 7232 § 3.2: only the bare `*` token is
-                // the wildcard. `W/*` is malformed; checking `*` before stripping the
-                // `W/` prefix prevents a weak-wildcard from surfacing as "match anything".
-                if (string.Equals(trimmed, "*", StringComparison.Ordinal))
-                {
-                    return true;
-                }
-
-                if (trimmed.StartsWith("W/", StringComparison.Ordinal))
-                {
-                    trimmed = trimmed[2..];
-                }
-
-                if (string.Equals(trimmed, etag, StringComparison.Ordinal))
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     /// <summary>

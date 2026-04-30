@@ -40,9 +40,35 @@ namespace LlmsTxt.Umbraco.Builders;
 /// Snapshot semantics keep a single manifest build internally consistent even if
 /// <c>IOptionsMonitor</c> ticks during the build.
 /// </param>
+/// <param name="HreflangVariants">
+/// Story 2.3 — sibling-culture variants per page key, or <c>null</c> when
+/// hreflang is disabled (default) OR no variants exist. Builder treats
+/// <c>null</c> and empty dictionary identically — both produce Story 2.1's
+/// byte-identical output. The controller resolves variants via the matched
+/// <see cref="IDomain"/> set (one domain per <c>(root, culture)</c> pair) and
+/// stuffs the result here, keeping <c>Builders/</c> HTTP-agnostic. See
+/// <see cref="HreflangVariant"/> for the per-variant payload shape.
+/// </param>
 public sealed record LlmsTxtBuilderContext(
     string Hostname,
     string Culture,
     IPublishedContent RootContent,
     IReadOnlyList<IPublishedContent> Pages,
-    LlmsTxtSettings Settings);
+    LlmsTxtSettings Settings,
+    IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? HreflangVariants = null);
+
+/// <summary>
+/// Story 2.3 — one sibling-culture variant of a manifest page. Emitted by
+/// <see cref="DefaultLlmsTxtBuilder"/> as <c>(culture: relativeMarkdownUrl)</c>
+/// after each link line when <see cref="HreflangSettings.Enabled"/> is <c>true</c>.
+/// </summary>
+/// <param name="Culture">
+/// BCP-47 culture for the variant, lowercased (e.g. <c>fr-fr</c>). Lexicographic
+/// ordering of variants in the manifest is by this field.
+/// </param>
+/// <param name="RelativeMarkdownUrl">
+/// The variant's <c>.md</c>-suffixed root-relative URL, ready to embed verbatim
+/// in the manifest (e.g. <c>/fr/about.md</c>). The controller does the suffixing
+/// before constructing this record so the builder stays a pure transform.
+/// </param>
+public sealed record HreflangVariant(string Culture, string RelativeMarkdownUrl);

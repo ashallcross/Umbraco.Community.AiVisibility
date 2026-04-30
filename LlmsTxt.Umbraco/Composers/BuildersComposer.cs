@@ -62,5 +62,11 @@ public sealed class BuildersComposer : IComposer
         builder.Services.TryAddTransient<ILlmsFullBuilder, DefaultLlmsFullBuilder>();
 
         builder.Services.TryAddSingleton<IHostnameRootResolver, HostnameRootResolver>();
+
+        // Story 2.3 — Singleton: stateless; deps are Umbraco singleton
+        // abstractions (IDomainService, IPublishedUrlProvider). Always invoked
+        // inside an EnsureUmbracoContext scope opened by the controller, so the
+        // URL provider and snapshot are safely accessible at call time.
+        builder.Services.TryAddSingleton<IHreflangVariantsResolver, HreflangVariantsResolver>();
     }
 }

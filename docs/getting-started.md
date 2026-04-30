@@ -199,11 +199,32 @@ The first Markdown render of a given template JIT-compiles the Razor view — ob
 
 If first-hit latency matters at deploy time, hit `/your-most-important-pages.md` once after a deployment so the JIT cache (and the LlmsTxt cache) are warm.
 
-## What's not in v0.1
+## Conditional GET (Story 2.3)
+
+From v0.3, both `/llms.txt` and `/llms-full.txt` honour `If-None-Match` and respond with `304 Not Modified` for unchanged manifests. The `ETag` is content-derived (SHA-256 of the manifest body, base64-url-encoded, quoted as a strong validator) and travels alongside the cached body, so cache hits reuse the ETag without re-hashing. AI crawlers that revalidate (most do) save round-trip bytes; first-fetch latency is unchanged.
+
+Per RFC 7232 § 6, `If-None-Match` wins over `If-Modified-Since` — the `/llms.txt` and `/llms-full.txt` endpoints ignore `If-Modified-Since` entirely (manifest cache is keyed by `(host, culture)`, not by timestamp; honouring it would invite stale-content false-positives).
+
+## Hreflang variant suffixes (Story 2.3)
+
+Set `LlmsTxt:Hreflang:Enabled: true` in `appsettings.json` to add sibling-culture variant suffixes to `/llms.txt` links:
+
+```jsonc
+{
+  "LlmsTxt": {
+    "Hreflang": { "Enabled": true }
+  }
+}
+```
+
+Off by default (FR25). When enabled, each link is followed by zero-or-more variant suffixes in the form `(culture: /culture/path.md)`, in BCP-47-lexicographic order. Single-culture sites see no change. Use this when adopters operate per-culture sub-paths or sub-domains and want cross-culture linkage discoverable to AI crawlers.
+
+Hreflang is **only** applied to `/llms.txt`. `/llms-full.txt` is a single-culture concatenated dump consumed off-site as a self-contained body keyed to the matched `IDomain` binding; cross-culture variant linkage is meaningless there.
+
+## What's not in v0.3
 
 Coming in later epics:
 
-- `/llms.txt` and `/llms-full.txt` site manifests (Epic 2)
 - Settings doctype + Backoffice dashboard (Epic 3)
 - HTTP `Link` discoverability header + Razor TagHelpers + robots.txt audit (Epic 4)
 - Request log + AI traffic dashboard (Epic 5)

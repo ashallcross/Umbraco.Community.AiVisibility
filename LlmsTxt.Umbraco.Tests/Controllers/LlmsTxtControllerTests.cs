@@ -25,6 +25,7 @@ public class LlmsTxtControllerTests
 
     private ILlmsTxtBuilder _builder = null!;
     private IHostnameRootResolver _resolver = null!;
+    private IHreflangVariantsResolver _hreflangResolver = null!;
     private IUmbracoContextFactory _umbracoContextFactory = null!;
     private IDocumentNavigationQueryService _navigation = null!;
     private AppCaches _appCaches = null!;
@@ -38,6 +39,15 @@ public class LlmsTxtControllerTests
     {
         _builder = Substitute.For<ILlmsTxtBuilder>();
         _resolver = Substitute.For<IHostnameRootResolver>();
+        _hreflangResolver = Substitute.For<IHreflangVariantsResolver>();
+        _hreflangResolver.ResolveAsync(
+                Arg.Any<IReadOnlyList<IPublishedContent>>(),
+                Arg.Any<string>(),
+                Arg.Any<Guid>(),
+                Arg.Any<IUmbracoContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>>(
+                new Dictionary<Guid, IReadOnlyList<HreflangVariant>>()));
         _umbracoContextFactory = Substitute.For<IUmbracoContextFactory>();
         _navigation = Substitute.For<IDocumentNavigationQueryService>();
         _appCaches = new AppCaches(
@@ -79,6 +89,7 @@ public class LlmsTxtControllerTests
         var ctrl = new LlmsTxtController(
             _builder,
             _resolver,
+            _hreflangResolver,
             _umbracoContextFactory,
             _navigation,
             _appCaches,
@@ -138,22 +149,25 @@ public class LlmsTxtControllerTests
     }
 
     [Test]
-    public async Task Response_DoesNotEmitETagInThisStory()
+    public async Task Render_EmitsETagOnSuccess()
     {
-        // Per § Failure & Edge Cases: ETag/304/single-flight hardening is owned by
-        // Story 2.3. Story 2.1 deliberately ships no ETag so clients don't issue
-        // If-None-Match revalidations the server can't satisfy.
+        // Story 2.3 — picks up the ETag work Story 2.1 explicitly deferred. ETag
+        // is content-derived (SHA-256(body) → base64-url-12 → quoted strong
+        // validator). Replaces the Story 2.1-era `Response_DoesNotEmitETagInThisStory`.
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext)
             .Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n> \n";
         _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult("# Acme\n> \n"));
+            .Returns(Task.FromResult(body));
         var ctrl = MakeController();
 
         await ctrl.Render(CancellationToken.None);
 
-        Assert.That(ctrl.Response.Headers.ContainsKey("ETag"), Is.False,
-            "ETag is deferred to Story 2.3");
+        var etag = ctrl.Response.Headers["ETag"].ToString();
+        Assert.That(etag, Is.Not.Empty, "ETag header is now emitted (Story 2.3 AC1+AC6)");
+        Assert.That(etag, Is.EqualTo(LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body)),
+            "ETag is the body-derived hash (matches ManifestETag.Compute)");
     }
 
     [Test]
@@ -162,9 +176,12 @@ public class LlmsTxtControllerTests
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext)
             .Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# CachedAcme\n> \n";
         _appCaches.RuntimeCache.Insert(
             LlmsCacheKeys.LlmsTxt(Host, Culture),
-            () => "# CachedAcme\n> \n",
+            () => new LlmsTxt.Umbraco.Caching.ManifestCacheEntry(
+                body,
+                LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body)),
             TimeSpan.FromMinutes(5));
         var ctrl = MakeController();
 
@@ -173,8 +190,8 @@ public class LlmsTxtControllerTests
         Assert.That(result, Is.InstanceOf<EmptyResult>());
         await _builder.DidNotReceive().BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>());
         ctrl.Response.Body.Position = 0;
-        var body = await new StreamReader(ctrl.Response.Body, Encoding.UTF8).ReadToEndAsync();
-        Assert.That(body, Does.Contain("# CachedAcme"));
+        var responseBody = await new StreamReader(ctrl.Response.Body, Encoding.UTF8).ReadToEndAsync();
+        Assert.That(responseBody, Does.Contain("# CachedAcme"));
     }
 
     [Test]
@@ -281,6 +298,315 @@ public class LlmsTxtControllerTests
         Assert.That(observed.Pages[1], Is.SameAs(child));
         Assert.That(observed.Hostname, Is.EqualTo(Host));
         Assert.That(observed.Culture, Is.EqualTo(Culture));
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 2.3 — If-None-Match / 304 / hreflang / single-flight
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task Render_IfNoneMatchMatchesCurrentETag_Returns304NoBody()
+    {
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n> \n";
+        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrl = MakeController();
+        ctrl.Request.Headers["If-None-Match"] = etag;
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+            Assert.That(ctrl.Response.ContentType, Is.Null,
+                "RFC 7232 § 4.1: 304 must NOT carry Content-Type");
+            Assert.That(ctrl.Response.Headers["ETag"].ToString(), Is.EqualTo(etag),
+                "304 carries the same ETag as 200");
+            Assert.That(ctrl.Response.Headers["Cache-Control"].ToString(), Is.EqualTo("public, max-age=300"));
+            Assert.That(ctrl.Response.Headers["Vary"].ToString(), Is.EqualTo("Accept"));
+            Assert.That(ctrl.Response.Body.Length, Is.Zero, "304 must not write a body");
+        });
+    }
+
+    [Test]
+    public async Task Render_IfNoneMatchStaleETag_Returns200WithCurrentBody()
+    {
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+        var ctrl = MakeController();
+        ctrl.Request.Headers["If-None-Match"] = "\"stale-etag\"";
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        Assert.That(ctrl.Response.ContentType, Is.EqualTo(Constants.HttpHeaders.MarkdownContentType));
+    }
+
+    [Test]
+    public async Task Render_IfNoneMatchAndIfModifiedSince_HonoursIfNoneMatch()
+    {
+        // RFC 7232 § 6: strong validator wins. With a matching If-None-Match,
+        // we 304 regardless of whether If-Modified-Since would have served 200.
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n> \n";
+        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrl = MakeController();
+        ctrl.Request.Headers["If-None-Match"] = etag;
+        ctrl.Request.Headers["If-Modified-Since"] = "Sun, 01 Jan 2000 00:00:00 GMT";
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+    }
+
+    [Test]
+    public async Task Render_HeadWith304_NoBody()
+    {
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n> \n";
+        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrl = MakeController();
+        ctrl.Request.Method = "HEAD";
+        ctrl.Request.Headers["If-None-Match"] = etag;
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        Assert.That(ctrl.Response.Body.Length, Is.Zero);
+    }
+
+    [Test]
+    public async Task Render_CacheHit_EtagReused_NotReHashed()
+    {
+        // Stuff a precomputed entry with a sentinel ETag that doesn't match
+        // ManifestETag.Compute(body); the controller MUST reuse the cached
+        // ETag, not rehash on every request.
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n> \n";
+        const string sentinelETag = "\"sentinel-not-real\"";
+        _appCaches.RuntimeCache.Insert(
+            LlmsCacheKeys.LlmsTxt(Host, Culture),
+            () => new LlmsTxt.Umbraco.Caching.ManifestCacheEntry(body, sentinelETag),
+            TimeSpan.FromMinutes(5));
+        var ctrl = MakeController();
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(ctrl.Response.Headers["ETag"].ToString(), Is.EqualTo(sentinelETag),
+            "cache hit reuses the stored ETag without re-hashing");
+    }
+
+    [Test]
+    public async Task Render_HreflangEnabled_ResolvesAndPassesVariantsToBuilder()
+    {
+        var root = StubContent("Acme");
+        _currentSettings = new LlmsTxtSettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
+            Hreflang = new HreflangSettings { Enabled = true },
+        };
+        _settings.CurrentValue.Returns(_ => _currentSettings);
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        var variants = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>
+        {
+            [root.Key] = new[] { new HreflangVariant("fr-fr", "/fr/index.html.md") },
+        };
+        _hreflangResolver.ResolveAsync(
+                Arg.Any<IReadOnlyList<IPublishedContent>>(),
+                Culture,
+                root.Key,
+                _umbracoContext,
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>>(variants));
+
+        LlmsTxtBuilderContext? observed = null;
+        _builder.BuildAsync(Arg.Do<LlmsTxtBuilderContext>(c => observed = c), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+        var ctrl = MakeController();
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(observed, Is.Not.Null);
+        Assert.That(observed!.HreflangVariants, Is.Not.Null);
+        Assert.That(observed.HreflangVariants![root.Key][0].Culture, Is.EqualTo("fr-fr"));
+    }
+
+    [Test]
+    public async Task Render_HreflangDisabled_PassesNullVariants_ResolverNotInvoked()
+    {
+        var root = StubContent("Acme");
+        // Default _currentSettings has Hreflang.Enabled = false
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+
+        LlmsTxtBuilderContext? observed = null;
+        _builder.BuildAsync(Arg.Do<LlmsTxtBuilderContext>(c => observed = c), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+        var ctrl = MakeController();
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(observed, Is.Not.Null);
+        Assert.That(observed!.HreflangVariants, Is.Null,
+            "hreflang disabled → null passed to builder (zero-cost path)");
+        await _hreflangResolver.DidNotReceive().ResolveAsync(
+            Arg.Any<IReadOnlyList<IPublishedContent>>(),
+            Arg.Any<string>(),
+            Arg.Any<Guid>(),
+            Arg.Any<IUmbracoContext>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_HreflangResolverThrows_LogsWarningAndContinues()
+    {
+        var root = StubContent("Acme");
+        _currentSettings = new LlmsTxtSettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
+            Hreflang = new HreflangSettings { Enabled = true },
+        };
+        _settings.CurrentValue.Returns(_ => _currentSettings);
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _hreflangResolver.ResolveAsync(
+                Arg.Any<IReadOnlyList<IPublishedContent>>(),
+                Arg.Any<string>(),
+                Arg.Any<Guid>(),
+                Arg.Any<IUmbracoContext>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>>>(_ =>
+                throw new InvalidOperationException("hreflang resolver exploded"));
+
+        LlmsTxtBuilderContext? observed = null;
+        _builder.BuildAsync(Arg.Do<LlmsTxtBuilderContext>(c => observed = c), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+        var ctrl = MakeController();
+
+        var result = await ctrl.Render(CancellationToken.None);
+
+        Assert.That(result, Is.InstanceOf<EmptyResult>(), "manifest serves 200 — graceful degradation");
+        Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        Assert.That(observed, Is.Not.Null);
+        Assert.That(observed!.HreflangVariants, Is.Null,
+            "resolver exception → variants nulled out, builder runs without hreflang");
+    }
+
+    [Test]
+    public async Task Render_HreflangEnabled_NoSiblingCultures_BodyByteIdenticalToDisabled()
+    {
+        // Spec § Failure & Edge Cases line 209 — when the flag is on but no sibling
+        // cultures exist (resolver returns empty), the manifest must be
+        // byte-identical to the flag-off output. The builder is mocked here, so
+        // we assert two independent properties: (1) resolver IS invoked when the
+        // flag is on, (2) the empty-dict variants flowing into the builder are
+        // structurally equivalent to the flag-off null variants — same builder
+        // output, same response body.
+        const string body = "# Acme\n\n## Pages\n\n- [About](/about.md): About body\n";
+
+        // Run 1 — flag ON, resolver returns empty dictionary.
+        var rootOn = StubContent("Acme");
+        _currentSettings = new LlmsTxtSettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
+            Hreflang = new HreflangSettings { Enabled = true },
+        };
+        _settings.CurrentValue.Returns(_ => _currentSettings);
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(rootOn, Culture));
+        _hreflangResolver.ResolveAsync(
+                Arg.Any<IReadOnlyList<IPublishedContent>>(),
+                Culture,
+                rootOn.Key,
+                _umbracoContext,
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>>(
+                new Dictionary<Guid, IReadOnlyList<HreflangVariant>>(0)));
+
+        LlmsTxtBuilderContext? observedOn = null;
+        _builder.BuildAsync(Arg.Do<LlmsTxtBuilderContext>(c => observedOn = c), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrlOn = MakeController();
+        await ctrlOn.Render(CancellationToken.None);
+        ctrlOn.Response.Body.Position = 0;
+        var bodyOn = await new StreamReader(ctrlOn.Response.Body, Encoding.UTF8).ReadToEndAsync();
+
+        // Run 2 — flag OFF, resolver not invoked. Force a fresh cache miss with
+        // a distinct hostname so the previous entry doesn't satisfy this run.
+        var rootOff = StubContent("Acme");
+        _currentSettings = new LlmsTxtSettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
+            Hreflang = new HreflangSettings { Enabled = false },
+        };
+        _resolver.Resolve("siteb.example", _umbracoContext)
+            .Returns(HostnameRootResolution.Found(rootOff, Culture));
+        LlmsTxtBuilderContext? observedOff = null;
+        _builder.BuildAsync(Arg.Do<LlmsTxtBuilderContext>(c => observedOff = c), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrlOff = MakeController();
+        ctrlOff.Request.Host = new HostString("siteb.example");
+        await ctrlOff.Render(CancellationToken.None);
+        ctrlOff.Response.Body.Position = 0;
+        var bodyOff = await new StreamReader(ctrlOff.Response.Body, Encoding.UTF8).ReadToEndAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bodyOn, Is.EqualTo(bodyOff), "byte-identical bodies");
+            Assert.That(observedOn, Is.Not.Null);
+            Assert.That(observedOff, Is.Not.Null);
+            Assert.That(
+                observedOn!.HreflangVariants?.Count ?? 0,
+                Is.EqualTo(0),
+                "empty resolver → empty (or null) variants flow into builder");
+            Assert.That(
+                observedOff!.HreflangVariants,
+                Is.Null,
+                "flag-off → null variants (zero-cost path)");
+        });
+    }
+
+    [Test]
+    public async Task Render_ConcurrentMissesOnSameKey_BuilderInvokedOnce()
+    {
+        // Single-flight contract: IAppPolicyCache.GetCacheItem serialises factory
+        // delegate per key per instance. Concurrent callers on a cold cache park
+        // on the first builder invocation; only one runs.
+        var root = StubContent("Acme");
+        _resolver.Resolve(Arg.Any<string>(), _umbracoContext)
+            .Returns(HostnameRootResolution.Found(root, Culture));
+
+        var callCount = 0;
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                Interlocked.Increment(ref callCount);
+                // Widen the race window so the concurrent callers genuinely
+                // overlap on slower CI.
+                await Task.Delay(50);
+                return "# Acme\n> \n";
+            });
+
+        const int parallel = 8;
+        var tasks = new Task[parallel];
+        for (var i = 0; i < parallel; i++)
+        {
+            var ctrl = MakeController();
+            tasks[i] = ctrl.Render(CancellationToken.None);
+        }
+        await Task.WhenAll(tasks);
+
+        Assert.That(callCount, Is.EqualTo(1),
+            "single-flight: only one builder invocation per key per instance under concurrent miss");
     }
 
     private static IPublishedContent StubContent(string name)

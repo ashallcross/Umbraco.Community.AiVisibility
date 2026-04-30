@@ -26,9 +26,15 @@ namespace LlmsTxt.Umbraco.Controllers;
 /// <see cref="ILlmsFullBuilder"/> for the body. Headers:
 /// <c>Content-Type: text/markdown; charset=utf-8</c>, <c>Cache-Control: public,
 /// max-age={LlmsFullBuilder.CachePolicySeconds}</c>, <c>Vary: Accept</c>.
-/// ETag/304 hardening is deferred to Story 2.3 — this story does NOT emit an
-/// <c>ETag</c> header (issuing one without 304 handling would invite client
-/// revalidations the server can't satisfy; same contract Story 2.1 honoured).
+/// <para>
+/// Story 2.3 — emits an <c>ETag</c> header (<see cref="ManifestETag"/>) and
+/// honours <c>If-None-Match</c> revalidation by short-circuiting to
+/// <c>304 Not Modified</c> via <see cref="IfNoneMatchMatcher"/>. <b>Hreflang is
+/// NOT applied here</b> (AC3 last bullet — the full manifest is a single-culture
+/// concatenated dump consumed off-site). Single-flight on cache miss is provided
+/// by <see cref="IAppPolicyCache.GetCacheItem"/>'s factory-delegate serialisation
+/// per key per instance (Story 1.2 contract).
+/// </para>
 /// </summary>
 public sealed class LlmsFullTxtController : Controller
 {
@@ -121,7 +127,7 @@ public sealed class LlmsFullTxtController : Controller
         var rootForBuild = scopeRoot;
         var pagesForBuild = pages;
 
-        string Build()
+        ManifestCacheEntry Build()
         {
             var ctx = new LlmsFullBuilderContext(
                 Hostname: hostForBuild,
@@ -129,22 +135,27 @@ public sealed class LlmsFullTxtController : Controller
                 RootContent: rootForBuild,
                 Pages: pagesForBuild,
                 Settings: settingsSnapshot);
-            return _builder.BuildAsync(ctx, CancellationToken.None)
+            var body = _builder.BuildAsync(ctx, CancellationToken.None)
                 .ConfigureAwait(false)
                 .GetAwaiter()
                 .GetResult();
+            // Story 2.3 — ETag computed once at build time and reused across
+            // cache hits (AC6). Empty body still emits a stable ETag (hash of
+            // zero bytes) so the empty-manifest path can still be conditionally
+            // requested.
+            return new ManifestCacheEntry(body, ManifestETag.Compute(body));
         }
 
-        string? manifest;
+        ManifestCacheEntry? entry;
         try
         {
             if (policySeconds == 0)
             {
-                manifest = Build();
+                entry = Build();
             }
             else
             {
-                manifest = _appCaches.RuntimeCache.GetCacheItem<string>(
+                entry = _appCaches.RuntimeCache.GetCacheItem<ManifestCacheEntry>(
                     cacheKey,
                     Build,
                     timeout: TimeSpan.FromSeconds(policySeconds));
@@ -166,14 +177,15 @@ public sealed class LlmsFullTxtController : Controller
                 statusCode: StatusCodes.Status500InternalServerError);
         }
 
+        entry ??= new ManifestCacheEntry(string.Empty, ManifestETag.Compute(string.Empty));
+
         // Empty body is a valid manifest when scope filtering rejected every page
         // (200 OK + empty body, NOT 404 — 404 is reserved for resolver-level
         // failures). But empty usually signals a misconfig (include/exclude collision,
         // alias typo); log Warning so it's observable and clear the cache entry so
         // an operator who fixes the config doesn't have to wait CachePolicySeconds
         // for recovery.
-        manifest ??= string.Empty;
-        if (string.IsNullOrEmpty(manifest))
+        if (string.IsNullOrEmpty(entry.Body))
         {
             _logger.LogWarning(
                 "/llms-full.txt — manifest empty for {Host} {Culture} (likely scope misconfiguration); not caching",
@@ -189,12 +201,23 @@ public sealed class LlmsFullTxtController : Controller
         VaryHeaderHelper.AppendAccept(HttpContext);
         response.Headers[Constants.HttpHeaders.CacheControl] =
             $"public, max-age={Math.Max(0, settingsSnapshot.LlmsFullBuilder.CachePolicySeconds)}";
+        response.Headers[Constants.HttpHeaders.ETag] = entry.ETag;
+
+        // Story 2.3 AC1 — If-None-Match revalidation. RFC 7232 § 4.1: 304 carries
+        // the same Vary/Cache-Control/ETag as a 200 would, but NOT Content-Type.
+        if (IfNoneMatchMatcher.Matches(HttpContext.Request, entry.ETag))
+        {
+            response.StatusCode = StatusCodes.Status304NotModified;
+            response.ContentType = null;
+            return new EmptyResult();
+        }
+
         response.StatusCode = StatusCodes.Status200OK;
         response.ContentType = Constants.HttpHeaders.MarkdownContentType;
 
         if (!HttpMethods.IsHead(HttpContext.Request.Method))
         {
-            await response.WriteAsync(manifest, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            await response.WriteAsync(entry.Body, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
         }
 
         return new EmptyResult();

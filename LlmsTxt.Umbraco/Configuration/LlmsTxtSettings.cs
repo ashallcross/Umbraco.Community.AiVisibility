@@ -7,8 +7,10 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// (<see cref="SiteName"/>, <see cref="SiteSummary"/>, <see cref="LlmsTxtBuilder"/>).
 /// Story 2.2 added the <c>/llms-full.txt</c> manifest configuration surface
 /// (<see cref="MaxLlmsFullSizeKb"/>, <see cref="LlmsFullScope"/>,
-/// <see cref="LlmsFullBuilder"/>). Story 3.1 fills out the rest of the surface and
-/// introduces <c>ILlmsSettingsResolver</c> for the doctype-overlay resolution.
+/// <see cref="LlmsFullBuilder"/>). Story 2.3 added the <see cref="Hreflang"/>
+/// opt-in flag (FR25) for sibling-culture variant suffixes in <c>/llms.txt</c>.
+/// Story 3.1 fills out the rest of the surface and introduces
+/// <c>ILlmsSettingsResolver</c> for the doctype-overlay resolution.
 /// </summary>
 public sealed class LlmsTxtSettings
 {
@@ -103,6 +105,34 @@ public sealed class LlmsTxtSettings
     /// <see cref="CachePolicySeconds"/> (per-page Markdown).
     /// </summary>
     public LlmsFullBuilderSettings LlmsFullBuilder { get; init; } = new();
+
+    /// <summary>
+    /// Story 2.3 — opt-in <c>hreflang</c>-style cross-references in
+    /// <c>/llms.txt</c> (FR25). When <see cref="HreflangSettings.Enabled"/> is
+    /// <c>true</c>, each manifest link is followed by zero-or-more sibling-culture
+    /// suffixes in the form <c>(culture: /culture/path.md)</c>, in BCP-47
+    /// lexicographic order. Off by default per FR25.
+    /// <para>
+    /// Hreflang is <b>only</b> applied to <c>/llms.txt</c>. <c>/llms-full.txt</c>
+    /// is a single-culture concatenated dump (consumed off-site as a
+    /// self-contained body keyed to the matched <c>IDomain</c>); cross-culture
+    /// variant linkage is meaningless inside a body that's already culture-scoped.
+    /// </para>
+    /// <para>
+    /// Source in Story 2.3: <c>appsettings.json</c> only. Story 3.1's
+    /// <c>ILlmsSettingsResolver</c> may overlay this with a Settings doctype value
+    /// without changing the contract here.
+    /// </para>
+    /// <para>
+    /// Cache key shape <c>llms:llmstxt:{host}:{culture}</c> intentionally does
+    /// NOT include the hreflang flag — flipping the flag while a cached body
+    /// exists keeps the old body until the next invalidation or TTL expiry
+    /// (default <see cref="LlmsTxtBuilderSettings.CachePolicySeconds"/> 300s).
+    /// Acceptable trade-off: encoding the flag would let two bodies coexist for
+    /// the same <c>(host, culture)</c>, doubling memory.
+    /// </para>
+    /// </summary>
+    public HreflangSettings Hreflang { get; init; } = new();
 }
 
 /// <summary>
@@ -234,6 +264,27 @@ public sealed class LlmsFullBuilderSettings
     /// (the index manifest, default 300s).
     /// </summary>
     public int CachePolicySeconds { get; init; } = 300;
+}
+
+/// <summary>
+/// Configuration block for the Story 2.3 hreflang variant suffix on
+/// <c>/llms.txt</c>. Bound from the <c>LlmsTxt:Hreflang</c> sub-section.
+/// <para>
+/// See architecture.md § Multi-Site &amp; Multi-Language and FR25 for the v1
+/// contract. The variant resolution walks the matched <c>IDomain</c> set
+/// (one domain per <c>(root, culture)</c> pair) and emits a suffix per
+/// sibling-culture variant of each page, in BCP-47 lexicographic order.
+/// </para>
+/// </summary>
+public sealed class HreflangSettings
+{
+    /// <summary>
+    /// When <c>true</c>, <c>DefaultLlmsTxtBuilder</c> emits sibling-culture
+    /// variant suffixes after each link (e.g. <c>(fr-fr: /fr/about.md)</c>).
+    /// Default <c>false</c> per FR25 — single-culture sites and adopters who
+    /// haven't opted in see no change from Story 2.1's output.
+    /// </summary>
+    public bool Enabled { get; init; }
 }
 
 /// <summary>
