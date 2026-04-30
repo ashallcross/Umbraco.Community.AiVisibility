@@ -50,11 +50,20 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
         cancellationToken.ThrowIfCancellationRequested();
 
         var pages = context.Pages?.ToList() ?? new List<IPublishedContent>();
-        var sections = GroupBySection(pages, context.Settings.LlmsTxtBuilder, context.Hostname);
+        var sections = GroupBySection(pages, context.Settings.BaseSettings.LlmsTxtBuilder, context.Hostname);
 
         var manifest = new StringBuilder();
         manifest.Append("# ").Append(SanitiseHeaderLine(ResolveSiteName(context))).Append('\n');
-        manifest.Append("> ").Append(SanitiseHeaderLine(context.Settings.SiteSummary)).Append('\n');
+        // Story 3.1 — resolved overlay (doctype value wins per-field; falls back
+        // to appsettings via the resolver's per-field overlay before the body
+        // ever sees it). Skip the blockquote line entirely when the summary is
+        // null/whitespace at both layers — emitting `> \n` would produce an
+        // empty blockquote that violates the llms.txt manifest shape.
+        var sanitisedSummary = SanitiseHeaderLine(context.Settings.SiteSummary);
+        if (!string.IsNullOrWhiteSpace(sanitisedSummary))
+        {
+            manifest.Append("> ").Append(sanitisedSummary).Append('\n');
+        }
 
         if (sections.Count == 0)
         {
@@ -174,7 +183,7 @@ internal sealed class DefaultLlmsTxtBuilder : ILlmsTxtBuilder
         LlmsTxtBuilderContext context,
         CancellationToken cancellationToken)
     {
-        var alias = context.Settings.LlmsTxtBuilder.PageSummaryPropertyAlias;
+        var alias = context.Settings.BaseSettings.LlmsTxtBuilder.PageSummaryPropertyAlias;
         if (!string.IsNullOrWhiteSpace(alias))
         {
             try

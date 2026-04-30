@@ -1,6 +1,7 @@
 using LlmsTxt.Umbraco.Builders;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -49,7 +50,10 @@ public class DefaultLlmsTxtBuilderTests
         Assert.Multiple(() =>
         {
             Assert.That(manifest, Does.StartWith("# Acme\n"), "H1 from root.Name when SiteName is null");
-            Assert.That(manifest, Does.Contain("\n> \n"), "blockquote present even when SiteSummary is null");
+            // Story 3.1 — blockquote is skipped when SiteSummary is null/empty
+            // at both layers (was previously emitted as `> \n` — empty
+            // blockquote, malformed llms.txt).
+            Assert.That(manifest, Does.Not.Contain("\n> \n"), "no empty blockquote when SiteSummary is null");
             Assert.That(manifest, Does.Contain("\n## Pages\n"), "default Pages section emitted");
             Assert.That(manifest, Does.Contain("- [Acme](/index.html.md)"), "trailing-slash root produces /index.html.md");
             Assert.That(manifest, Does.Contain("- [About](/about.md)"), "non-root pages produce /{path}.md");
@@ -99,7 +103,9 @@ public class DefaultLlmsTxtBuilderTests
         Assert.Multiple(() =>
         {
             Assert.That(manifest, Does.StartWith("# Acme\n"));
-            Assert.That(manifest, Does.Contain("> \n"));
+            // Story 3.1 — empty blockquote no longer emitted when summary
+            // unset; H1-only output is the valid llms.txt empty-site shape.
+            Assert.That(manifest, Does.Not.Contain("> "), "no empty blockquote when SiteSummary is null");
             Assert.That(manifest, Does.Not.Contain("##"), "no H2 sections when no pages");
             Assert.That(manifest, Does.Not.Contain("- ["), "no bulleted links when no pages");
         });
@@ -427,6 +433,45 @@ public class DefaultLlmsTxtBuilderTests
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    // Story 3.1 — resolved-overlay propagation through the builder
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task BuildAsync_UsesResolvedSiteName_OverAppsettings()
+    {
+        // Story 3.1 AC3 — the builder reads from ResolvedLlmsSettings.SiteName
+        // (overlay), NOT from BaseSettings.SiteName (appsettings). Pin the
+        // contract so a future refactor can't silently revert to reading
+        // appsettings directly.
+        var appsettings = new LlmsTxtSettings { SiteName = "Default Acme" };
+        var resolvedRecord = new ResolvedLlmsSettings(
+            SiteName: "Acme Docs",            // doctype overlay wins
+            SiteSummary: "Doctype summary",
+            ExcludedDoctypeAliases: new HashSet<string>(),
+            BaseSettings: appsettings);
+
+        var root = StubPage("RootName", "homePage", "/", relativeUrl: "/");
+        var ctx = new LlmsTxtBuilderContext(
+            Hostname: Host,
+            Culture: Culture,
+            RootContent: root,
+            Pages: new[] { root },
+            Settings: resolvedRecord);
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(manifest, Does.StartWith("# Acme Docs\n"),
+                "H1 reads from ResolvedLlmsSettings.SiteName (overlay)");
+            Assert.That(manifest, Does.Not.Contain("# Default Acme"),
+                "appsettings SiteName must NOT leak through when overlay supplies a value");
+            Assert.That(manifest, Does.Contain("> Doctype summary\n"),
+                "blockquote reads from ResolvedLlmsSettings.SiteSummary");
+        });
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // Helpers
     // ────────────────────────────────────────────────────────────────────────
 
@@ -440,7 +485,7 @@ public class DefaultLlmsTxtBuilderTests
             Culture: Culture,
             RootContent: root,
             Pages: pages,
-            Settings: settings ?? new LlmsTxtSettings(),
+            Settings: (settings ?? new LlmsTxtSettings()).ToResolved(),
             HreflangVariants: hreflangVariants);
 
     private IPublishedContent StubPage(

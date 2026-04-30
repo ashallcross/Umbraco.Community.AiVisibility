@@ -9,8 +9,10 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// (<see cref="MaxLlmsFullSizeKb"/>, <see cref="LlmsFullScope"/>,
 /// <see cref="LlmsFullBuilder"/>). Story 2.3 added the <see cref="Hreflang"/>
 /// opt-in flag (FR25) for sibling-culture variant suffixes in <c>/llms.txt</c>.
-/// Story 3.1 fills out the rest of the surface and introduces
-/// <c>ILlmsSettingsResolver</c> for the doctype-overlay resolution.
+/// Story 3.1 added the top-level <see cref="ExcludedDoctypeAliases"/> +
+/// <see cref="SettingsResolverCachePolicySeconds"/> + <see cref="Migrations"/>
+/// surface that <c>ILlmsSettingsResolver</c> consumes to overlay the Settings
+/// doctype values onto these appsettings values.
 /// </summary>
 public sealed class LlmsTxtSettings
 {
@@ -133,6 +135,93 @@ public sealed class LlmsTxtSettings
     /// </para>
     /// </summary>
     public HreflangSettings Hreflang { get; init; } = new();
+
+    /// <summary>
+    /// Story 3.1 — <b>top-level</b> doctype-alias exclusion list. Pages whose
+    /// <c>IPublishedContent.ContentType.Alias</c> matches any entry (case-insensitive)
+    /// are omitted from <b>all</b> routes: <c>/llms.txt</c>, <c>/llms-full.txt</c>,
+    /// and the per-page <c>.md</c> route returns <c>404</c>.
+    /// <para>
+    /// <b>Distinct from</b> <see cref="LlmsFullScopeSettings.ExcludedDocTypeAliases"/>
+    /// (Story 2.2's <c>/llms-full.txt</c>-only narrowing list, default
+    /// <c>["errorPage", "redirectPage"]</c>): the top-level list applies to all
+    /// routes; the <see cref="LlmsFullScopeSettings"/> list is a further narrowing
+    /// on top of that. Cumulation is logical AND-NOT — a page must pass both
+    /// filters to appear in <c>/llms-full.txt</c>.
+    /// </para>
+    /// <para>
+    /// <c>ILlmsSettingsResolver</c> overlays the Settings-doctype
+    /// <c>excludedDoctypeAliases</c> field as a <b>union</b> with this appsettings
+    /// list — adopters' appsettings entries are never discarded by an editor edit.
+    /// </para>
+    /// <para>
+    /// Default <see cref="Array.Empty{T}"/>: the appsettings layer adds no
+    /// implicit exclusions. Adopters who want the same default exclusions
+    /// <c>/llms-full.txt</c> ships with should set this list explicitly in
+    /// <c>appsettings.json</c>.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> ExcludedDoctypeAliases { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Story 3.1 — TTL (in seconds) for the resolver cache at
+    /// <c>llms:settings:{host}:{culture}</c>. Default <c>300s</c> matches the
+    /// manifest cache TTLs (<see cref="LlmsTxtBuilderSettings.CachePolicySeconds"/>
+    /// + <see cref="LlmsFullBuilderSettings.CachePolicySeconds"/>).
+    /// <para>
+    /// Setting to <c>0</c> disables caching — every resolver call re-walks the
+    /// content tree. Negative values are operator typos; the resolver clamps to
+    /// <c>0</c> + logs <c>Warning</c> (matches
+    /// <c>LlmsFullTxtController.policySeconds</c> defensive policy).
+    /// </para>
+    /// <para>
+    /// Cache invalidation: <c>ContentCacheRefresherHandler</c> clears
+    /// <c>llms:settings:{host}:</c> per bound hostname on every refresh
+    /// notification (Story 3.1 AC5). Editor-driven Settings-node edits invalidate
+    /// the cache within sub-second broadcast latency; TTL is the lower-bound
+    /// freshness floor for adopters not using Umbraco's distributed cache
+    /// refresher (e.g. external schema-management tools that bypass it).
+    /// </para>
+    /// </summary>
+    public int SettingsResolverCachePolicySeconds { get; init; } = 300;
+
+    /// <summary>
+    /// Story 3.1 — migration-plan registration controls. Currently only carries
+    /// <see cref="LlmsMigrationsSettings.SkipSettingsDoctype"/> for uSync
+    /// coexistence (architecture.md line 1092 + epics.md AC1).
+    /// </summary>
+    public LlmsMigrationsSettings Migrations { get; init; } = new();
+}
+
+/// <summary>
+/// Story 3.1 — controls for the package's schema migrations. Currently only
+/// <see cref="SkipSettingsDoctype"/> ships; future migrations (e.g. Epic 5's
+/// request-log table) may add their own opt-out flags here.
+/// </summary>
+public sealed class LlmsMigrationsSettings
+{
+    /// <summary>
+    /// When <c>true</c>, <c>SettingsComposer</c> does NOT register
+    /// <c>LlmsTxtSettingsMigrationPlan</c> with the Umbraco package-migration
+    /// pipeline — the Settings doctype + per-page-exclusion composition are
+    /// NOT created on first boot. Default <c>false</c>.
+    /// <para>
+    /// <b>Use case:</b> adopters using <a href="https://github.com/KevinJump/uSync">uSync</a>
+    /// or <c>uSync.Complete</c> to own the schema lifecycle. uSync serialises
+    /// the doctype on first install; setting this flag to <c>true</c> prevents
+    /// our package-migration plan from racing uSync's import or duplicating
+    /// the doctype. Documented in <c>docs/getting-started.md</c> § "uSync
+    /// coexistence".
+    /// </para>
+    /// <para>
+    /// <b>Caveat:</b> flipping this from <c>false</c> to <c>true</c> AFTER the
+    /// migration has already run does NOT remove the doctype from the host DB
+    /// (Umbraco's package-migration plan-state record persists the executed
+    /// state). Adopters relocating schema ownership to uSync must delete the
+    /// doctype manually first.
+    /// </para>
+    /// </summary>
+    public bool SkipSettingsDoctype { get; init; }
 }
 
 /// <summary>

@@ -45,5 +45,9 @@ public static class Constants
         public const string PagePrefix = "llms:page:";
         public const string LlmsTxtPrefix = "llms:llmstxt:";
         public const string LlmsFullPrefix = "llms:llmsfull:";
+
+        // Story 3.1 — resolver settings cache namespace. Mirrored from
+        // LlmsTxt.Umbraco.Caching.LlmsCacheKeys.SettingsPrefix for grep-ability.
+        public const string SettingsPrefix = "llms:settings:";
     }
 }

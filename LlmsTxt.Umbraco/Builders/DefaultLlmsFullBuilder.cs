@@ -50,7 +50,7 @@ internal sealed class DefaultLlmsFullBuilder : ILlmsFullBuilder
         ArgumentNullException.ThrowIfNull(context);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var pages = ApplyOrdering(context.Pages, context.Settings.LlmsFullBuilder.Order);
+        var pages = ApplyOrdering(context.Pages, context.Settings.BaseSettings.LlmsFullBuilder.Order);
         var totalPages = pages.Count;
         if (totalPages == 0)
         {
@@ -58,7 +58,7 @@ internal sealed class DefaultLlmsFullBuilder : ILlmsFullBuilder
         }
 
         // Cap = 0 / negative → defensive fallback to "no cap" + Warning.
-        var capKb = context.Settings.MaxLlmsFullSizeKb;
+        var capKb = context.Settings.BaseSettings.MaxLlmsFullSizeKb;
         long capBytes;
         if (capKb <= 0)
         {

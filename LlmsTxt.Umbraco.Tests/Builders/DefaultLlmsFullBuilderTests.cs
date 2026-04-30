@@ -1,6 +1,7 @@
 using LlmsTxt.Umbraco.Builders;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -120,7 +121,7 @@ public class DefaultLlmsFullBuilderTests
             Culture: Culture,
             RootContent: a,
             Pages: new[] { a },
-            Settings: new LlmsTxtSettings());
+            Settings: new LlmsTxtSettings().ToResolved());
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
 
@@ -415,7 +416,7 @@ public class DefaultLlmsFullBuilderTests
             Culture: Culture,
             RootContent: rootOrFirst,
             Pages: pages,
-            Settings: settings ?? new LlmsTxtSettings());
+            Settings: (settings ?? new LlmsTxtSettings()).ToResolved());
     }
 
     private IPublishedContent StubPage(

@@ -102,7 +102,7 @@ public class ManifestQualityBenchmarkTests
                 Culture: fb.Culture,
                 RootContent: fb.Root,
                 Pages: fb.Pages,
-                Settings: fb.Settings);
+                Settings: fb.Settings.ToResolved());
             var actual = await fullBuilder.BuildAsync(ctx, CancellationToken.None);
             var expected = await File.ReadAllTextAsync(expectedLlmsFullPath, Encoding.UTF8);
             AssertByteEqual(expected, actual, $"{Path.GetFileName(scenarioDir)} — /llms-full.txt");

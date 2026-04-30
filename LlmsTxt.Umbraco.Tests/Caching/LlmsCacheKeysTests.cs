@@ -305,4 +305,39 @@ public class LlmsCacheKeysTests
         var b = LlmsCacheKeys.LlmsFull("siteb.example", "en-GB");
         Assert.That(b, Is.Not.EqualTo(a));
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 3.1 — resolver settings cache keys
+    // Host-independent (D1-A decision, code review 2026-04-30): one global
+    // Settings node per install, so the key omits host. Culture normalisation
+    // is the same NormaliseCulture helper pinned above.
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public void Settings_Culture_FormatsCorrectly()
+    {
+        var key = LlmsCacheKeys.Settings("en-GB");
+        Assert.That(key, Is.EqualTo("llms:settings:en-gb"));
+    }
+
+    [Test]
+    public void Settings_NullCulture_UsesUnderscoreSentinel()
+    {
+        var key = LlmsCacheKeys.Settings(null);
+        Assert.That(key, Is.EqualTo("llms:settings:_"));
+    }
+
+    [Test]
+    public void SettingsPrefix_ClearsAllSettingsEntries()
+    {
+        // ContentCacheRefresherHandler clears the whole llms:settings: namespace
+        // in one prefix-clear. Pin that the prefix is a strict prefix of every
+        // generated Settings key.
+        Assert.Multiple(() =>
+        {
+            Assert.That(LlmsCacheKeys.Settings("en-GB"), Does.StartWith(LlmsCacheKeys.SettingsPrefix));
+            Assert.That(LlmsCacheKeys.Settings("fr-FR"), Does.StartWith(LlmsCacheKeys.SettingsPrefix));
+            Assert.That(LlmsCacheKeys.Settings(null), Does.StartWith(LlmsCacheKeys.SettingsPrefix));
+        });
+    }
 }

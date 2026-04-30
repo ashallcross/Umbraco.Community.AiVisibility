@@ -1,6 +1,7 @@
 using LlmsTxt.Umbraco.Builders;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using LlmsTxt.Umbraco.Tests.TestHelpers;
 using NSubstitute;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
@@ -47,7 +48,7 @@ internal sealed class ManifestFixtureBuilder
     }
 
     public LlmsTxtBuilderContext ToLlmsTxtBuilderContext()
-        => new(Hostname, Culture, Root, Pages, Settings, HreflangVariants);
+        => new(Hostname, Culture, Root, Pages, Settings.ToResolved(), HreflangVariants);
 
     public static ManifestFixtureBuilder From(ManifestFixture fixture)
     {

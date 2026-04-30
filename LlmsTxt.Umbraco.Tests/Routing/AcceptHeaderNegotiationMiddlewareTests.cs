@@ -3,6 +3,7 @@ using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Routing;
+using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -217,6 +218,71 @@ public class AcceptHeaderNegotiationMiddlewareTests
     }
 
     [Test]
+    public async Task Negotiation_OnExcludedPage_Returns404()
+    {
+        // Story 3.1 § Failure & Edge Cases line 463 — `Accept: text/markdown`
+        // on a canonical URL whose page is in the resolved exclusion list must
+        // yield 404, NOT 200 + Markdown body. Without this gate, an editor's
+        // exclusion configuration would only fire on the `.md` route, leaving
+        // the negotiation path as a silent bypass.
+        var content = BuildContentWithDoctype("redirectPage");
+        var routeValues = BuildRouteValues(publishedContent: content, culture: "en-GB");
+
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Method = "GET";
+        ctx.Request.Scheme = "https";
+        ctx.Request.Host = new HostString("example.test");
+        ctx.Request.Path = "/old-page";
+        ctx.Request.Headers.Accept = "text/markdown";
+        ctx.Features.Set(routeValues);
+        ctx.Response.Body = new MemoryStream();
+
+        var extractor = new StubExtractor(BuildFound("# never reached"));
+        var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        optionsMonitor.CurrentValue.Returns(new LlmsTxtSettings());
+        var writer = new MarkdownResponseWriter(optionsMonitor);
+        var logger = new RecordingLogger<AcceptHeaderNegotiationMiddleware>();
+
+        // Resolver returns "redirectPage" in the exclusion set.
+        var settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        settingsResolver
+            .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new ResolvedLlmsSettings(
+                SiteName: null,
+                SiteSummary: null,
+                ExcludedDoctypeAliases: new HashSet<string>(new[] { "redirectPage" }, StringComparer.OrdinalIgnoreCase),
+                BaseSettings: new LlmsTxtSettings())));
+
+        var middleware = new AcceptHeaderNegotiationMiddleware(extractor, writer, settingsResolver, logger);
+        var nextCalled = false;
+        await middleware.InvokeAsync(ctx, _ => { nextCalled = true; return Task.CompletedTask; });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status404NotFound),
+                "excluded page on negotiation path must return 404");
+            Assert.That(extractor.WasCalled, Is.False,
+                "extractor must not run when page is excluded");
+            Assert.That(nextCalled, Is.False,
+                "must not fall through to HTML — exclusion is a hard 404");
+            Assert.That(ctx.Response.ContentType, Does.StartWith("application/problem+json"));
+        });
+    }
+
+    private static IPublishedContent BuildContentWithDoctype(string contentTypeAlias)
+    {
+        var content = Substitute.For<IPublishedContent>();
+        content.Key.Returns(HomeKey);
+        content.Name.Returns("Home");
+        content.UpdateDate.Returns(HomeUpdated);
+        var contentType = Substitute.For<IPublishedContentType>();
+        contentType.Alias.Returns(contentTypeAlias);
+        content.ContentType.Returns(contentType);
+        content.GetProperty(Arg.Any<string>()).Returns((IPublishedProperty?)null);
+        return content;
+    }
+
+    [Test]
     public async Task Invoke_AcceptMarkdown_ExtractorReturnsError_WritesProblemJson_500()
     {
         var error = MarkdownExtractionResult.Failed(
@@ -356,10 +422,17 @@ public class AcceptHeaderNegotiationMiddlewareTests
         var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
         optionsMonitor.CurrentValue.Returns(new LlmsTxtSettings());
         var writer = new MarkdownResponseWriter(optionsMonitor);
+        // Story 3.1 — settings resolver substitute returns appsettings-only
+        // overlay so this Story-1.3 test stays green without exclusion impact.
+        var settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        settingsResolver
+            .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new LlmsTxtSettings().ToResolved()));
         var controller = new MarkdownController(
             controllerExtractor,
             resolver,
             writer,
+            settingsResolver,
             NullLogger<MarkdownController>.Instance);
         var controllerCtx = new DefaultHttpContext();
         controllerCtx.Request.Method = "GET";
@@ -479,9 +552,20 @@ public class AcceptHeaderNegotiationMiddlewareTests
         var writer = new MarkdownResponseWriter(optionsMonitor);
 
         var logger = new RecordingLogger<AcceptHeaderNegotiationMiddleware>();
+
+        // Story 3.1 — middleware now consults ILlmsSettingsResolver on the
+        // divert path so excluded pages return 404 (Failure & Edge Cases line
+        // 463). Default substitute returns an empty exclusion list and treats
+        // the page as not-excluded — Story-1.3-era tests stay green.
+        var settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        settingsResolver
+            .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new LlmsTxtSettings().ToResolved()));
+
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor,
             writer,
+            settingsResolver,
             logger);
 
         return new Harness

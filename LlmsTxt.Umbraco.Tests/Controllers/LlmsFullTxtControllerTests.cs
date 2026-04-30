@@ -3,6 +3,7 @@ using LlmsTxt.Umbraco.Builders;
 using LlmsTxt.Umbraco.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Controllers;
+using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -25,6 +26,7 @@ public class LlmsFullTxtControllerTests
 
     private ILlmsFullBuilder _builder = null!;
     private IHostnameRootResolver _resolver = null!;
+    private ILlmsSettingsResolver _settingsResolver = null!;
     private IUmbracoContextFactory _umbracoContextFactory = null!;
     private IDocumentNavigationQueryService _navigation = null!;
     private AppCaches _appCaches = null!;
@@ -51,6 +53,12 @@ public class LlmsFullTxtControllerTests
         };
         _settings = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
         _settings.CurrentValue.Returns(_ => _currentSettings);
+
+        // Story 3.1 — default resolver substitute returns appsettings-only overlay.
+        _settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        _settingsResolver
+            .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(_currentSettings.ToResolved()));
 
         _umbracoContext = Substitute.For<IUmbracoContext>();
         _publishedSnapshot = Substitute.For<IPublishedContentCache>();
@@ -79,6 +87,7 @@ public class LlmsFullTxtControllerTests
         var ctrl = new LlmsFullTxtController(
             _builder,
             _resolver,
+            _settingsResolver,
             _umbracoContextFactory,
             _navigation,
             _appCaches,
@@ -542,7 +551,7 @@ public class LlmsFullTxtControllerTests
         });
     }
 
-    private static IPublishedContent StubContent(string name, string contentTypeAlias)
+    private static IPublishedContent StubContent(string name, string contentTypeAlias, bool excludeFromLlmExports = false)
     {
         var c = Substitute.For<IPublishedContent>();
         c.Name.Returns(name);
@@ -550,6 +559,17 @@ public class LlmsFullTxtControllerTests
         var contentType = Substitute.For<IPublishedContentType>();
         contentType.Alias.Returns(contentTypeAlias);
         c.ContentType.Returns(contentType);
+        if (excludeFromLlmExports)
+        {
+            var prop = Substitute.For<IPublishedProperty>();
+            prop.HasValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+            prop.GetValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+            c.GetProperty("excludeFromLlmExports").Returns(prop);
+        }
+        else
+        {
+            c.GetProperty(Arg.Any<string>()).Returns((IPublishedProperty?)null);
+        }
         return c;
     }
 
@@ -719,5 +739,99 @@ public class LlmsFullTxtControllerTests
 
         Assert.That(callCount, Is.EqualTo(1),
             "single-flight: only one builder invocation per key per instance under concurrent miss");
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 3.1 — exclusion filter + resolver overlay + resolver-throw
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task Render_ExcludedPagesFiltered_OmittedFromManifestBuilderInput()
+    {
+        // Story 3.1 AC4 — pages whose ContentType.Alias is in resolved
+        // ExcludedDoctypeAliases OR whose excludeFromLlmExports = true must
+        // be filtered before the builder sees them. Cumulates with the
+        // existing LlmsFullScope filter (Story 2.2): logical AND-NOT.
+        var root = StubContent("Acme", "homePage");
+        var includedA = StubContent("Page-A", "blogPost");
+        var excludedByResolverAlias = StubContent("Page-B", "redirectPage");
+        var includedC = StubContent("Page-C", "blogPost");
+        var excludedByBool = StubContent("Page-D", "blogPost", excludeFromLlmExports: true);
+
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _navigation.TryGetDescendantsKeys(root.Key, out Arg.Any<IEnumerable<Guid>>()!).Returns(call =>
+        {
+            call[1] = new[] { includedA.Key, excludedByResolverAlias.Key, includedC.Key, excludedByBool.Key };
+            return true;
+        });
+        _publishedSnapshot.GetById(includedA.Key).Returns(includedA);
+        _publishedSnapshot.GetById(excludedByResolverAlias.Key).Returns(excludedByResolverAlias);
+        _publishedSnapshot.GetById(includedC.Key).Returns(includedC);
+        _publishedSnapshot.GetById(excludedByBool.Key).Returns(excludedByBool);
+
+        // Resolver returns "redirectPage" in exclusion list (top-level Story 3.1).
+        var resolvedRecord = new ResolvedLlmsSettings(
+            SiteName: null, SiteSummary: null,
+            ExcludedDoctypeAliases: new HashSet<string>(new[] { "redirectPage" }, StringComparer.OrdinalIgnoreCase),
+            BaseSettings: _currentSettings);
+        _settingsResolver
+            .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(resolvedRecord));
+
+        // Configure LlmsFullScope to NOT exclude redirectPage so we know the
+        // resolver's exclusion list is doing the work (default scope excludes it).
+        _currentSettings = new LlmsTxtSettings
+        {
+            LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = 300 },
+            LlmsFullScope = new LlmsFullScopeSettings
+            {
+                ExcludedDocTypeAliases = Array.Empty<string>(),
+            },
+        };
+
+        _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n\n_Source: x_\n\nBody."));
+
+        var ctrl = MakeController();
+        await ctrl.Render(CancellationToken.None);
+
+        var calls = _builder.ReceivedCalls()
+            .Where(c => c.GetMethodInfo().Name == "BuildAsync")
+            .ToArray();
+        Assert.That(calls, Has.Length.EqualTo(1));
+        var ctx = (LlmsFullBuilderContext)calls[0].GetArguments()[0]!;
+        var pageNames = ctx.Pages.Select(p => p.Name).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pageNames, Has.Member("Acme"));
+            Assert.That(pageNames, Has.Member("Page-A"));
+            Assert.That(pageNames, Has.Member("Page-C"));
+            Assert.That(pageNames, Has.No.Member("Page-B"), "redirectPage filtered by resolver exclusion");
+            Assert.That(pageNames, Has.No.Member("Page-D"), "blogPost with excludeFromLlmExports=true filtered");
+        });
+    }
+
+    [Test]
+    public async Task Render_ResolverThrows_FallsBackToAppsettings_StillReturns200()
+    {
+        // Story 3.1 — same graceful-degradation contract as LlmsTxtController.
+        _settingsResolver
+            .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ResolvedLlmsSettings>>(_ => throw new InvalidOperationException("resolver boom"));
+
+        var root = StubContent("Acme", "homePage");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n\n_Source: x_\n\nBody."));
+
+        var ctrl = MakeController();
+        var result = await ctrl.Render(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.InstanceOf<EmptyResult>());
+            Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        });
     }
 }

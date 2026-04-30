@@ -37,9 +37,12 @@ namespace LlmsTxt.Umbraco.Controllers;
 /// </summary>
 public sealed class LlmsTxtController : Controller
 {
+    internal const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
+
     private readonly ILlmsTxtBuilder _builder;
     private readonly IHostnameRootResolver _hostnameResolver;
     private readonly IHreflangVariantsResolver _hreflangResolver;
+    private readonly ILlmsSettingsResolver _settingsResolver;
     private readonly IUmbracoContextFactory _umbracoContextFactory;
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly AppCaches _appCaches;
@@ -50,6 +53,7 @@ public sealed class LlmsTxtController : Controller
         ILlmsTxtBuilder builder,
         IHostnameRootResolver hostnameResolver,
         IHreflangVariantsResolver hreflangResolver,
+        ILlmsSettingsResolver settingsResolver,
         IUmbracoContextFactory umbracoContextFactory,
         IDocumentNavigationQueryService navigation,
         AppCaches appCaches,
@@ -59,6 +63,7 @@ public sealed class LlmsTxtController : Controller
         _builder = builder;
         _hostnameResolver = hostnameResolver;
         _hreflangResolver = hreflangResolver;
+        _settingsResolver = settingsResolver;
         _umbracoContextFactory = umbracoContextFactory;
         _navigation = navigation;
         _appCaches = appCaches;
@@ -77,13 +82,39 @@ public sealed class LlmsTxtController : Controller
         var settingsSnapshot = _settings.CurrentValue;
 
         HostnameRootResolution resolution;
-        IReadOnlyList<IPublishedContent> pages;
+        IReadOnlyList<IPublishedContent> allPages;
+        ResolvedLlmsSettings resolvedSettings;
         using (var ctxRef = _umbracoContextFactory.EnsureUmbracoContext())
         {
             resolution = _hostnameResolver.Resolve(host ?? string.Empty, ctxRef.UmbracoContext);
-            pages = resolution.Root is null
+            allPages = resolution.Root is null
                 ? Array.Empty<IPublishedContent>()
                 : CollectPages(resolution.Root, ctxRef.UmbracoContext.Content);
+
+            // Story 3.1 — resolve effective settings (Settings doctype overlay
+            // + appsettings fallback) inside the same EnsureUmbracoContext scope
+            // the rest of the controller uses. Resolver-throw graceful
+            // degradation: log Warning + fall back to appsettings-only record
+            // (matches Story 2.3 hreflang resolver pattern, line 143-156).
+            try
+            {
+                resolvedSettings = await _settingsResolver
+                    .ResolveAsync(host, resolution.Culture, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "/llms.txt — ILlmsSettingsResolver threw for {Host} {Culture}; falling back to appsettings",
+                    host,
+                    resolution.Culture);
+                resolvedSettings = BuildAppsettingsFallback(settingsSnapshot);
+            }
         }
 
         if (resolution.Root is null || resolution.Culture is null)
@@ -95,6 +126,12 @@ public sealed class LlmsTxtController : Controller
                 title: "/llms.txt — no resolvable root",
                 statusCode: StatusCodes.Status404NotFound);
         }
+
+        // Story 3.1 — filter pages by the resolved exclusion list (doctype
+        // alias OR per-page excludeFromLlmExports composition property).
+        // Filtering in the controller before the cache factory keeps the
+        // builder a pure transform (Builders/ folder boundary).
+        var pages = FilterExcludedPages(allPages, resolvedSettings, resolution.Culture);
 
         var cacheKey = LlmsCacheKeys.LlmsTxt(host, resolution.Culture);
         var ttl = TimeSpan.FromSeconds(Math.Max(0, settingsSnapshot.LlmsTxtBuilder.CachePolicySeconds));
@@ -110,6 +147,7 @@ public sealed class LlmsTxtController : Controller
         var culture = resolution.Culture;
         var hostForBuild = LlmsCacheKeys.NormaliseHost(host);
         var pagesForBuild = pages;
+        var resolvedForBuild = resolvedSettings;
 
         ManifestCacheEntry? entry;
         try
@@ -161,7 +199,7 @@ public sealed class LlmsTxtController : Controller
                         Culture: culture,
                         RootContent: root,
                         Pages: pagesForBuild,
-                        Settings: settingsSnapshot,
+                        Settings: resolvedForBuild,
                         HreflangVariants: hreflangVariants);
                     // Inner build is sync-over-async by IAppPolicyCache contract.
                     // The builder honours CancellationToken.None inside the cache
@@ -266,5 +304,87 @@ public sealed class LlmsTxtController : Controller
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Story 3.1 — drop pages whose <c>ContentType.Alias</c> is in the resolved
+    /// exclusion list OR whose <c>excludeFromLlmExports</c> composition property
+    /// is <c>true</c>. Filtering happens in the controller (before the cache
+    /// factory) so the builder stays a pure transform over its input list.
+    /// </summary>
+    private static IReadOnlyList<IPublishedContent> FilterExcludedPages(
+        IReadOnlyList<IPublishedContent> pages,
+        ResolvedLlmsSettings resolved,
+        string? culture)
+    {
+        if (pages.Count == 0)
+        {
+            return pages;
+        }
+
+        var excluded = resolved.ExcludedDoctypeAliases;
+        if (excluded.Count == 0)
+        {
+            // No alias-based exclusions — only per-page bool can drop pages.
+            // Fast-path: filter only on the bool when no aliases configured.
+            return pages
+                .Where(p => !TryReadExcludeBool(p, culture))
+                .ToList();
+        }
+
+        var aliasSet = excluded as HashSet<string>
+            ?? new HashSet<string>(excluded, StringComparer.OrdinalIgnoreCase);
+
+        return pages
+            .Where(p => !aliasSet.Contains(p.ContentType.Alias)
+                        && !TryReadExcludeBool(p, culture))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Read <c>excludeFromLlmExports</c> via the property layer, mirroring the
+    /// shape <see cref="MarkdownController.TryReadExcludeBool"/> uses (and for
+    /// the same trap-avoiding reasons documented there).
+    /// </summary>
+    private static bool TryReadExcludeBool(IPublishedContent page, string? culture)
+    {
+        // The excludeFromLlmExports property lives on the invariant
+        // llmsTxtSettingsComposition. Pass culture: null — see Story 3.1
+        // manual gate Step 4 finding (HasValue/GetValue with a non-null culture
+        // returns false on invariant properties even when the bool is set).
+        _ = culture;
+        var prop = page.GetProperty(ExcludeFromLlmExportsAlias);
+        if (prop is null || !prop.HasValue(culture: null))
+        {
+            return false;
+        }
+        var value = prop.GetValue(culture: null);
+        return value is bool b && b;
+    }
+
+    /// <summary>
+    /// Build a <see cref="ResolvedLlmsSettings"/> from the appsettings snapshot
+    /// only — used on the resolver-throw graceful-degradation path. Mirrors
+    /// the shape <see cref="DefaultLlmsSettingsResolver.BuildAppsettingsOnly"/>
+    /// produces; pure duplication is acceptable here because the
+    /// <c>Configuration/</c> resolver method is private and the
+    /// <c>Controllers/</c> folder can't call into it without leaking the
+    /// private surface.
+    /// </summary>
+    private static ResolvedLlmsSettings BuildAppsettingsFallback(LlmsTxtSettings settings)
+    {
+        var excludedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var alias in settings.ExcludedDoctypeAliases ?? Array.Empty<string>())
+        {
+            if (!string.IsNullOrWhiteSpace(alias))
+            {
+                excludedSet.Add(alias.Trim());
+            }
+        }
+        return new ResolvedLlmsSettings(
+            SiteName: settings.SiteName,
+            SiteSummary: settings.SiteSummary,
+            ExcludedDoctypeAliases: excludedSet,
+            BaseSettings: settings);
     }
 }

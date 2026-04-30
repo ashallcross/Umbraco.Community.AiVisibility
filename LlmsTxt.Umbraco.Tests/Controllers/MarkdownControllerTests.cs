@@ -3,6 +3,7 @@ using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Routing;
+using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -381,6 +382,133 @@ public class MarkdownControllerTests
         return controller.Response.Headers["ETag"].ToString();
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 3.1 — exclusion check
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task Render_ExcludedByDoctypeAlias_Returns404_ExtractorNotInvoked()
+    {
+        // Story 3.1 AC4 — page's ContentType.Alias is in resolved exclusion list
+        // → 404 + extractor never runs.
+        var extractor = new StubExtractor(BuildFound("never reached"));
+        var resolver = MakeStubResolver(content: BuildContent(contentTypeAlias: "redirectPage"), culture: "en-GB");
+        var settingsResolver = BuildSettingsResolverWithExcludedAliases("redirectPage");
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/redirected.md",
+            settingsResolverOverride: settingsResolver);
+
+        var result = await controller.Render(path: "/redirected.md", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.InstanceOf<NotFoundResult>(),
+                "excluded doctype must produce 404");
+            Assert.That(extractor.WasCalled, Is.False,
+                "extractor must not run when page's doctype is excluded");
+        });
+    }
+
+    [Test]
+    public async Task Render_ExcludedByPerPageBoolean_Returns404_ExtractorNotInvoked()
+    {
+        // Story 3.1 AC4 — page's excludeFromLlmExports composition property
+        // is true → 404 + extractor never runs (regardless of resolved aliases).
+        var extractor = new StubExtractor(BuildFound("never reached"));
+        var resolver = MakeStubResolver(
+            content: BuildContent(contentTypeAlias: "homePage", excludeFromLlmExports: true),
+            culture: "en-GB");
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md");
+
+        var result = await controller.Render(path: "/home.md", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.InstanceOf<NotFoundResult>(),
+                "excludeFromLlmExports=true must produce 404");
+            Assert.That(extractor.WasCalled, Is.False,
+                "extractor must not run when page is excluded by per-page bool");
+        });
+    }
+
+    [Test]
+    public async Task Render_ExcludedAliasCaseInsensitive_Excluded()
+    {
+        // Story 3.1 AC4 — alias matching is case-insensitive. The resolved
+        // exclusion list is a HashSet<string>(StringComparer.OrdinalIgnoreCase),
+        // but MarkdownController consumes it via Enumerable.Contains with an
+        // explicit OrdinalIgnoreCase argument — pin that the explicit comparer
+        // is wired so a future refactor that drops the comparer arg breaks the
+        // test (and not silently regresses casing).
+        var extractor = new StubExtractor(BuildFound("never reached"));
+        var resolver = MakeStubResolver(content: BuildContent(contentTypeAlias: "blogPost"), culture: "en-GB");
+        // Resolved set carries the alias in DIFFERENT casing than the page's
+        // ContentType.Alias. Editor entered "BlogPost"; doctype alias is "blogPost".
+        var settingsResolver = BuildSettingsResolverWithExcludedAliases("BlogPost");
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/blog/post-1.md",
+            settingsResolverOverride: settingsResolver);
+
+        var result = await controller.Render(path: "/blog/post-1.md", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.InstanceOf<NotFoundResult>(),
+                "case-insensitive alias match must produce 404");
+            Assert.That(extractor.WasCalled, Is.False,
+                "extractor must not run when alias matches case-insensitively");
+        });
+    }
+
+    [Test]
+    public async Task Render_ResolverThrows_FailsOpenAndExtracts()
+    {
+        // Story 3.1 § Failure & Edge Cases — `ILlmsSettingsResolver.ResolveAsync`
+        // throwing must NOT 500 the route. MarkdownController catches and treats
+        // the page as not-excluded (fail-open) so a transient resolver fault
+        // doesn't blackhole every Markdown request.
+        var extractor = new StubExtractor(BuildFound("# Home\n"));
+        var resolver = MakeStubResolver(content: BuildContent(contentTypeAlias: "homePage"), culture: "en-GB");
+        var throwingResolver = Substitute.For<ILlmsSettingsResolver>();
+        throwingResolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ResolvedLlmsSettings>>(_ => throw new InvalidOperationException("simulated resolver fault"));
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md",
+            settingsResolverOverride: throwingResolver);
+
+        var result = await controller.Render(path: "/home.md", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.InstanceOf<EmptyResult>(),
+                "resolver throw must fail-open: page extracts as if not excluded");
+            Assert.That(extractor.WasCalled, Is.True,
+                "extractor must run when resolver throws (fail-open)");
+            Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        });
+    }
+
+    [Test]
+    public async Task Render_PageWithoutCompositionProperty_NotExcluded_ContinuesToExtract()
+    {
+        // Defensive: pages whose doctype DOES NOT include the composition return
+        // null from GetProperty("excludeFromLlmExports"). Treat as not-excluded.
+        var extractor = new StubExtractor(BuildFound("# Home\n"));
+        var resolver = MakeStubResolver(
+            content: BuildContent(contentTypeAlias: "homePage", excludeFromLlmExports: false),
+            culture: "en-GB");
+        var body = new MemoryStream();
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md", body: body);
+
+        var result = await controller.Render(path: "/home.md", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.InstanceOf<EmptyResult>(),
+                "page without composition property must continue to extraction");
+            Assert.That(extractor.WasCalled, Is.True,
+                "extractor must run when page is not excluded");
+            Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        });
+    }
+
     private static MarkdownExtractionResult BuildFound(
         string body,
         string? culture = "en-GB",
@@ -392,12 +520,27 @@ public class MarkdownControllerTests
             updatedUtc: updatedUtc ?? HomeUpdated,
             sourceUrl: "https://example.test/home");
 
-    private static IPublishedContent BuildContent()
+    private static IPublishedContent BuildContent(string contentTypeAlias = "homePage", bool excludeFromLlmExports = false)
     {
         var content = Substitute.For<IPublishedContent>();
         content.Key.Returns(HomeKey);
         content.Name.Returns("Home");
         content.UpdateDate.Returns(HomeUpdated);
+        var contentType = Substitute.For<IPublishedContentType>();
+        contentType.Alias.Returns(contentTypeAlias);
+        content.ContentType.Returns(contentType);
+
+        if (excludeFromLlmExports)
+        {
+            var prop = Substitute.For<IPublishedProperty>();
+            prop.HasValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+            prop.GetValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+            content.GetProperty("excludeFromLlmExports").Returns(prop);
+        }
+        else
+        {
+            content.GetProperty(Arg.Any<string>()).Returns((IPublishedProperty?)null);
+        }
         return content;
     }
 
@@ -407,6 +550,27 @@ public class MarkdownControllerTests
     private static StubResolver StubResolverNotFound()
         => new(MarkdownRouteResolution.NotFound());
 
+    private static ILlmsSettingsResolver BuildDefaultSettingsResolver(LlmsTxtSettings settings)
+    {
+        var sub = Substitute.For<ILlmsSettingsResolver>();
+        sub.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(settings.ToResolved()));
+        return sub;
+    }
+
+    private static ILlmsSettingsResolver BuildSettingsResolverWithExcludedAliases(params string[] aliases)
+    {
+        var resolved = new ResolvedLlmsSettings(
+            SiteName: null,
+            SiteSummary: null,
+            ExcludedDoctypeAliases: new HashSet<string>(aliases, StringComparer.OrdinalIgnoreCase),
+            BaseSettings: new LlmsTxtSettings());
+        var sub = Substitute.For<ILlmsSettingsResolver>();
+        sub.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(resolved));
+        return sub;
+    }
+
     private static MarkdownController MakeController(
         IMarkdownContentExtractor extractor,
         IMarkdownRouteResolver resolver,
@@ -415,7 +579,8 @@ public class MarkdownControllerTests
         string host,
         string path,
         LlmsTxtSettings? settings = null,
-        MemoryStream? body = null)
+        MemoryStream? body = null,
+        ILlmsSettingsResolver? settingsResolverOverride = null)
     {
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = method;
@@ -435,10 +600,17 @@ public class MarkdownControllerTests
         // exercise the writer end-to-end rather than mocking it.
         var writer = new MarkdownResponseWriter(optionsMonitor);
 
+
+        // Story 3.1 — settings resolver substitute returns appsettings-only
+        // overlay so existing tests stay green; tests that exercise exclusion
+        // pass an override via settingsResolverOverride.
+        var settingsResolver = settingsResolverOverride ?? BuildDefaultSettingsResolver(resolvedSettings);
+
         var controller = new MarkdownController(
             extractor,
             resolver,
             writer,
+            settingsResolver,
             NullLogger<MarkdownController>.Instance);
         controller.ControllerContext = new ControllerContext
         {

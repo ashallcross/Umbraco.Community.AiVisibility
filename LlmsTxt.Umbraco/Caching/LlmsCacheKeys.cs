@@ -107,6 +107,28 @@ public static class LlmsCacheKeys
         => $"{LlmsFullPrefix}{NormaliseHost(host)}:";
 
     /// <summary>
+    /// Story 3.1 — resolver settings cache prefix. Shape:
+    /// <c>llms:settings:{culture}</c>. Caches the per-culture overlay of the
+    /// Settings doctype values onto the appsettings snapshot. There is one
+    /// global Settings node per Umbraco install (the doctype is allowed at root
+    /// and the resolver picks the first match), so the cache key omits host —
+    /// the resolved snapshot is identical for every host and a host segment
+    /// would just produce N duplicate cache entries. Cleared by
+    /// <see cref="ContentCacheRefresherHandler"/> via
+    /// <c>ClearByKey(SettingsPrefix)</c> on every refresh notification (AC5).
+    /// </summary>
+    public const string SettingsPrefix = "llms:settings:";
+
+    /// <summary>
+    /// Resolver settings cache key. Shape: <c>llms:settings:{culture}</c>.
+    /// Host-independent (one global Settings node per install). Reuses
+    /// <see cref="NormaliseCulture"/> so casing/invariant-sentinel handling
+    /// aligns with the per-page and manifest key shapes.
+    /// </summary>
+    public static string Settings(string? culture)
+        => $"{SettingsPrefix}{NormaliseCulture(culture)}";
+
+    /// <summary>
     /// Normalises a culture for cache-key composition: lowercases BCP-47 tags so
     /// <c>en-GB</c>/<c>en-gb</c>/<c>EN-GB</c> share an entry, and represents
     /// invariant content (null/empty culture) as <c>"_"</c> so it never collides

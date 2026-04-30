@@ -2,7 +2,7 @@
 
 LlmsTxt.Umbraco exposes Umbraco published content to AI crawlers and large-language-model search engines via per-page Markdown rendering, a `/llms.txt` index, and a `/llms-full.txt` bulk export.
 
-This document covers what ships in **v0.1 (Stories 1.1 + 1.2 + 1.3 + 1.4)** — the per-page Markdown route, per-page caching with publish-driven invalidation, `Accept: text/markdown` content negotiation on canonical URLs, and the public `IMarkdownContentExtractor` / `IContentRegionSelector` extension points with a parameterised quality-benchmark fixture catalogue. The manifests and the Backoffice surface land in later stories.
+This document covers what ships up to **v0.4 (Story 3.1)** — the per-page Markdown route, per-page caching with publish-driven invalidation, `Accept: text/markdown` content negotiation, the `/llms.txt` and `/llms-full.txt` manifests with hot-path protection (`If-None-Match` / 304 / single-flight) and optional hreflang variants, and the Settings doctype + `ILlmsSettingsResolver` overlay + per-doctype/per-page exclusion. The Backoffice dashboard, robots audit, and AI traffic dashboard land in later stories.
 
 ## What you get
 
@@ -221,11 +221,97 @@ Off by default (FR25). When enabled, each link is followed by zero-or-more varia
 
 Hreflang is **only** applied to `/llms.txt`. `/llms-full.txt` is a single-culture concatenated dump consumed off-site as a self-contained body keyed to the matched `IDomain` binding; cross-culture variant linkage is meaningless there.
 
-## What's not in v0.3
+## Settings doctype + Backoffice (Story 3.1)
+
+From v0.4, the package ships a `LlmsTxt Settings` Umbraco document type that editors can use to override site-name, site-summary, and per-doctype exclusion without editing `appsettings.json`. The doctype is created automatically on first boot via Umbraco's `PackageMigrationPlan` pipeline (the package registers `LlmsTxtSettingsMigrationPlan`, which runs a `CreateLlmsSettingsDoctype` step that calls `IContentTypeService.Save(...)` imperatively). Re-runs are no-ops — `EnsureSettingsDoctype` skip-checks `IContentTypeService.Get(alias)` before creating anything.
+
+### Where to find it
+
+After install, open Backoffice → Content. Create a new node from the root and pick **LlmsTxt Settings**. Fill in:
+
+- **Site name** — the H1 emitted at the top of `/llms.txt`. Empty falls back to the matched root content node's name.
+- **Site summary** — the blockquote under the `/llms.txt` H1. Soft-capped at 500 chars (truncated with ellipsis on overflow).
+- **Excluded doctype aliases** — one alias per line (or comma/semicolon separated). Pages whose `ContentType.Alias` matches any line are omitted from `/llms.txt`, `/llms-full.txt`, and the `.md` route returns `404`.
+
+### Per-page "Exclude from LLM exports" toggle
+
+To let editors exclude individual pages, attach the **LlmsTxt Exclusion (composition)** doctype as a composition to any of your own doctypes (Backoffice → Settings → Document Types → your doctype → Add composition). The composition adds a single boolean property `excludeFromLlmExports` (default `false`). Toggling it `true` on a published page causes:
+
+- `GET /that-page.md` → `404 Not Found`
+- The page is omitted from `/llms.txt` and `/llms-full.txt`
+- HTML responses for that page are unchanged (the toggle only affects the LLM exports — the public site keeps serving normally)
+
+Cache invalidation is automatic: toggling the bool fires a `RefreshNode` notification that clears the per-page Markdown cache, both manifest caches, and the resolver settings cache for every bound hostname in a single invocation.
+
+### Configuration overlay precedence
+
+The package resolves effective settings in this order:
+
+| Layer | Source | Wins over |
+|---|---|---|
+| Settings doctype | `LlmsTxt Settings` content node properties | appsettings + in-code defaults |
+| `appsettings.json` | `LlmsTxt:` section | in-code defaults |
+| In-code defaults | `LlmsTxtSettings` initialiser | — |
+
+**Per-field**, not all-or-nothing — an empty `siteName` in the doctype falls back to `appsettings.json`'s `LlmsTxt:SiteName` (and then the in-code default). Same for `siteSummary`.
+
+The `excludedDoctypeAliases` field is the **union** of `appsettings.json`'s `LlmsTxt:ExcludedDoctypeAliases` and the doctype's value — adopters' appsettings entries are never discarded by an editor edit.
+
+### Two-list distinction (don't confuse)
+
+| Field | Scope | Default |
+|---|---|---|
+| `LlmsTxt:ExcludedDoctypeAliases` (top-level) | All routes (`/llms.txt`, `/llms-full.txt`, `.md`) | `[]` |
+| `LlmsTxt:LlmsFullScope:ExcludedDocTypeAliases` (Story 2.2) | `/llms-full.txt` only — further narrowing | `["errorPage", "redirectPage"]` |
+
+The `/llms-full.txt` route applies BOTH filters cumulatively (logical AND-NOT). The `/llms.txt` and `.md` routes only apply the top-level list.
+
+### uSync coexistence
+
+If your site uses [uSync](https://github.com/KevinJump/uSync) or `uSync.Complete` to own the schema lifecycle, set:
+
+```jsonc
+{
+  "LlmsTxt": {
+    "Migrations": {
+      "SkipSettingsDoctype": true
+    }
+  }
+}
+```
+
+This stops the package from registering `LlmsTxtSettingsMigrationPlan` with Umbraco's migration pipeline. uSync then serialises the doctype on first install and owns the lifecycle. The resolver still works — it just falls back fully to appsettings when no `LlmsTxt Settings` content node exists.
+
+**Caveat:** flipping this flag from `false` to `true` AFTER the migration has already run does NOT remove the doctype from the host DB (Umbraco's plan-state record persists the executed state). To relocate schema ownership to uSync, delete the doctype manually first.
+
+### Resolver behaviour at request time
+
+The resolver caches its overlay record at `llms:settings:{host}:{culture}` with TTL `LlmsTxt:SettingsResolverCachePolicySeconds` (default `300s`). Cache invalidation is broadcast-driven via Umbraco's distributed cache refresher — every bound hostname's settings entry is dropped on any `ContentCacheRefresherNotification`, just like the manifest caches. If the resolver throws (e.g. an adopter override misbehaves), the controllers fail-open: log a `Warning` and fall back to the `appsettings.json` snapshot (no doctype overlay, no exclusion list from the doctype). Same shape as Story 2.3's hreflang resolver-throw graceful degradation.
+
+### Public extension point
+
+`ILlmsSettingsResolver` is the fourth public extension point in the package (after `IMarkdownContentExtractor`, `ILlmsTxtBuilder`, `ILlmsFullBuilder`). Override discipline matches the others:
+
+```csharp
+// Override BEFORE our composer runs (any composer with no [ComposeAfter])
+builder.Services.AddScoped<ILlmsSettingsResolver, MyResolver>();
+// Or AFTER our composer
+[ComposeAfter(typeof(SettingsComposer))]
+public sealed class MyComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder b)
+        => b.Services.AddScoped<ILlmsSettingsResolver, MyResolver>();
+}
+```
+
+**Lifetime: Scoped.** The default impl reads request-scoped `IUmbracoContextAccessor`. Adopters re-registering as `Singleton` will hit a captive-dependency exception on first request. The package's `Compose_StartupValidation_LlmsSettingsResolver_NoCaptiveDependency` test pins the contract using `ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }` — adopter overrides should follow the same discipline.
+
+## What's not in v0.4
 
 Coming in later epics:
 
-- Settings doctype + Backoffice dashboard (Epic 3)
+- Backoffice Settings dashboard (Story 3.2 — first adopter-facing Backoffice surface)
+- Zero-config defaults + onboarding hint (Story 3.3)
 - HTTP `Link` discoverability header + Razor TagHelpers + robots.txt audit (Epic 4)
 - Request log + AI traffic dashboard (Epic 5)
 - v1.0 NuGet release readiness (Epic 6)

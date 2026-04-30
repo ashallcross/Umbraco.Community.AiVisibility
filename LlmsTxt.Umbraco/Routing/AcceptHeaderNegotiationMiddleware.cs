@@ -1,7 +1,9 @@
+using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
+using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Web.Common.Routing;
 
 namespace LlmsTxt.Umbraco.Routing;
@@ -22,18 +24,22 @@ namespace LlmsTxt.Umbraco.Routing;
 internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
 {
     private const string MarkdownMediaType = "text/markdown";
+    private const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
 
     private readonly IMarkdownContentExtractor _extractor;
     private readonly IMarkdownResponseWriter _writer;
+    private readonly ILlmsSettingsResolver _settingsResolver;
     private readonly ILogger<AcceptHeaderNegotiationMiddleware> _logger;
 
     public AcceptHeaderNegotiationMiddleware(
         IMarkdownContentExtractor extractor,
         IMarkdownResponseWriter writer,
+        ILlmsSettingsResolver settingsResolver,
         ILogger<AcceptHeaderNegotiationMiddleware> logger)
     {
         _extractor = extractor;
         _writer = writer;
+        _settingsResolver = settingsResolver;
         _logger = logger;
     }
 
@@ -83,6 +89,28 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
         var content = routeValues.PublishedRequest.PublishedContent;
         var culture = routeValues.PublishedRequest.Culture;
         var canonicalPath = context.Request.Path.Value ?? "/";
+
+        // Story 3.1 § Failure & Edge Cases line 463 — exclusion check on the
+        // negotiation path. Without it, an excluded page accessed via
+        // `Accept: text/markdown` on its canonical URL would still be served
+        // as Markdown (the middleware bypasses MarkdownController). Same
+        // shape as MarkdownController.IsExcludedAsync: per-page bool first,
+        // resolver second; resolver throws fail-open per spec.
+        var host = context.Request.Host.HasValue ? context.Request.Host.Host : null;
+        if (await IsExcludedAsync(content, culture, host, context.RequestAborted))
+        {
+            _logger.LogInformation(
+                "Accept-negotiation — page excluded from LLM exports {ContentKey} {Path}",
+                content.Key,
+                canonicalPath);
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            context.Response.Headers[Constants.HttpHeaders.CacheControl] = "no-store";
+            context.Response.ContentType = "application/problem+json; charset=utf-8";
+            await context.Response.WriteAsync(
+                "{\"title\":\"Page excluded from LLM exports\",\"status\":404}",
+                context.RequestAborted);
+            return;
+        }
 
         var result = await _extractor.ExtractAsync(content, culture, context.RequestAborted);
 
@@ -136,6 +164,58 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
     {
         VaryHeaderHelper.AppendAccept((HttpContext)state);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Story 3.1 — return <c>true</c> when the page should be omitted from LLM
+    /// exports on the Accept-negotiation divert path. Mirrors
+    /// <c>MarkdownController.IsExcludedAsync</c>: per-page bool checked first
+    /// (no try/catch — a throwing custom property converter is a defect that
+    /// should surface), resolver second (fail-open on throw to avoid
+    /// blackholing every request when the resolver glitches).
+    /// </summary>
+    private async Task<bool> IsExcludedAsync(
+        IPublishedContent content,
+        string? culture,
+        string? host,
+        CancellationToken cancellationToken)
+    {
+        // Per-page bool — invariant composition; pass culture: null. See
+        // MarkdownController.TryReadExcludeBool for the trap rationale.
+        _ = culture;
+        var prop = content.GetProperty(ExcludeFromLlmExportsAlias);
+        if (prop is not null && prop.HasValue(culture: null))
+        {
+            var value = prop.GetValue(culture: null);
+            if (value is bool b && b)
+            {
+                return true;
+            }
+        }
+
+        ResolvedLlmsSettings resolved;
+        try
+        {
+            resolved = await _settingsResolver
+                .ResolveAsync(host, culture, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Accept-negotiation — ILlmsSettingsResolver threw for {Host} {Culture}; treating as not-excluded (fail-open)",
+                host,
+                culture);
+            return false;
+        }
+
+        return resolved.ExcludedDoctypeAliases
+            .Contains(content.ContentType.Alias, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>

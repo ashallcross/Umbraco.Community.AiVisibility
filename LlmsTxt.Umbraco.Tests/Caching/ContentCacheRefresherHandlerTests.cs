@@ -427,14 +427,14 @@ public class ContentCacheRefresherHandlerTests
     }
 
     [Test]
-    public async Task WildcardDomainBinding_LlmsFull_TtlOnlyInvalidation_DocumentedTradeoff()
+    public async Task WildcardDomainBinding_LlmsFull_PrefixClear_InvalidatesAllSubdomains()
     {
-        // Same trade-off as the /llms.txt wildcard test (deferred-work.md § Story 2.1
-        // first bullet) — wildcards have no concrete request host to invalidate by,
-        // so subdomain manifests cached under llms:llmsfull:foo.example.com:* survive
-        // until TTL.
+        // Story 3.1 fix — the prefix-clear approach drops the per-IDomain walk
+        // and clears the entire `llms:llmsfull:` namespace on any refresh. Side
+        // benefit: wildcard subdomain caches now invalidate too, closing the
+        // Story 2.1 deferred trade-off (deferred-work.md § Story 2.1 first
+        // bullet — formerly TTL-only invalidation).
         SeedFullManifestCache("foo.example.com", "en-gb");
-        SeedDomainsRaw(Domain("*.example.com"));
         SeedCacheAndIndex(Root);
         var handler = MakeHandler();
         var payload = new ContentCacheRefresher.JsonPayload
@@ -445,18 +445,20 @@ public class ContentCacheRefresherHandlerTests
 
         await handler.HandleAsync(BuildNotification(payload), CancellationToken.None);
 
-        AssertFullManifestStillPresent("foo.example.com", "en-gb");
+        AssertFullManifestCleared("foo.example.com", "en-gb");
     }
 
     [Test]
-    public async Task WildcardDomainBinding_NoConcreteHostInvalidation()
+    public async Task UnboundHost_PrefixClear_InvalidatesUnregisteredHostnames()
     {
-        // Wildcard ("*.example.com") doesn't have a concrete request host to invalidate
-        // by — matching subdomains will cache against their own host segment, so they
-        // get cleared when their own subdomain's request comes through later. The
-        // handler must skip wildcards without erroring.
-        SeedManifestCache("foo.example.com", "en-gb");
-        SeedDomainsRaw(Domain("*.example.com"));
+        // Story 3.1 fix — pessimistic prefix-clear invalidates EVERY host's
+        // manifest cache, including hosts that aren't bound as Umbraco
+        // IDomains (localhost dev, reverse-proxy internal hostnames, alias
+        // hosts). Surfaced at Story 3.1 manual gate Step 4 — the original
+        // per-IDomain walk left localhost manifest stale across publish,
+        // requiring a TestSite restart for editor changes to take effect.
+        SeedManifestCache("localhost", "en-gb");
+        SeedFullManifestCache("localhost", "en-gb");
         SeedCacheAndIndex(Root);
         var handler = MakeHandler();
         var payload = new ContentCacheRefresher.JsonPayload
@@ -467,10 +469,11 @@ public class ContentCacheRefresherHandlerTests
 
         await handler.HandleAsync(BuildNotification(payload), CancellationToken.None);
 
-        // The seeded foo.example.com manifest entry is NOT cleared because no
-        // concrete IDomain matches it. Acceptable trade-off documented in the
-        // handler's xmldoc.
-        AssertManifestStillPresent("foo.example.com", "en-gb");
+        Assert.Multiple(() =>
+        {
+            AssertManifestCleared("localhost", "en-gb");
+            AssertFullManifestCleared("localhost", "en-gb");
+        });
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -482,7 +485,6 @@ public class ContentCacheRefresherHandlerTests
             _appCaches,
             _index,
             _navigation,
-            _domainService,
             NullLogger<ContentCacheRefresherHandler>.Instance);
 
     private static ContentCacheRefresherNotification BuildNotification(ContentCacheRefresher.JsonPayload payload)
@@ -573,5 +575,90 @@ public class ContentCacheRefresherHandlerTests
         d.RootContentId.Returns((int?)42);
         d.LanguageIsoCode.Returns("en-GB");
         return d;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 3.1 — settings cache namespace
+    // ────────────────────────────────────────────────────────────────────────
+
+    private void SeedSettingsCache(string host, string culture)
+    {
+        // Story 3.1 — settings cache key is host-independent (D1-A decision,
+        // code review 2026-04-30). The host parameter is retained on these
+        // helpers for symmetry with SeedManifestCache, but the key it produces
+        // depends only on culture. The host argument is unused.
+        _ = host;
+        var key = LlmsCacheKeys.Settings(culture);
+        _appCaches.RuntimeCache.Insert(key, () => $"settings-{culture}", TimeSpan.FromMinutes(5));
+    }
+
+    private void AssertSettingsCleared(string host, string culture)
+    {
+        _ = host;
+        var key = LlmsCacheKeys.Settings(culture);
+        Assert.That(_appCaches.RuntimeCache.Get(key), Is.Null,
+            $"expected llms:settings cache key '{key}' to have been cleared");
+    }
+
+    [Test]
+    public async Task RefreshNode_ClearsSettingsNamespace_AlongsideManifests()
+    {
+        // Story 3.1 AC5 — a Settings-node refresh OR any per-page boolean
+        // toggle must clear ALL THREE namespaces: per-page, manifest, and the
+        // new resolver-settings namespace. The handler clears manifest +
+        // settings via prefix-walk on each namespace.
+        // Settings cache is host-independent post-D1-A — pin distinct cultures
+        // to prove the prefix walk reaches every entry.
+        SeedManifestCache("sitea.example", "en-gb");
+        SeedFullManifestCache("sitea.example", "en-gb");
+        SeedSettingsCache(host: "sitea.example", culture: "en-gb");
+        SeedSettingsCache(host: "sitea.example", culture: "fr-fr");
+        SeedManifestCache("siteb.example", "en-gb");
+        SeedFullManifestCache("siteb.example", "en-gb");
+        SeedDomains("sitea.example", "siteb.example");
+        SeedCacheAndIndex(Root);
+        var handler = MakeHandler();
+        var payload = new ContentCacheRefresher.JsonPayload
+        {
+            Key = Root,
+            ChangeTypes = TreeChangeTypes.RefreshNode,
+        };
+
+        await handler.HandleAsync(BuildNotification(payload), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            AssertSettingsCleared(host: "sitea.example", culture: "en-gb");
+            AssertSettingsCleared(host: "sitea.example", culture: "fr-fr");
+            AssertManifestCleared("sitea.example", "en-gb");
+            AssertFullManifestCleared("sitea.example", "en-gb");
+        });
+    }
+
+    [Test]
+    public async Task RefreshAll_ClearsSettingsNamespace_ViaPrefixWalk()
+    {
+        // RefreshAll's existing ClearByKey("llms:") prefix-walk covers the new
+        // llms:settings: namespace too — no extra code needed in the handler
+        // for that path. Pin the contract so a future refactor can't silently
+        // narrow the prefix walk. Settings cache is host-independent post-D1-A;
+        // we seed distinct cultures rather than distinct hosts.
+        SeedSettingsCache(host: "sitea.example", culture: "en-gb");
+        SeedSettingsCache(host: "sitea.example", culture: "fr-fr");
+        SeedSettingsCache(host: "sitea.example", culture: "de-de");
+        SeedDomains("sitea.example", "siteb.example");
+        var handler = MakeHandler();
+        var notification = new ContentCacheRefresherNotification(
+            messageObject: Array.Empty<ContentCacheRefresher.JsonPayload>(),
+            messageType: MessageType.RefreshAll);
+
+        await handler.HandleAsync(notification, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            AssertSettingsCleared(host: "sitea.example", culture: "en-gb");
+            AssertSettingsCleared(host: "sitea.example", culture: "fr-fr");
+            AssertSettingsCleared(host: "sitea.example", culture: "de-de");
+        });
     }
 }

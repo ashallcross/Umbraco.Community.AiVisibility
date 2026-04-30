@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Cache;
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;
-using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Services.Changes;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Sync;
@@ -33,20 +32,21 @@ internal sealed class ContentCacheRefresherHandler
     private readonly AppCaches _appCaches;
     private readonly ILlmsCacheKeyIndex _index;
     private readonly IDocumentNavigationQueryService _navigation;
-    private readonly IDomainService _domainService;
     private readonly ILogger<ContentCacheRefresherHandler> _logger;
 
     public ContentCacheRefresherHandler(
         AppCaches appCaches,
         ILlmsCacheKeyIndex index,
         IDocumentNavigationQueryService navigation,
-        IDomainService domainService,
         ILogger<ContentCacheRefresherHandler> logger)
     {
+        // Story 3.1 — IDomainService dependency dropped. Manifest invalidation
+        // now uses a single per-namespace prefix-clear instead of walking
+        // bound hostnames (see ClearManifestsForBoundHostnames for the
+        // rationale).
         _appCaches = appCaches;
         _index = index;
         _navigation = navigation;
-        _domainService = domainService;
         _logger = logger;
     }
 
@@ -96,7 +96,7 @@ internal sealed class ContentCacheRefresherHandler
         // changed node only belongs to one site; cheaper than mapping nodes to
         // hosts at invalidation time, and manifests are cheap to rebuild
         // (architecture line 320).
-        ClearManifestsForBoundHostnames();
+        ClearAllManifestNamespaces();
 
         return Task.CompletedTask;
     }
@@ -150,53 +150,50 @@ internal sealed class ContentCacheRefresherHandler
         }
     }
 
-    private void ClearManifestsForBoundHostnames()
+    /// <summary>
+    /// Story 3.1 — pessimistic prefix-clear of every manifest / settings
+    /// namespace in one call. Renamed from <c>ClearManifestsForBoundHostnames</c>
+    /// (code review 2026-04-30) — the method no longer iterates over bound
+    /// hostnames, it clears the full <c>llms:llmstxt:</c> /
+    /// <c>llms:llmsfull:</c> / <c>llms:settings:</c> namespaces.
+    /// </summary>
+    private void ClearAllManifestNamespaces()
     {
+        // Replaces the original Story 2.1 per-IDomain-walk approach which only
+        // cleared hosts that were bound as Umbraco IDomains, leaving the
+        // request-cached entries for unbound hosts (e.g. localhost dev,
+        // reverse-proxy internal hostnames, alias hosts pointing at the same
+        // site) stale until TTL.
+        // <para>
+        // Surfaced at Story 3.1 manual gate Step 4 — editor publish on a
+        // TestSite reachable via localhost did not invalidate the localhost
+        // manifest cache because the IDomainService had no localhost binding.
+        // The per-host walk left the editor needing a TestSite restart for
+        // changes to take effect, which fails the AC5 "publish-then-fresh"
+        // editor-experience contract.
+        // </para>
+        // <para>
+        // Trade-off: a single per-node refresh now clears every hostname's
+        // manifest cache rather than just the affected one. On multi-tenant
+        // setups that's slightly more rebuild work, but manifests are cheap
+        // (architecture line 320) and the rebuild is a single-flight against
+        // the published cache. The previous "per-host precision" claim was
+        // mostly cosmetic anyway because the per-page cache (`llms:page:`)
+        // already prefix-clears by node key (NOT by host) — the host
+        // segmentation only ever bought us "don't rebuild the manifest for
+        // unaffected sites", which is sub-millisecond saved work.
+        // </para>
         try
         {
-            var hostnames = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var domain in _domainService.GetAll(includeWildcards: true))
-            {
-                var raw = domain.DomainName;
-                if (string.IsNullOrWhiteSpace(raw) || raw.StartsWith('/'))
-                {
-                    // Culture-only "/en/" style binding — never carries a hostname.
-                    continue;
-                }
-
-                // Strip optional scheme then normalise (lowercase, port-stripped).
-                var schemeIdx = raw.IndexOf("://", StringComparison.Ordinal);
-                var hostPart = schemeIdx < 0 ? raw : raw[(schemeIdx + 3)..];
-                if (hostPart.StartsWith("*.", StringComparison.Ordinal))
-                {
-                    // Wildcard binding has no concrete request host to invalidate by;
-                    // matching subdomains will cache against their own host segment.
-                    continue;
-                }
-
-                var normalised = LlmsCacheKeys.NormaliseHost(hostPart);
-                if (normalised != "_")
-                {
-                    hostnames.Add(normalised);
-                }
-            }
-
-            foreach (var host in hostnames)
-            {
-                _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsTxtHostPrefix(host));
-                // Story 2.2 — also drop the /llms-full.txt manifest cache for the
-                // same hostname. Same pessimistic-clear reasoning: any node change
-                // can change the manifest output, manifests are cheap to rebuild,
-                // wildcard bindings continue to rely on TTL-only invalidation
-                // (documented trade-off carried over from Story 2.1).
-                _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsFullHostPrefix(host));
-            }
+            _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsTxtPrefix);
+            _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsFullPrefix);
+            _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.SettingsPrefix);
         }
         catch (Exception ex)
         {
-            // Defensive — IDomainService access shouldn't throw, but if it does the
-            // per-page loop has already done its job; don't poison the broadcast.
-            _logger.LogError(ex, "Manifest cache invalidation failed during IDomainService walk");
+            // Defensive — should never throw, but the per-page loop has
+            // already done its job; don't poison the broadcast.
+            _logger.LogError(ex, "Manifest / settings cache prefix-clear failed");
         }
     }
 

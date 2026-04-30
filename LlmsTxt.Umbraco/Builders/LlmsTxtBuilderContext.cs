@@ -36,9 +36,22 @@ namespace LlmsTxt.Umbraco.Builders;
 /// <see cref="ILlmsTxtBuilder"/> and ignore this list.
 /// </param>
 /// <param name="Settings">
-/// Snapshot of <see cref="LlmsTxtSettings"/> at the time the request arrived.
-/// Snapshot semantics keep a single manifest build internally consistent even if
-/// <c>IOptionsMonitor</c> ticks during the build.
+/// Story 3.1 — <see cref="ResolvedLlmsSettings"/> overlay record (Settings
+/// doctype values overlaid onto the appsettings snapshot). The builder reads
+/// <see cref="ResolvedLlmsSettings.SiteName"/> /
+/// <see cref="ResolvedLlmsSettings.SiteSummary"/> directly for the H1 /
+/// blockquote (overlaid values); fields the resolver doesn't overlay
+/// (<c>LlmsTxtBuilder.SectionGrouping</c>, <c>LlmsTxtBuilder.PageSummaryPropertyAlias</c>,
+/// <c>Hreflang.Enabled</c>) are reachable via
+/// <see cref="ResolvedLlmsSettings.BaseSettings"/>.
+/// <para>
+/// <b>Breaking change from Story 2.x:</b> the type changed from
+/// <c>LlmsTxtSettings</c> to <see cref="ResolvedLlmsSettings"/>. Adopter
+/// implementations of <see cref="ILlmsTxtBuilder"/> that read
+/// <c>context.Settings.LlmsTxtBuilder.SectionGrouping</c> must update to
+/// <c>context.Settings.BaseSettings.LlmsTxtBuilder.SectionGrouping</c>
+/// (etc.). Documented in the v0.4 change log.
+/// </para>
 /// </param>
 /// <param name="HreflangVariants">
 /// Story 2.3 — sibling-culture variants per page key, or <c>null</c> when
@@ -54,7 +67,7 @@ public sealed record LlmsTxtBuilderContext(
     string Culture,
     IPublishedContent RootContent,
     IReadOnlyList<IPublishedContent> Pages,
-    LlmsTxtSettings Settings,
+    ResolvedLlmsSettings Settings,
     IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? HreflangVariants = null);
 
 /// <summary>
