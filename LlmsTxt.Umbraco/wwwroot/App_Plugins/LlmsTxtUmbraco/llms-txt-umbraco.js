@@ -10,7 +10,7 @@ const t = [
     type: "dashboard",
     alias: "Llms.Dashboard.Settings",
     name: "LlmsTxt Settings Dashboard",
-    element: () => import("./llms-settings-dashboard.element-dHICHNEw.js"),
+    element: () => import("./llms-settings-dashboard.element-BkfV2ssp.js"),
     weight: 100,
     meta: {
       label: "LlmsTxt",

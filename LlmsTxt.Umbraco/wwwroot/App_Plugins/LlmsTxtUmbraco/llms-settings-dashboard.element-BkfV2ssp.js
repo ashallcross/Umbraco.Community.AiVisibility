@@ -1,28 +1,30 @@
-import { LitElement as A, html as n, nothing as v, css as w, property as D, state as p, customElement as N } from "@umbraco-cms/backoffice/external/lit";
-import { UmbElementMixin as P } from "@umbraco-cms/backoffice/element-api";
-import { UMB_AUTH_CONTEXT as E } from "@umbraco-cms/backoffice/auth";
-var L = Object.defineProperty, z = Object.getOwnPropertyDescriptor, x = (e) => {
+import { LitElement as E, html as l, nothing as v, css as P, property as O, state as h, customElement as L } from "@umbraco-cms/backoffice/external/lit";
+import { UmbElementMixin as z } from "@umbraco-cms/backoffice/element-api";
+import { UMB_AUTH_CONTEXT as U } from "@umbraco-cms/backoffice/auth";
+import { UMB_CURRENT_USER_CONTEXT as I } from "@umbraco-cms/backoffice/current-user";
+import { firstValueFrom as M, filter as R } from "@umbraco-cms/backoffice/external/rxjs";
+var F = Object.defineProperty, q = Object.getOwnPropertyDescriptor, y = (e) => {
   throw TypeError(e);
-}, m = (e, t, a, s) => {
-  for (var i = s > 1 ? void 0 : s ? z(t, a) : t, o = e.length - 1, d; o >= 0; o--)
-    (d = e[o]) && (i = (s ? d(t, a, i) : d(i)) || i);
-  return s && i && L(t, a, i), i;
-}, O = (e, t, a) => t.has(e) || x("Cannot " + a), M = (e, t, a) => t.has(e) ? x("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), l = (e, t, a) => (O(e, t, "access private method"), a), r, h, _, f, y, S, b, k, T, C;
-const $ = "/umbraco/management/api/v1/llmstxt/settings/", F = "/umbraco/management/api/v1/llmstxt/settings/doctypes", U = "/umbraco/management/api/v1/llmstxt/settings/excluded-pages", H = 3e3;
-let c = class extends P(A) {
+}, d = (e, t, s, a) => {
+  for (var i = a > 1 ? void 0 : a ? q(t, s) : t, n = e.length - 1, m; n >= 0; n--)
+    (m = e[n]) && (i = (a ? m(t, s, i) : m(i)) || i);
+  return a && i && F(t, s, i), i;
+}, B = (e, t, s) => t.has(e) || y("Cannot " + s), G = (e, t, s) => t.has(e) ? y("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, s), o = (e, t, s) => (B(e, t, "access private method"), s), r, p, _, f, b, x, S, k, T, C, $, D, A;
+const N = "/umbraco/management/api/v1/llmstxt/settings/", H = "/umbraco/management/api/v1/llmstxt/settings/doctypes", j = "/umbraco/management/api/v1/llmstxt/settings/excluded-pages", X = 3e3, w = "llms.onboarding.dismissed.v1.", V = 2e3, J = "LlmsTxt is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
+let u = class extends z(E) {
   constructor() {
-    super(...arguments), M(this, r), this._state = { kind: "loading" }, this._saveState = { kind: "idle" }, this._excludedPages = { kind: "loading" }, this._formState = {
+    super(...arguments), G(this, r), this._state = { kind: "loading" }, this._saveState = { kind: "idle" }, this._excludedPages = { kind: "loading" }, this._formState = {
       siteName: "",
       siteSummary: "",
       excludedDoctypeAliases: []
-    }, this._initialFormState = {
+    }, this._onboardingDismissed = !0, this._currentUserUnique = null, this._initialFormState = {
       siteName: "",
       siteSummary: "",
       excludedDoctypeAliases: []
     }, this._saveToastTimer = null, this._abortController = null;
   }
   connectedCallback() {
-    super.connectedCallback(), !(this._state.kind === "ready" && this._hasChanges()) && l(this, r, _).call(this);
+    super.connectedCallback(), o(this, r, T).call(this), !(this._state.kind === "ready" && this._hasChanges()) && o(this, r, _).call(this);
   }
   disconnectedCallback() {
     this._saveToastTimer && (clearTimeout(this._saveToastTimer), this._saveToastTimer = null), this._abortController && (this._abortController.abort(), this._abortController = null), super.disconnectedCallback();
@@ -32,9 +34,9 @@ let c = class extends P(A) {
   }
   _hasChanges() {
     if (this._formState.siteName !== this._initialFormState.siteName || this._formState.siteSummary !== this._initialFormState.siteSummary || this._formState.excludedDoctypeAliases.length !== this._initialFormState.excludedDoctypeAliases.length) return !0;
-    const e = (s, i) => s.toLowerCase().localeCompare(i.toLowerCase()), t = [...this._formState.excludedDoctypeAliases].sort(e), a = [...this._initialFormState.excludedDoctypeAliases].sort(e);
-    for (let s = 0; s < t.length; s += 1)
-      if (t[s] !== a[s]) return !0;
+    const e = (a, i) => a.toLowerCase().localeCompare(i.toLowerCase()), t = [...this._formState.excludedDoctypeAliases].sort(e), s = [...this._initialFormState.excludedDoctypeAliases].sort(e);
+    for (let a = 0; a < t.length; a += 1)
+      if (t[a] !== s[a]) return !0;
     return !1;
   }
   // ────────────────────────────────────────────────────────────────────────
@@ -42,19 +44,20 @@ let c = class extends P(A) {
   // ────────────────────────────────────────────────────────────────────────
   render() {
     if (this._state.kind === "loading")
-      return n`<uui-box headline="LlmsTxt — Settings">
+      return l`<uui-box headline="LlmsTxt — Settings">
         <uui-loader-bar></uui-loader-bar>
         <p class="muted">Loading settings…</p>
       </uui-box>`;
     if (this._state.kind === "error")
-      return n`<uui-box headline="LlmsTxt — Settings">
+      return l`<uui-box headline="LlmsTxt — Settings">
         <p class="error">Failed to load: ${this._state.message}</p>
         <uui-button look="secondary" @click=${() => {
-        l(this, r, _).call(this);
+        o(this, r, _).call(this);
       }}>Retry</uui-button>
       </uui-box>`;
-    const { settings: e, doctypes: t } = this._state, a = this._formState.siteSummary.length, s = a > e.summaryMaxChars, i = this._canSave();
-    return n`
+    const { settings: e, doctypes: t } = this._state, s = this._formState.siteSummary.length, a = s > e.summaryMaxChars, i = this._canSave();
+    return l`
+      ${o(this, r, $).call(this)}
       <uui-box headline="LlmsTxt — Settings">
         <p class="intro">
           Configure the package's site name, site summary, and the list of
@@ -67,7 +70,7 @@ let c = class extends P(A) {
           <uui-input
             id="siteName"
             .value=${this._formState.siteName}
-            @input=${(o) => l(this, r, S).call(this, o)}
+            @input=${(n) => o(this, r, x).call(this, n)}
             placeholder="Override the H1 / site name on /llms.txt"
           ></uui-input>
         </div>
@@ -77,30 +80,30 @@ let c = class extends P(A) {
           <uui-textarea
             id="siteSummary"
             .value=${this._formState.siteSummary}
-            @input=${(o) => l(this, r, b).call(this, o)}
+            @input=${(n) => o(this, r, S).call(this, n)}
             placeholder="One-paragraph summary emitted as the blockquote under the H1"
           ></uui-textarea>
-          <div class="counter ${s ? "over" : ""}">
-            ${a} / ${e.summaryMaxChars}
+          <div class="counter ${a ? "over" : ""}">
+            ${s} / ${e.summaryMaxChars}
           </div>
-          ${s ? n`<div class="validation">Site summary cannot exceed ${e.summaryMaxChars} characters.</div>` : v}
+          ${a ? l`<div class="validation">Site summary cannot exceed ${e.summaryMaxChars} characters.</div>` : v}
         </div>
 
         <div class="field">
           <label>Excluded content types</label>
-          ${t.length === 0 ? n`<p class="muted">No content types are configured yet.</p>` : n`<div class="alias-list">
-                ${t.map((o) => {
-      const d = this._formState.excludedDoctypeAliases.some(
-        (u) => u.toLowerCase() === o.alias.toLowerCase()
+          ${t.length === 0 ? l`<p class="muted">No content types are configured yet.</p>` : l`<div class="alias-list">
+                ${t.map((n) => {
+      const m = this._formState.excludedDoctypeAliases.some(
+        (c) => c.toLowerCase() === n.alias.toLowerCase()
       );
-      return n`<label class="alias-row">
+      return l`<label class="alias-row">
                     <input
                       type="checkbox"
-                      .checked=${d}
-                      @change=${(u) => l(this, r, k).call(this, o.alias, u.target.checked)}
+                      .checked=${m}
+                      @change=${(c) => o(this, r, k).call(this, n.alias, c.target.checked)}
                     />
-                    <span class="alias-name">${o.name}</span>
-                    <code class="alias-code">${o.alias}</code>
+                    <span class="alias-name">${n.name}</span>
+                    <code class="alias-code">${n.alias}</code>
                   </label>`;
     })}
               </div>`}
@@ -112,12 +115,12 @@ let c = class extends P(A) {
             color="positive"
             ?disabled=${!i}
             @click=${() => {
-      l(this, r, y).call(this);
+      o(this, r, b).call(this);
     }}
           >
-            ${this._saveState.kind === "saving" ? n`<uui-loader></uui-loader>&nbsp;Saving…` : "Save"}
+            ${this._saveState.kind === "saving" ? l`<uui-loader></uui-loader>&nbsp;Saving…` : "Save"}
           </uui-button>
-          ${l(this, r, T).call(this)}
+          ${o(this, r, D).call(this)}
         </div>
       </uui-box>
 
@@ -127,57 +130,57 @@ let c = class extends P(A) {
           via the <code>llmsTxtSettingsComposition</code> composition. Toggle
           per-page exclusions in the standard Umbraco content tree.
         </p>
-        ${l(this, r, C).call(this)}
+        ${o(this, r, A).call(this)}
       </uui-box>
     `;
   }
 };
 r = /* @__PURE__ */ new WeakSet();
-h = async function(e, t = {}) {
+p = async function(e, t = {}) {
   this._abortController || (this._abortController = new AbortController());
-  const a = this._abortController.signal;
+  const s = this._abortController.signal;
   try {
-    const s = await this.getContext(E);
-    if (!s)
+    const a = await this.getContext(U);
+    if (!a)
       return { ok: !1, status: 0, message: "Backoffice auth context unavailable. Please refresh and try again." };
-    const i = s.getOpenApiConfiguration(), o = await i.token(), d = `${i.base}${e}`, u = await fetch(d, {
+    const i = a.getOpenApiConfiguration(), n = await i.token(), m = `${i.base}${e}`, c = await fetch(m, {
       method: t.method ?? "GET",
       credentials: i.credentials,
-      signal: a,
+      signal: s,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${o}`
+        Authorization: `Bearer ${n}`
       },
       body: t.body !== void 0 ? JSON.stringify(t.body) : void 0
     });
-    if (!u.ok) {
+    if (!c.ok) {
       let g;
       try {
-        g = await u.json();
+        g = await c.json();
       } catch {
       }
       return {
         ok: !1,
-        status: u.status,
+        status: c.status,
         problem: g,
-        message: g?.detail ?? `HTTP ${u.status} ${u.statusText}`
+        message: g?.detail ?? `HTTP ${c.status} ${c.statusText}`
       };
     }
-    return { ok: !0, data: await u.json() };
-  } catch (s) {
-    return s instanceof DOMException && s.name === "AbortError" || a.aborted ? { ok: !1, status: 0, message: "Request aborted.", aborted: !0 } : {
+    return { ok: !0, data: await c.json() };
+  } catch (a) {
+    return a instanceof DOMException && a.name === "AbortError" || s.aborted ? { ok: !1, status: 0, message: "Request aborted.", aborted: !0 } : {
       ok: !1,
       status: 0,
-      message: s instanceof Error ? s.message : String(s)
+      message: a instanceof Error ? a.message : String(a)
     };
   }
 };
 _ = async function() {
   this._state = { kind: "loading" };
   const [e, t] = await Promise.all([
-    l(this, r, h).call(this, $),
-    l(this, r, h).call(this, F)
+    o(this, r, p).call(this, N),
+    o(this, r, p).call(this, H)
   ]);
   if (!this.isConnected) return;
   if (!e.ok) {
@@ -190,20 +193,20 @@ _ = async function() {
     this._state = { kind: "error", message: t.message };
     return;
   }
-  const a = e.data, s = {
-    siteName: a.siteName ?? "",
-    siteSummary: a.siteSummary ?? "",
-    excludedDoctypeAliases: [...a.excludedDoctypeAliases]
-  };
-  this._formState = s, this._initialFormState = {
-    siteName: s.siteName,
-    siteSummary: s.siteSummary,
+  const s = e.data, a = {
+    siteName: s.siteName ?? "",
+    siteSummary: s.siteSummary ?? "",
     excludedDoctypeAliases: [...s.excludedDoctypeAliases]
-  }, this._state = { kind: "ready", settings: a, doctypes: t.data }, l(this, r, f).call(this);
+  };
+  this._formState = a, this._initialFormState = {
+    siteName: a.siteName,
+    siteSummary: a.siteSummary,
+    excludedDoctypeAliases: [...a.excludedDoctypeAliases]
+  }, this._state = { kind: "ready", settings: s, doctypes: t.data }, o(this, r, f).call(this);
 };
 f = async function() {
   this._excludedPages = { kind: "loading" };
-  const e = await l(this, r, h).call(this, `${U}?skip=0&take=100`);
+  const e = await o(this, r, p).call(this, `${j}?skip=0&take=100`);
   if (this.isConnected) {
     if (!e.ok) {
       if (e.aborted) return;
@@ -213,11 +216,11 @@ f = async function() {
     this._excludedPages = { kind: "ready", page: e.data };
   }
 };
-y = async function() {
+b = async function() {
   if (!this._canSave())
     return;
   this._saveToastTimer && (clearTimeout(this._saveToastTimer), this._saveToastTimer = null), this._saveState = { kind: "saving" };
-  const e = await l(this, r, h).call(this, $, {
+  const e = await o(this, r, p).call(this, N, {
     method: "PUT",
     body: {
       siteName: this._formState.siteName.length === 0 ? null : this._formState.siteName,
@@ -231,47 +234,93 @@ y = async function() {
     this._saveState = { kind: "error", message: e.message };
     return;
   }
-  const t = e.data, a = {
+  const t = e.data, s = {
     siteName: t.siteName ?? "",
     siteSummary: t.siteSummary ?? "",
     excludedDoctypeAliases: [...t.excludedDoctypeAliases]
   };
-  this._formState = a, this._initialFormState = {
-    siteName: a.siteName,
-    siteSummary: a.siteSummary,
-    excludedDoctypeAliases: [...a.excludedDoctypeAliases]
+  this._formState = s, this._initialFormState = {
+    siteName: s.siteName,
+    siteSummary: s.siteSummary,
+    excludedDoctypeAliases: [...s.excludedDoctypeAliases]
   }, this._state.kind === "ready" && (this._state = { ...this._state, settings: t }), this._saveState = { kind: "success" }, this._saveToastTimer = setTimeout(() => {
     this._saveState = { kind: "idle" }, this._saveToastTimer = null;
-  }, H), l(this, r, f).call(this);
+  }, X), o(this, r, f).call(this);
 };
-S = function(e) {
+x = function(e) {
   const t = e.target;
   this._formState = { ...this._formState, siteName: t?.value ?? "" };
 };
-b = function(e) {
+S = function(e) {
   const t = e.target;
   this._formState = { ...this._formState, siteSummary: t?.value ?? "" };
 };
 k = function(e, t) {
-  const a = this._formState.excludedDoctypeAliases, s = e.toLowerCase(), i = a.filter((o) => o.toLowerCase() !== s);
+  const s = this._formState.excludedDoctypeAliases, a = e.toLowerCase(), i = s.filter((n) => n.toLowerCase() !== a);
   this._formState = {
     ...this._formState,
     excludedDoctypeAliases: t ? [...i, e] : i
   };
 };
-T = function() {
-  return this._saveState.kind === "success" ? n`<span class="save-success">Settings saved.</span>` : this._saveState.kind === "error" ? n`<span class="save-error">${this._saveState.message}</span>` : v;
+T = async function() {
+  try {
+    const e = await this.getContext(I);
+    if (!this.isConnected || !e)
+      return;
+    const t = await Promise.race([
+      M(e.unique.pipe(R((i) => !!i))),
+      new Promise(
+        (i) => setTimeout(() => i(null), V)
+      )
+    ]);
+    if (!this.isConnected || (this._currentUserUnique = t, !t))
+      return;
+    const s = w + t;
+    let a = !1;
+    try {
+      a = localStorage.getItem(s) === "1";
+    } catch {
+    }
+    this._onboardingDismissed = a;
+  } catch {
+  }
 };
 C = function() {
+  this._onboardingDismissed = !0;
+  const e = this._currentUserUnique;
+  if (e)
+    try {
+      localStorage.setItem(w + e, "1");
+    } catch {
+    }
+};
+$ = function() {
+  return this._onboardingDismissed ? v : l`
+      <div class="onboarding-notice" role="status">
+        <p class="onboarding-body">${J}</p>
+        <uui-button
+          class="onboarding-dismiss"
+          look="secondary"
+          @click=${() => o(this, r, C).call(this)}
+        >
+          Dismiss
+        </uui-button>
+      </div>
+    `;
+};
+D = function() {
+  return this._saveState.kind === "success" ? l`<span class="save-success">Settings saved.</span>` : this._saveState.kind === "error" ? l`<span class="save-error">${this._saveState.message}</span>` : v;
+};
+A = function() {
   if (this._excludedPages.kind === "loading")
-    return n`<uui-loader-bar></uui-loader-bar>`;
+    return l`<uui-loader-bar></uui-loader-bar>`;
   if (this._excludedPages.kind === "error")
-    return n`<p class="error">${this._excludedPages.message}</p>
+    return l`<p class="error">${this._excludedPages.message}</p>
         <uui-button look="secondary" @click=${() => {
-      l(this, r, f).call(this);
+      o(this, r, f).call(this);
     }}>Retry</uui-button>`;
   const { items: e, total: t } = this._excludedPages.page;
-  return e.length === 0 ? n`<p class="muted">No pages are currently excluded from LLM exports.</p>` : n`
+  return e.length === 0 ? l`<p class="muted">No pages are currently excluded from LLM exports.</p>` : l`
       <p class="muted">Showing ${e.length} of ${t} excluded page${t === 1 ? "" : "s"}.</p>
       <table class="excluded-table">
         <thead>
@@ -284,19 +333,19 @@ C = function() {
         </thead>
         <tbody>
           ${e.map(
-    (a) => n`<tr>
-              <td>${a.name}</td>
-              <td><code>${a.path || "(no URL)"}</code></td>
-              <td>${a.contentTypeName}</td>
-              <td>${a.culture ?? "—"}</td>
+    (s) => l`<tr>
+              <td>${s.name}</td>
+              <td><code>${s.path || "(no URL)"}</code></td>
+              <td>${s.contentTypeName}</td>
+              <td>${s.culture ?? "—"}</td>
             </tr>`
   )}
         </tbody>
       </table>
     `;
 };
-c.styles = [
-  w`
+u.styles = [
+  P`
       :host {
         display: block;
         padding: var(--uui-size-layout-1, 24px);
@@ -390,30 +439,56 @@ c.styles = [
         font-family: var(--uui-font-monospace, monospace);
         font-size: 0.9em;
       }
+      /* Story 3.3 — onboarding notice. Inline info banner above the dashboard;
+         per-user dismiss via localStorage keyed by Backoffice user unique. */
+      .onboarding-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--uui-size-space-3, 12px);
+        padding: var(--uui-size-space-4, 16px);
+        margin-bottom: var(--uui-size-layout-1, 24px);
+        background: var(--uui-color-surface-alt, #f3f6fb);
+        border-left: 4px solid var(--uui-color-focus, #3879ff);
+        border-radius: var(--uui-border-radius, 3px);
+      }
+      .onboarding-body {
+        flex: 1;
+        margin: 0;
+        line-height: 1.4;
+      }
+      .onboarding-dismiss {
+        flex-shrink: 0;
+      }
     `
 ];
-m([
-  D({ attribute: !1 })
-], c.prototype, "manifest", 2);
-m([
-  p()
-], c.prototype, "_state", 2);
-m([
-  p()
-], c.prototype, "_saveState", 2);
-m([
-  p()
-], c.prototype, "_excludedPages", 2);
-m([
-  p()
-], c.prototype, "_formState", 2);
-c = m([
-  N("llms-settings-dashboard")
-], c);
-const G = c, q = c;
+d([
+  O({ attribute: !1 })
+], u.prototype, "manifest", 2);
+d([
+  h()
+], u.prototype, "_state", 2);
+d([
+  h()
+], u.prototype, "_saveState", 2);
+d([
+  h()
+], u.prototype, "_excludedPages", 2);
+d([
+  h()
+], u.prototype, "_formState", 2);
+d([
+  h()
+], u.prototype, "_onboardingDismissed", 2);
+d([
+  h()
+], u.prototype, "_currentUserUnique", 2);
+u = d([
+  L("llms-settings-dashboard")
+], u);
+const te = u, se = u;
 export {
-  c as LlmsSettingsDashboardElement,
-  q as default,
-  G as element
+  u as LlmsSettingsDashboardElement,
+  se as default,
+  te as element
 };
-//# sourceMappingURL=llms-settings-dashboard.element-dHICHNEw.js.map
+//# sourceMappingURL=llms-settings-dashboard.element-BkfV2ssp.js.map

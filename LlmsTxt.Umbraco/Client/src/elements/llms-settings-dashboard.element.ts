@@ -9,6 +9,8 @@ import {
 } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
 import { UMB_AUTH_CONTEXT } from "@umbraco-cms/backoffice/auth";
+import { UMB_CURRENT_USER_CONTEXT } from "@umbraco-cms/backoffice/current-user";
+import { filter, firstValueFrom } from "@umbraco-cms/backoffice/external/rxjs";
 import type {
   UmbDashboardElement,
   ManifestDashboard,
@@ -85,6 +87,17 @@ const DOCTYPES_PATH = "/umbraco/management/api/v1/llmstxt/settings/doctypes";
 const EXCLUDED_PAGES_PATH = "/umbraco/management/api/v1/llmstxt/settings/excluded-pages";
 const SAVE_TOAST_TIMEOUT_MS = 3000;
 
+// Story 3.3 — onboarding hint per-user persistence. Keyed by Backoffice user
+// `unique` GUID so multi-user-per-browser deployments isolate dismiss state.
+// `v1.` segment lets a future scheme (e.g. Story 5.2's auto-hide tying into
+// AI traffic logs) ship a parallel key without ambiguity over which version
+// dismissed a given user.
+// Body copy verbatim from epics.md:1067.
+const ONBOARDING_DISMISS_STORAGE_PREFIX = "llms.onboarding.dismissed.v1.";
+const ONBOARDING_RESOLVE_TIMEOUT_MS = 2000;
+const ONBOARDING_BODY =
+  "LlmsTxt is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
+
 @customElement("llms-settings-dashboard")
 export class LlmsSettingsDashboardElement
   extends UmbElementMixin(LitElement)
@@ -101,6 +114,13 @@ export class LlmsSettingsDashboardElement
     siteSummary: "",
     excludedDoctypeAliases: [],
   };
+  // Story 3.3 — onboarding notice dismiss state. Default `true` (hide) until
+  // we resolve the current user + read their per-user flag; this prevents the
+  // notice from flashing on a previously-dismissed user's reload while the
+  // current-user context resolves asynchronously. `_currentUserUnique` stays
+  // null until the context lands.
+  @state() private _onboardingDismissed: boolean = true;
+  @state() private _currentUserUnique: string | null = null;
 
   // Captured snapshot of the form on first ready — drives the "no changes →
   // disable Save" client-side gate (AC8).
@@ -115,6 +135,11 @@ export class LlmsSettingsDashboardElement
 
   override connectedCallback(): void {
     super.connectedCallback();
+    // Onboarding state is independent of the dirty-form re-attach guard:
+    // re-mounts with unsaved form changes still need to re-resolve the
+    // current user (the auth context may have landed since the initial
+    // mount). Fire it before the early-return so it always runs.
+    void this.#resolveOnboardingState();
     // Re-attach guard: if the element re-enters the DOM (Backoffice section
     // switch, dev-mode HMR) while the form is dirty, do NOT overwrite the
     // editor's unsaved changes by re-fetching. The existing form state is
@@ -357,6 +382,84 @@ export class LlmsSettingsDashboardElement
   }
 
   // ────────────────────────────────────────────────────────────────────────
+  // Story 3.3 — onboarding notice
+  // ────────────────────────────────────────────────────────────────────────
+
+  async #resolveOnboardingState(): Promise<void> {
+    try {
+      const currentUser = await this.getContext(UMB_CURRENT_USER_CONTEXT);
+      if (!this.isConnected) return;
+      if (!currentUser) {
+        // Context not yet registered (early Backoffice race) — leave the
+        // notice hidden until a re-mount tries again. Worst case the editor
+        // sees the notice on the next session.
+        return;
+      }
+      // `currentUser.getUnique()` is the synchronous BehaviorSubject getter:
+      // it returns `undefined` until the context's `load()` has populated
+      // the unique GUID. Awaiting the observable's first defined emission
+      // (race against a 2 s timeout so we never hang) is the canonical
+      // Bellissima pattern for context-backed observable values.
+      const unique = await Promise.race<string | null>([
+        firstValueFrom(currentUser.unique.pipe(filter((u): u is string => !!u))),
+        new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), ONBOARDING_RESOLVE_TIMEOUT_MS),
+        ),
+      ]);
+      if (!this.isConnected) return;
+      this._currentUserUnique = unique;
+      if (!unique) {
+        // Timeout elapsed without a defined `unique` (auth still loading or
+        // user unauthenticated). Leave dismissed=true; a later re-mount
+        // re-runs this resolver.
+        return;
+      }
+      const key = ONBOARDING_DISMISS_STORAGE_PREFIX + unique;
+      let dismissed = false;
+      try {
+        dismissed = localStorage.getItem(key) === "1";
+      } catch {
+        // localStorage access can throw under aggressive privacy modes.
+        // Treat as "not dismissed" so the editor can still see the hint.
+      }
+      this._onboardingDismissed = dismissed;
+    } catch {
+      // If context resolution itself throws, leave dismissed=true (default
+      // initial state) — onboarding is non-essential to the dashboard's
+      // mission, never let it surface as an error toast.
+    }
+  }
+
+  #onDismissOnboarding(): void {
+    this._onboardingDismissed = true;
+    const unique = this._currentUserUnique;
+    if (!unique) return;
+    try {
+      localStorage.setItem(ONBOARDING_DISMISS_STORAGE_PREFIX + unique, "1");
+    } catch {
+      // Storage unavailable — dismiss survives the current session only.
+      // Acceptable; the notice carries no critical UX (Story 5.2's
+      // auto-hide-after-AI-traffic is the long-term replacement).
+    }
+  }
+
+  #renderOnboardingNotice() {
+    if (this._onboardingDismissed) return nothing;
+    return html`
+      <div class="onboarding-notice" role="status">
+        <p class="onboarding-body">${ONBOARDING_BODY}</p>
+        <uui-button
+          class="onboarding-dismiss"
+          look="secondary"
+          @click=${() => this.#onDismissOnboarding()}
+        >
+          Dismiss
+        </uui-button>
+      </div>
+    `;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────────────────────
 
@@ -384,6 +487,7 @@ export class LlmsSettingsDashboardElement
     const canSave = this._canSave();
 
     return html`
+      ${this.#renderOnboardingNotice()}
       <uui-box headline="LlmsTxt — Settings">
         <p class="intro">
           Configure the package's site name, site summary, and the list of
@@ -605,6 +709,26 @@ export class LlmsSettingsDashboardElement
       .excluded-table code {
         font-family: var(--uui-font-monospace, monospace);
         font-size: 0.9em;
+      }
+      /* Story 3.3 — onboarding notice. Inline info banner above the dashboard;
+         per-user dismiss via localStorage keyed by Backoffice user unique. */
+      .onboarding-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--uui-size-space-3, 12px);
+        padding: var(--uui-size-space-4, 16px);
+        margin-bottom: var(--uui-size-layout-1, 24px);
+        background: var(--uui-color-surface-alt, #f3f6fb);
+        border-left: 4px solid var(--uui-color-focus, #3879ff);
+        border-radius: var(--uui-border-radius, 3px);
+      }
+      .onboarding-body {
+        flex: 1;
+        margin: 0;
+        line-height: 1.4;
+      }
+      .onboarding-dismiss {
+        flex-shrink: 0;
       }
     `,
   ];

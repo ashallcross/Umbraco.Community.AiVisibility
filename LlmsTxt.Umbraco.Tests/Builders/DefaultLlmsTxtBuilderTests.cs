@@ -112,6 +112,64 @@ public class DefaultLlmsTxtBuilderTests
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    // Story 3.3 — zero-config defaults pinning
+    // ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Story 3.3 AC2 — zero-config (no SiteName, no SiteSummary, empty
+    /// SectionGrouping) on a rooted site emits H1 (root.Name) + the default
+    /// "Pages" section + bulleted links, with NO empty blockquote line. This
+    /// duplicates <see cref="BuildAsync_DefaultCase_EmitsH1BlockquoteAndPagesSection"/>'s
+    /// surface but exists so the contract is locatable by the AC2 reference.
+    /// </summary>
+    [Test]
+    public async Task BuildAsync_NoSettingsAtAll_OnRootedSite_ProducesH1AndPagesOnly()
+    {
+        var root = StubPage("Home", "homePage", "/", relativeUrl: "/");
+        var about = StubPage("About", "contentPage", "/about", relativeUrl: "/about");
+        StubExtractorReturnsBody(about, body: "About body content.");
+        var ctx = MakeContext(root, new[] { root, about });
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(manifest, Does.StartWith("# Home\n"),
+                "H1 from root.Name (Story 3.3 AC2 — zero-config)");
+            Assert.That(manifest, Does.Not.Contain("\n> "),
+                "no blockquote line at all when SiteSummary is null (Story 3.1 patch — empty `\\n> \\n` case is a strict subset)");
+            Assert.That(manifest, Does.Contain("\n## Pages\n"),
+                "default Pages section emitted (DefaultSectionTitle constant)");
+            Assert.That(manifest, Does.Contain("- [Home](/index.html.md)"),
+                "trailing-slash root produces /index.html.md");
+            Assert.That(manifest, Does.Contain("- [About](/about.md)"),
+                "non-root pages produce /{path}.md");
+        });
+    }
+
+    /// <summary>
+    /// Story 3.3 AC6 (layer-3 only) — explicit empty
+    /// <see cref="LlmsTxtSettings.SiteName"/> (the "editor cleared the field"
+    /// path) falls through the IsNullOrWhiteSpace check at
+    /// <c>DefaultLlmsTxtBuilder.cs:106</c> and emits the root content node's
+    /// <see cref="IPublishedContent.Name"/>. The layer-4 fallback to the
+    /// literal "Site" sentinel for the same input shape is pinned by
+    /// <c>EmptySite_EmitsHeaderOnly</c>; this test does not exercise it.
+    /// </summary>
+    [Test]
+    public async Task BuildAsync_SiteNameClearedExplicitly_FallsBackToRootName()
+    {
+        var root = StubPage("RootName", "homePage", "/", relativeUrl: "/");
+        var settings = new LlmsTxtSettings { SiteName = string.Empty };
+        var ctx = MakeContext(root, new[] { root }, settings);
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        Assert.That(manifest, Does.StartWith("# RootName\n"),
+            "explicit empty SiteName falls back to root.Name (Story 3.3 AC6)");
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // AC4 — section grouping
     // ────────────────────────────────────────────────────────────────────────
 

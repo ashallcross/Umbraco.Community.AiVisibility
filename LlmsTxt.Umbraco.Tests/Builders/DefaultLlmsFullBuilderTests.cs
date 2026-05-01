@@ -138,6 +138,43 @@ public class DefaultLlmsFullBuilderTests
     // AC4 — ordering
     // ────────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Story 3.3 AC3 — zero-config (no `LlmsTxt:` section in appsettings,
+    /// no Settings doctype edits) emits each page in tree-order with no
+    /// truncation footer (the 5 MB default cap is far above the test fixtures'
+    /// few hundred bytes). Pins the contract together: TreeOrder default +
+    /// 5120 KB cap. The default values themselves are pinned by
+    /// <c>LlmsTxtSettingsDefaultsTests</c>; this test pins the builder's
+    /// behaviour when those defaults are in effect.
+    /// </summary>
+    [Test]
+    public async Task BuildAsync_NoSettingsAtAll_EmitsAllPagesInTreeOrder_NoTruncation()
+    {
+        var a = StubPage("Page A", "contentPage", "/a", absolute: "https://sitea.example/a", relativeUrl: "/a");
+        var b = StubPage("Page B", "contentPage", "/b", absolute: "https://sitea.example/b", relativeUrl: "/b");
+        var c = StubPage("Page C", "contentPage", "/c", absolute: "https://sitea.example/c", relativeUrl: "/c");
+        StubExtractorReturnsBody(a, "Body of A.");
+        StubExtractorReturnsBody(b, "Body of B.");
+        StubExtractorReturnsBody(c, "Body of C.");
+        // MakeContext uses the in-code default LlmsTxtSettings — no override
+        var ctx = MakeContext(new[] { a, b, c });
+
+        var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(IndexOf(manifest, "# Page A"), Is.LessThan(IndexOf(manifest, "# Page B")),
+                "tree-order is the default — A before B");
+            Assert.That(IndexOf(manifest, "# Page B"), Is.LessThan(IndexOf(manifest, "# Page C")),
+                "tree-order is the default — B before C");
+            Assert.That(manifest, Does.Not.Contain("_Truncated:"),
+                "no truncation footer when body fits in the 5 MB default cap");
+            Assert.That(manifest, Does.Contain("Body of A."));
+            Assert.That(manifest, Does.Contain("Body of B."));
+            Assert.That(manifest, Does.Contain("Body of C."));
+        });
+    }
+
     [Test]
     public async Task BuildAsync_TreeOrder_PreservesControllerOrder()
     {

@@ -306,6 +306,47 @@ public sealed class MyComposer : IComposer
 
 **Lifetime: Scoped.** The default impl reads request-scoped `IUmbracoContextAccessor`. Adopters re-registering as `Singleton` will hit a captive-dependency exception on first request. The package's `Compose_StartupValidation_LlmsSettingsResolver_NoCaptiveDependency` test pins the contract using `ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }` — adopter overrides should follow the same discipline.
 
+## Zero-config defaults (Story 3.3)
+
+From v0.6, every route the package ships works zero-config — no `LlmsTxt:` section in `appsettings.json`, no Settings doctype edits required. The in-code defaults in [`LlmsTxtSettings`](../LlmsTxt.Umbraco/Configuration/LlmsTxtSettings.cs) produce useful output on a typical Umbraco site as soon as `dotnet add package LlmsTxt.Umbraco` finishes. The package never ships an `appsettings.json` snippet — adopters who want to override the defaults add a `LlmsTxt:` section to their host's own `appsettings.json` (or its environment-specific overlay).
+
+| Route | Zero-config behaviour |
+|---|---|
+| `/llms.txt` | `# {root content node Name}` H1 (or `# Site` literal when no root resolves), no blockquote when no `siteSummary` is set, all published pages grouped under a single `## Pages` section |
+| `/llms-full.txt` | Whole-site scope (no doctype narrowing), tree-order page emission, 5 MB body cap |
+| `GET /{path}.md` | Per-page extracted Markdown (with frontmatter) for any published page; `404` for excluded pages |
+
+### Effective defaults table
+
+| Setting | Default | Source |
+|---|---|---|
+| `LlmsTxt:MaxLlmsFullSizeKb` | `5120` | [`LlmsTxtSettings.cs`](../LlmsTxt.Umbraco/Configuration/LlmsTxtSettings.cs) |
+| `LlmsTxt:CachePolicySeconds` (per-page) | `60` | same |
+| `LlmsTxt:LlmsTxtBuilder:CachePolicySeconds` | `300` | same |
+| `LlmsTxt:LlmsTxtBuilder:PageSummaryPropertyAlias` | `"metaDescription"` | same |
+| `LlmsTxt:LlmsFullBuilder:Order` | `TreeOrder` | same |
+| `LlmsTxt:LlmsFullBuilder:CachePolicySeconds` | `300` | same |
+| `LlmsTxt:LlmsFullScope:RootContentTypeAlias` | `null` (whole site) | same |
+| `LlmsTxt:LlmsFullScope:IncludedDocTypeAliases` | `[]` | same |
+| `LlmsTxt:LlmsFullScope:ExcludedDocTypeAliases` | `["errorPage", "redirectPage"]` | same |
+| `LlmsTxt:ExcludedDoctypeAliases` (top-level) | `[]` | same |
+| `LlmsTxt:Hreflang:Enabled` | `false` | same |
+| `LlmsTxt:SettingsResolverCachePolicySeconds` | `300` | same |
+| `LlmsTxt:Migrations:SkipSettingsDoctype` | `false` | same |
+
+A drift-detection fixture ([`LlmsTxtSettingsDefaultsTests`](../LlmsTxt.Umbraco.Tests/Configuration/LlmsTxtSettingsDefaultsTests.cs)) pins every value above; bumping a default in source without updating the fixture fails CI.
+
+### Site name fallback chain
+
+The H1 emitted on `/llms.txt` resolves through the following layers, returning the first non-whitespace value found:
+
+1. Settings doctype `siteName` field (editor-set, via the standard Umbraco content tree or the Backoffice Settings dashboard below)
+2. `appsettings.json` `LlmsTxt:SiteName` value (developer-set)
+3. The matched root `IPublishedContent.Name` (e.g. `"Home"` on a Clean.Core install)
+4. The literal sentinel `"Site"` (used only when no root content node resolves at all — greenfield install before any content is created)
+
+Layer 4 also covers the explicit-empty-string case: an editor clearing the `siteName` field falls through to layer 3 (the resolver and builder both treat empty/whitespace as "fall back").
+
 ## Backoffice Settings dashboard (Story 3.2)
 
 From v0.5, the package ships a Backoffice dashboard under **Settings → LlmsTxt** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `LlmsTxt Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of pages with `excludeFromLlmExports` toggled on.
@@ -331,13 +372,21 @@ The dashboard surfaces exactly the same overlay rules `ILlmsSettingsResolver` en
 
 Operations land in the existing `/umbraco/swagger/llmstxtumbraco/swagger.json` Swagger doc.
 
-## What's not in v0.5
+### First-run onboarding hint (Story 3.3)
+
+On first visit to the LlmsTxt Settings dashboard, an info-level notice appears at the top reminding adopters that the package is already producing default output ("LlmsTxt is now active and producing default output…"). Click `Dismiss` to hide it for your user account; the notice is **per-user**, keyed by your Backoffice user `unique` GUID, and survives browser refreshes and re-logins.
+
+Storage backing: `localStorage` keyed by `llms.onboarding.dismissed.v1.{userUnique}`. The `v1.` segment lets a future onboarding scheme (Story 5.2's auto-hide tying into AI traffic logs) ship a parallel key without ambiguity over which version dismissed a given user. Adopters running storage-disabled browser modes (incognito with site-data blocking) will see the notice each session — the dismiss handler degrades gracefully (no exception, no broken UI) but the flag does not persist across sessions in that mode.
+
+The notice does **not** auto-hide after the first AI-traffic-dashboard request — that auto-hide is deferred to Story 5.2 (AI traffic Backoffice dashboard, Epic 5). Until that lands, the dismiss button is the only signal.
+
+## What's not in v0.6
 
 Coming in later epics:
 
-- Zero-config defaults + onboarding hint (Story 3.3)
 - HTTP `Link` discoverability header + Razor TagHelpers + robots.txt audit (Epic 4)
 - Request log + AI traffic dashboard (Epic 5)
+- Auto-hide of the Settings-dashboard onboarding notice once the AI traffic dashboard has logged at least one request (Story 5.2)
 - v1.0 NuGet release readiness (Epic 6)
 
 ## Anti-patterns the package will NOT ship
