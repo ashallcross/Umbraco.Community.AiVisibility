@@ -52,6 +52,11 @@ public sealed class LlmsPipelineFilter : UmbracoPipelineFilter
 
     private static void MapPostRouting(IApplicationBuilder app)
     {
+        // Story 4.1 — discoverability FIRST so the Link header lands on every
+        // published-page HTML response, including responses that don't divert
+        // to Markdown. Negotiation second — when it diverts, the writer takes
+        // over and the Link header is irrelevant on the response anyway.
+        app.UseMiddleware<DiscoverabilityHeaderMiddleware>();
         app.UseMiddleware<AcceptHeaderNegotiationMiddleware>();
     }
 

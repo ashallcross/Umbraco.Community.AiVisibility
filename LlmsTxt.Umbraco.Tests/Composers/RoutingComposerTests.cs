@@ -4,6 +4,7 @@ using AngleSharp.Html.Parser;
 using LlmsTxt.Umbraco.Composers;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using LlmsTxt.Umbraco.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -337,6 +338,73 @@ public class RoutingComposerTests
             Assert.That(result.Markdown, Is.Not.Null);
             Assert.That(result.Markdown, Does.Contain("UNIQUE-FALLBACK-SENTINEL-Φ7"),
                 "fallback must emit prose-only content the adopter selector explicitly skipped");
+        });
+    }
+
+    /// <summary>
+    /// Story 4.1 DoD bullet 1 — Architect note A4 (epics.md:1164). Pins that
+    /// <see cref="DiscoverabilityHeaderMiddleware"/> + <see cref="DefaultLlmsExclusionEvaluator"/>
+    /// + their transitive package-side deps resolve under
+    /// <c>ValidateScopes = ValidateOnBuild = true</c> without forming a captive
+    /// dependency.
+    /// <para>
+    /// <b>Stub-driven gate (NOT composer-driven).</b> The architect note's
+    /// preferred shape was composer-driven, but <see cref="RoutingComposer"/>
+    /// also registers the full extraction pipeline (<c>PageRenderer</c>,
+    /// <c>DefaultMarkdownContentExtractor</c>, <c>MarkdownRouteResolver</c>) whose
+    /// constructors depend on Umbraco core services
+    /// (<c>IPublishedRouter</c>, <c>IUmbracoContextFactory</c>) that this DI-shape
+    /// test does not wire. Same trade-off Story 3.2's
+    /// <c>Compose_StartupValidation_LlmsSettingsApiController_NoCaptiveDependency</c>
+    /// adopted (Spec Drift Note #6 — deliberate simplification documented).
+    /// What this test pins is exactly the new Story 4.1 surface: the middleware
+    /// + evaluator constructors do not capture a Scoped dep into a Singleton.
+    /// </para>
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_DiscoverabilityHeaderMiddleware_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        // Mirror RoutingComposer's lifetime declarations for the new Story 4.1
+        // surface only — captive deps would surface at BuildServiceProvider time.
+        services.AddTransient<DiscoverabilityHeaderMiddleware>();
+        services.TryAddScoped<ILlmsExclusionEvaluator, DefaultLlmsExclusionEvaluator>();
+
+        // Stub the seams the new types depend on. Lifetimes match the
+        // production composer (resolver Scoped, options monitor Singleton,
+        // URL provider Singleton).
+        services.AddSingleton<IOptionsMonitor<LlmsTxtSettings>>(_ =>
+        {
+            var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+            monitor.CurrentValue.Returns(new LlmsTxtSettings());
+            return monitor;
+        });
+        services.AddScoped<ILlmsSettingsResolver>(_ => Substitute.For<ILlmsSettingsResolver>());
+        services.AddSingleton<global::Umbraco.Cms.Core.Routing.IPublishedUrlProvider>(
+            Substitute.For<global::Umbraco.Cms.Core.Routing.IPublishedUrlProvider>());
+        services.AddSingleton(NullLoggerFactory.Instance);
+        services.AddLogging();
+
+        // ValidateScopes catches captive-scope-via-singleton at the root
+        // provider; ValidateOnBuild eagerly constructs every registered service
+        // so misconfigurations surface immediately.
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        using var scope = sp.CreateScope();
+        var middleware = scope.ServiceProvider.GetRequiredService<DiscoverabilityHeaderMiddleware>();
+        var evaluator = scope.ServiceProvider.GetRequiredService<ILlmsExclusionEvaluator>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(middleware, Is.Not.Null,
+                "DiscoverabilityHeaderMiddleware must resolve cleanly under ValidateOnBuild");
+            Assert.That(evaluator, Is.Not.Null,
+                "ILlmsExclusionEvaluator must resolve cleanly under ValidateOnBuild");
         });
     }
 

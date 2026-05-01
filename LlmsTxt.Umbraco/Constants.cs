@@ -34,6 +34,10 @@ public static class Constants
         public const string Vary = "Vary";
         public const string ETag = "ETag";
         public const string IfNoneMatch = "If-None-Match";
+
+        // Story 4.1
+        public const string Link = "Link";
+        public const string ContentSignal = "Content-Signal";
     }
 
     public static class Cache

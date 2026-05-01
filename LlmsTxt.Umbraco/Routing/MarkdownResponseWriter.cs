@@ -27,6 +27,7 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
         MarkdownExtractionResult result,
         string canonicalPath,
         string? culture,
+        string? contentSignal,
         HttpContext httpContext)
     {
         if (result.Status != MarkdownExtractionStatus.Found || string.IsNullOrEmpty(result.Markdown))
@@ -62,6 +63,18 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
         VaryHeaderHelper.AppendAccept(httpContext);
         headers[Constants.HttpHeaders.CacheControl] = BuildCacheControl();
         headers[Constants.HttpHeaders.ETag] = etag;
+
+        // Story 4.1 — Cloudflare Content-Signal header. Emitted on BOTH 200 and
+        // 304 paths because RFC 7232 § 4.1 requires representation-metadata
+        // headers that would have been on the 200 to also appear on the 304.
+        // Distinct from X-Markdown-Tokens (encoded-body-derived; misleading on
+        // 304) — Content-Signal is a policy declaration that travels with the
+        // resource regardless of representation freshness.
+        if (!string.IsNullOrWhiteSpace(contentSignal)
+            && contentSignal!.IndexOfAny(['\r', '\n']) < 0)
+        {
+            headers[Constants.HttpHeaders.ContentSignal] = contentSignal.Trim();
+        }
 
         if (IfNoneMatchMatcher.Matches(httpContext.Request, etag))
         {

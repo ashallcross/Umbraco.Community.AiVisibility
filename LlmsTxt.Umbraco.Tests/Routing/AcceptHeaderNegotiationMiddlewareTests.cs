@@ -253,7 +253,11 @@ public class AcceptHeaderNegotiationMiddlewareTests
                 ExcludedDoctypeAliases: new HashSet<string>(new[] { "redirectPage" }, StringComparer.OrdinalIgnoreCase),
                 BaseSettings: new LlmsTxtSettings())));
 
-        var middleware = new AcceptHeaderNegotiationMiddleware(extractor, writer, settingsResolver, logger);
+        var exclusionEvaluator = new DefaultLlmsExclusionEvaluator(
+            settingsResolver,
+            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+        var middleware = new AcceptHeaderNegotiationMiddleware(
+            extractor, writer, exclusionEvaluator, optionsMonitor, logger);
         var nextCalled = false;
         await middleware.InvokeAsync(ctx, _ => { nextCalled = true; return Task.CompletedTask; });
 
@@ -428,11 +432,15 @@ public class AcceptHeaderNegotiationMiddlewareTests
         settingsResolver
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new LlmsTxtSettings().ToResolved()));
+        var controllerExclusion = new DefaultLlmsExclusionEvaluator(
+            settingsResolver,
+            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
         var controller = new MarkdownController(
             controllerExtractor,
             resolver,
             writer,
-            settingsResolver,
+            controllerExclusion,
+            optionsMonitor,
             NullLogger<MarkdownController>.Instance);
         var controllerCtx = new DefaultHttpContext();
         controllerCtx.Request.Method = "GET";
@@ -562,10 +570,14 @@ public class AcceptHeaderNegotiationMiddlewareTests
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new LlmsTxtSettings().ToResolved()));
 
+        var exclusionEvaluator = new DefaultLlmsExclusionEvaluator(
+            settingsResolver,
+            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor,
             writer,
-            settingsResolver,
+            exclusionEvaluator,
+            optionsMonitor,
             logger);
 
         return new Harness

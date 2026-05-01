@@ -605,12 +605,19 @@ public class MarkdownControllerTests
         // overlay so existing tests stay green; tests that exercise exclusion
         // pass an override via settingsResolverOverride.
         var settingsResolver = settingsResolverOverride ?? BuildDefaultSettingsResolver(resolvedSettings);
+        // Story 4.1 — controller now consumes the shared exclusion evaluator
+        // (which wraps the resolver). Construct it here so existing tests that
+        // override the resolver continue exercising the same exclusion path.
+        var exclusionEvaluator = new DefaultLlmsExclusionEvaluator(
+            settingsResolver,
+            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
 
         var controller = new MarkdownController(
             extractor,
             resolver,
             writer,
-            settingsResolver,
+            exclusionEvaluator,
+            optionsMonitor,
             NullLogger<MarkdownController>.Instance);
         controller.ControllerContext = new ControllerContext
         {

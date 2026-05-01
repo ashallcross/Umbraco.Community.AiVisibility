@@ -380,18 +380,43 @@ Storage backing: `localStorage` keyed by `llms.onboarding.dismissed.v1.{userUniq
 
 The notice does **not** auto-hide after the first AI-traffic-dashboard request — that auto-hide is deferred to Story 5.2 (AI traffic Backoffice dashboard, Epic 5). Until that lands, the dismiss button is the only signal.
 
-## What's not in v0.6
+## Discoverability headers + Razor TagHelpers (Story 4.1)
+
+From v0.7, every opted-in HTML response carries an automatic HTTP `Link: </path.md>; rel="alternate"; type="text/markdown"` header so AI crawlers can find the Markdown alternate without URL guessing. Two optional Razor TagHelpers (`<llms-link />` and `<llms-hint />`) emit the equivalent in document markup for adopters who want body-side discoverability or visually-hidden hint text. See [`docs/data-attributes.md`](data-attributes.md) for the copy-paste setup.
+
+Two additional response headers ride the existing Markdown writer (Story 1.3):
+
+- **`X-Markdown-Tokens: <integer>`** — character-based estimate of the body's token count, emitted on every 200 Markdown response (omitted on 304 — body-derived).
+- **`Content-Signal: <directives>`** — Cloudflare's content-use policy header. Off by default; configurable per-site and per-doctype (see [`docs/data-attributes.md`](data-attributes.md) for `appsettings` shape).
+
+The MCP Server Card / Agent Skills / WebMCP / OAuth / commerce-protocol surfaces that the [`isitagentready.com`](https://isitagentready.com) scanner checks for are intentionally NOT shipped — they're concerns of the application layer (what services the site offers, who the agent is, how transactions clear), not the content-rendering middleware. See [`docs/data-attributes.md` § Out of scope (intentionally)](data-attributes.md#out-of-scope-intentionally) for the full list and rationale.
+
+## Upgrading from v0.6 to v0.7
+
+Story 4.1 is a **breaking** v0.7 release for adopters who have customised the Markdown response pipeline. The full set of changes is in [`CHANGELOG.md`](../CHANGELOG.md); the load-bearing items:
+
+- **`MarkdownController` constructor signature changed.** Two new dependencies (`ILlmsExclusionEvaluator`, `IOptionsMonitor<LlmsTxtSettings>`) and the private `IsExcludedAsync`/`TryReadExcludeBool` helpers were removed in favour of the shared `ILlmsExclusionEvaluator` seam. Adopters who subclass or service-locate `MarkdownController` directly will fail to compile until they update; the controller is intended as the package's own surface, not an extension seam, so the breaking change is loud-by-design.
+- **`IMarkdownResponseWriter.WriteAsync` gained a 4th parameter `string? contentSignal`.** A 3-arg overload remains available as `[Obsolete]` (it forwards to the 4-arg version with `contentSignal: null`) so adopters who *call* the interface keep working with a deprecation warning. Adopters who *implement* the interface must add the 4-arg overload and will lose Content-Signal emission until they wire it through.
+- **New `Link: rel="alternate"` HTTP header on every opted-in HTML response.** Add `LlmsTxt:DiscoverabilityHeader:Enabled: false` to suppress globally. See [`data-attributes.md`](data-attributes.md#http-link-discoverability-header) for the full gating contract.
+- **New `<llms-link />` and `<llms-hint />` Razor TagHelpers.** Opt-in via `_ViewImports.cshtml` — see [`data-attributes.md`](data-attributes.md#razor-taghelpers--llms-link--and-llms-hint-).
+- **New `Content-Signal` configurable Markdown response header.** Off by default; configure under `LlmsTxt:ContentSignal:*`.
+- **New `ILlmsExclusionEvaluator` public seam.** The default `DefaultLlmsExclusionEvaluator` is `public sealed` — adopters can wrap-and-delegate via the DI Decorator pattern. See [`data-attributes.md` § Customising the exclusion contract](data-attributes.md#customising-the-exclusion-contract).
+- **New RCL static asset at `/llms-txt-umbraco.css`.** Optional; needed only if you use `<llms-hint />` and don't already ship a `.visually-hidden` (or equivalent) class.
+
+Single-route adopters (only consuming `/llms.txt`, `/llms-full.txt`, or `.md` URLs without subclassing or implementing the package interfaces) need no code changes.
+
+## What's not in v0.7
 
 Coming in later epics:
 
-- HTTP `Link` discoverability header + Razor TagHelpers + robots.txt audit (Epic 4)
+- Robots.txt audit Health Check + build-time AI bot list sync (Story 4.2)
 - Request log + AI traffic dashboard (Epic 5)
 - Auto-hide of the Settings-dashboard onboarding notice once the AI traffic dashboard has logged at least one request (Story 5.2)
 - v1.0 NuGet release readiness (Epic 6)
 
 ## Anti-patterns the package will NOT ship
 
-These are common asks that the package explicitly refuses, with rationale documented in [`_bmad-output/planning-artifacts/package-spec.md` § 15](../_bmad-output/planning-artifacts/package-spec.md):
+These are common asks that the package explicitly refuses:
 
 - User-Agent sniffing for Markdown delivery (cloaking; Google penalty)
 - `<meta name="llms">` injection (rejected by WHATWG)

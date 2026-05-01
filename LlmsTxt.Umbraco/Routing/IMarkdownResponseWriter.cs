@@ -29,6 +29,13 @@ public interface IMarkdownResponseWriter
     /// Writes the response. Caller short-circuits the rest of the request
     /// pipeline after a successful return (the controller returns
     /// <c>EmptyResult</c>; the middleware skips <c>next()</c>).
+    /// <para>
+    /// Story 4.1 — <paramref name="contentSignal"/> is the resolved Cloudflare
+    /// <c>Content-Signal</c> header value (per-doctype override → site-default →
+    /// null). Resolved by the caller via <c>ContentSignalResolver.Resolve(...)</c>
+    /// so the writer stays Singleton (no captive Scoped resolver dependency).
+    /// Pass <c>null</c> to suppress the header entirely.
+    /// </para>
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// Thrown when <paramref name="result"/> is not <see cref="MarkdownExtractionStatus.Found"/>
@@ -39,5 +46,22 @@ public interface IMarkdownResponseWriter
         MarkdownExtractionResult result,
         string canonicalPath,
         string? culture,
+        string? contentSignal,
         HttpContext httpContext);
+
+    /// <summary>
+    /// Pre-Story-4.1 3-arg overload — kept as a default interface method so
+    /// callers that have no Content-Signal context can call <c>WriteAsync</c>
+    /// without explicitly passing <c>null</c>. Adopters who fully <i>replace</i>
+    /// the writer must implement the 4-arg overload above; this shim does not
+    /// remove that requirement (it is a consumer convenience, not an
+    /// implementer compat layer).
+    /// </summary>
+    [Obsolete("Pass null for contentSignal explicitly via the 4-arg overload. This overload is removed in v1.0.")]
+    Task WriteAsync(
+        MarkdownExtractionResult result,
+        string canonicalPath,
+        string? culture,
+        HttpContext httpContext)
+        => WriteAsync(result, canonicalPath, culture, contentSignal: null, httpContext);
 }

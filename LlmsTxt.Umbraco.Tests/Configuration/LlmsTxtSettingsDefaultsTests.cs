@@ -104,6 +104,19 @@ public class LlmsTxtSettingsDefaultsTests
             Assert.That(settings.Migrations, Is.Not.Null);
             Assert.That(settings.Migrations.SkipSettingsDoctype, Is.False,
                 "Migrations.SkipSettingsDoctype defaults to false — uSync coexistence opt-in (Story 3.1)");
+
+            // DiscoverabilityHeader sub-section (Story 4.1)
+            Assert.That(settings.DiscoverabilityHeader, Is.Not.Null);
+            Assert.That(settings.DiscoverabilityHeader.Enabled, Is.True,
+                "DiscoverabilityHeader.Enabled defaults to true — zero-config Link header (Story 4.1 AC4)");
+
+            // ContentSignal sub-section (Story 4.1)
+            Assert.That(settings.ContentSignal, Is.Not.Null);
+            Assert.That(settings.ContentSignal.Default, Is.Null,
+                "ContentSignal.Default defaults to null — header off unless adopter opts in (Story 4.1 AC8)");
+            Assert.That(settings.ContentSignal.PerDocTypeAlias, Is.Not.Null);
+            Assert.That(settings.ContentSignal.PerDocTypeAlias.Count, Is.EqualTo(0),
+                "ContentSignal.PerDocTypeAlias defaults to empty (Story 4.1 AC9)");
         });
     }
 

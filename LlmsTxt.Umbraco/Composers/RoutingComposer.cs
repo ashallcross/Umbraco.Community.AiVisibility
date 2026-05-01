@@ -55,10 +55,23 @@ public sealed class RoutingComposer : IComposer
         // Accept-header negotiation middleware. Stateless ⇒ singleton.
         builder.Services.TryAddSingleton<IMarkdownResponseWriter, MarkdownResponseWriter>();
 
+        // Story 4.1 — shared exclusion evaluator. Lifts the per-page-bool-
+        // then-resolver-throw-fail-open shape out of MarkdownController +
+        // AcceptHeaderNegotiationMiddleware so the new DiscoverabilityHeaderMiddleware
+        // and TagHelpers consume the same rule set. Scoped — depends on the
+        // Scoped ILlmsSettingsResolver.
+        builder.Services.TryAddScoped<ILlmsExclusionEvaluator, DefaultLlmsExclusionEvaluator>();
+
         // Story 1.3 — factory-activated middleware (IMiddleware). Transient because
         // it depends on the transient IMarkdownContentExtractor; one instance per
         // request keeps the cache decorator's per-request semantics intact.
         builder.Services.AddTransient<AcceptHeaderNegotiationMiddleware>();
+
+        // Story 4.1 — factory-activated discoverability middleware. Transient
+        // for the same reason: depends on Scoped ILlmsExclusionEvaluator via
+        // request scope. Wired into LlmsPipelineFilter.MapPostRouting in front
+        // of the Accept-header negotiation middleware.
+        builder.Services.AddTransient<DiscoverabilityHeaderMiddleware>();
 
         // Extraction pipeline — TryAdd* per AR17 so adopters can override before our
         // composer runs by registering their own implementation first.

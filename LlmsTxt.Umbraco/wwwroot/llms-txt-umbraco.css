@@ -1,0 +1,46 @@
+/* LlmsTxt.Umbraco — Story 4.1 visually-hidden hint styles. Class hook only;
+   no inline styles so adopters with strict CSP (style-src 'self') aren't
+   affected. Standard Bootstrap-style .visually-hidden ruleset. */
+.llms-hint {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* WCAG 2.4.7 Focus Visible — when the hint's anchor receives keyboard focus
+   (or any descendant via :focus-within), reveal the hint so the keyboard
+   user sees where they've landed. Standard sr-only-focusable pattern. */
+.llms-hint:focus-within,
+.llms-hint a:focus,
+.llms-hint a:focus-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0.5em;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* High Contrast / Forced Colors mode strips the clip rule on some browsers,
+   leaving the 1px hint visible as a stray artefact. Hide outright. */
+@media (forced-colors: active) {
+    .llms-hint {
+        display: none;
+    }
+}
+
+/* Print stylesheets render absolutely-positioned 1px-clipped elements as
+   tiny visible artefacts. Hide on print — AI consumers don't print. */
+@media print {
+    .llms-hint {
+        display: none;
+    }
+}

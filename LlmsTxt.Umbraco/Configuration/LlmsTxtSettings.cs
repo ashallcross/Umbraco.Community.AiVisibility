@@ -191,6 +191,77 @@ public sealed class LlmsTxtSettings
     /// coexistence (architecture.md line 1092 + epics.md AC1).
     /// </summary>
     public LlmsMigrationsSettings Migrations { get; init; } = new();
+
+    /// <summary>
+    /// Story 4.1 — controls for the always-on HTTP <c>Link</c> discoverability
+    /// header emitted on opted-in HTML responses. See
+    /// <see cref="DiscoverabilityHeaderSettings.Enabled"/> for the kill switch.
+    /// </summary>
+    public DiscoverabilityHeaderSettings DiscoverabilityHeader { get; init; } = new();
+
+    /// <summary>
+    /// Story 4.1 — Cloudflare Markdown-for-Agents <c>Content-Signal</c> response
+    /// header configuration. Site-level default (<see cref="ContentSignalSettings.Default"/>)
+    /// + per-doctype-alias override map (<see cref="ContentSignalSettings.PerDocTypeAlias"/>).
+    /// Default policy: header NOT emitted (the package does not unilaterally assert
+    /// content-use preferences for adopters). See the agent-readiness alignment doc
+    /// at <c>_bmad-output/planning-artifacts/agent-readiness-scanner-alignment-2026-04-30.md</c>
+    /// for the rationale.
+    /// </summary>
+    public ContentSignalSettings ContentSignal { get; init; } = new();
+}
+
+/// <summary>
+/// Story 4.1 — kill-switch for the HTTP <c>Link: rel="alternate"; type="text/markdown"</c>
+/// discoverability header emitted by <c>DiscoverabilityHeaderMiddleware</c>.
+/// Default <c>true</c> per the zero-config three-route round-trip contract.
+/// Read live via <see cref="Microsoft.Extensions.Options.IOptionsMonitor{TOptions}.CurrentValue"/>
+/// so flipping the flag at runtime takes effect on the next request.
+/// </summary>
+public sealed class DiscoverabilityHeaderSettings
+{
+    /// <summary>
+    /// When <c>false</c>, <c>DiscoverabilityHeaderMiddleware</c> short-circuits
+    /// before computing the canonical URL — neither <c>Link</c> nor
+    /// <c>Vary: Accept</c> is written by this middleware.
+    /// <para>
+    /// This kill switch only affects the discoverability middleware. Two other
+    /// surfaces emit <c>Vary: Accept</c> independently and are NOT gated by this
+    /// flag: (1) Story 1.3's <c>AcceptHeaderNegotiationMiddleware</c> emits it on
+    /// every published-content HTML response so HTML and Markdown alternates do
+    /// not collide in shared caches; (2) <c>MarkdownResponseWriter</c> emits it on
+    /// every Markdown 200/304 response so Vary symmetry holds across both Accept
+    /// values of the same resource.
+    /// </para>
+    /// </summary>
+    public bool Enabled { get; init; } = true;
+}
+
+/// <summary>
+/// Story 4.1 — Cloudflare Content-Signal header policy. Site-level default
+/// + per-doctype override map. The header value is passed through verbatim
+/// (the package does not validate the Cloudflare directive grammar — adopters
+/// who set malformed values get malformed headers).
+/// </summary>
+public sealed class ContentSignalSettings
+{
+    /// <summary>
+    /// Site-level default value for the <c>Content-Signal</c> response header.
+    /// <c>null</c> / empty / whitespace → header is NOT emitted (default).
+    /// Example: <c>"ai-train=no, search=yes, ai-input=yes"</c>.
+    /// </summary>
+    public string? Default { get; init; }
+
+    /// <summary>
+    /// Per-doctype-alias override map. Keys are doctype aliases
+    /// (<c>IPublishedContent.ContentType.Alias</c>), values are the
+    /// Content-Signal value to emit for pages of that doctype.
+    /// Lookup is case-insensitive at the resolver layer
+    /// (<see cref="ContentSignalResolver"/>) — the dictionary's own comparer
+    /// may not survive <c>Microsoft.Extensions.Configuration</c> binding.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> PerDocTypeAlias { get; init; }
+        = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>

@@ -25,7 +25,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness();
         ctx.Response.Headers["Vary"] = "Accept-Encoding";
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.Headers["Vary"].ToString(),
             Is.EqualTo("Accept-Encoding, Accept"),
@@ -37,7 +37,7 @@ public class MarkdownResponseWriterTests
     {
         var (writer, ctx, _) = NewHarness();
 
-        await writer.WriteAsync(BuildFound("# Home\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# Home\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
         Assert.That(ctx.Response.ContentType, Is.EqualTo(Constants.HttpHeaders.MarkdownContentType));
@@ -53,7 +53,7 @@ public class MarkdownResponseWriterTests
         var body = new MemoryStream();
         var (writer, ctx, _) = NewHarness(body: body);
 
-        await writer.WriteAsync(BuildFound("# Body content\nLorem.\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# Body content\nLorem.\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         body.Position = 0;
         var read = await new StreamReader(body, Encoding.UTF8).ReadToEndAsync();
@@ -66,7 +66,7 @@ public class MarkdownResponseWriterTests
     {
         var (writer, ctx, _) = NewHarness();
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         var etag = ctx.Response.Headers["ETag"].ToString();
         // Quoted, 16 base64-url chars (no W/ prefix).
@@ -129,7 +129,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness(body: body);
         ctx.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = etag;
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
         Assert.That(body.Length, Is.EqualTo(0), "304 must have no body");
@@ -148,7 +148,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness(body: body);
         ctx.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = "*";
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
         // RFC 7232 § 4.1 — same headers must accompany 304 as would have on 200.
@@ -197,7 +197,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness();
         ctx.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = "W/*";
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK),
             "W/* is malformed — must NOT match the bare wildcard");
@@ -211,7 +211,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness();
         ctx.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = weakened;
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
     }
@@ -222,7 +222,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness();
         ctx.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = "\"not-the-tag\"";
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
     }
@@ -233,7 +233,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness();
         ctx.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = "garbage-no-quotes";
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
     }
@@ -245,7 +245,7 @@ public class MarkdownResponseWriterTests
         var (writer, ctx, _) = NewHarness();
         ctx.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = $"\"old-tag\", {etag}, \"another\"";
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
     }
@@ -255,7 +255,7 @@ public class MarkdownResponseWriterTests
     {
         var (writer, ctx, _) = NewHarness(settings: new LlmsTxtSettings { CachePolicySeconds = 0 });
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.Headers["Cache-Control"].ToString(),
             Is.EqualTo("public, max-age=0"));
@@ -266,7 +266,7 @@ public class MarkdownResponseWriterTests
     {
         var (writer, ctx, _) = NewHarness(settings: new LlmsTxtSettings { CachePolicySeconds = -10 });
 
-        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", ctx);
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
         Assert.That(ctx.Response.Headers["Cache-Control"].ToString(),
             Is.EqualTo("public, max-age=0"));
@@ -280,7 +280,7 @@ public class MarkdownResponseWriterTests
             new InvalidOperationException("boom"), sourceUrl: null, contentKey: HomeKey);
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await writer.WriteAsync(error, "/home", "en-GB", ctx));
+            await writer.WriteAsync(error, "/home", "en-GB", contentSignal: null, ctx));
     }
 
     [Test]
@@ -295,7 +295,130 @@ public class MarkdownResponseWriterTests
             sourceUrl: "https://example.test/home");
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await writer.WriteAsync(empty, "/home", "en-GB", ctx));
+            await writer.WriteAsync(empty, "/home", "en-GB", contentSignal: null, ctx));
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 4.1 — Content-Signal header (Cloudflare Markdown-for-Agents)
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task WriteAsync_Found_ContentSignalConfigured_EmitsHeaderOn200()
+    {
+        var (writer, ctx, _) = NewHarness();
+
+        await writer.WriteAsync(
+            BuildFound("# x\n"),
+            "/home",
+            "en-GB",
+            contentSignal: "ai-train=no, search=yes, ai-input=yes",
+            ctx);
+
+        Assert.That(ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        Assert.That(ctx.Response.Headers[Constants.HttpHeaders.ContentSignal].ToString(),
+            Is.EqualTo("ai-train=no, search=yes, ai-input=yes"));
+        // P11 patch — pin AC8's co-emission contract: X-Markdown-Tokens MUST
+        // ride the 200 alongside Content-Signal. The 304 test pins token
+        // ABSENCE on the not-modified path; this test pins token PRESENCE
+        // on the 200 path with Content-Signal configured.
+        Assert.That(ctx.Response.Headers.ContainsKey(Constants.HttpHeaders.XMarkdownTokens), Is.True,
+            "X-Markdown-Tokens must ride 200 responses alongside Content-Signal — Cloudflare Markdown-for-Agents AC8 co-emission");
+    }
+
+    /// <summary>
+    /// P2 patch — Content-Signal value containing CR/LF must be suppressed
+    /// (header injection guard). Adopter sets a malformed value either via
+    /// appsettings or backoffice; the writer rejects rather than passes the
+    /// value through to Kestrel (which would throw InvalidOperationException
+    /// on header write).
+    /// </summary>
+    [TestCase("ai-train=no\r\nX-Evil: 1")]
+    [TestCase("ai-train=no\nX-Evil: 1")]
+    public async Task WriteAsync_Found_ContentSignalContainsCrLf_HeaderNotEmitted(string adversarialValue)
+    {
+        var (writer, ctx, _) = NewHarness();
+
+        await writer.WriteAsync(
+            BuildFound("# x\n"),
+            "/home",
+            "en-GB",
+            contentSignal: adversarialValue,
+            ctx);
+
+        Assert.That(ctx.Response.Headers.ContainsKey(Constants.HttpHeaders.ContentSignal), Is.False,
+            "Content-Signal containing CR/LF must be rejected to prevent header injection");
+    }
+
+    [Test]
+    public async Task WriteAsync_NotModified_ContentSignalConfigured_StillEmitted()
+    {
+        // RFC 7232 § 4.1 — representation-metadata headers that would be on
+        // the 200 must also be on the 304. Distinct from X-Markdown-Tokens
+        // (encoded-body-derived; suppressed on 304).
+        var (writer, ctx, _) = NewHarness();
+        // First request to capture a valid ETag.
+        await writer.WriteAsync(
+            BuildFound("# x\n"),
+            "/home",
+            "en-GB",
+            contentSignal: "ai-train=no",
+            ctx);
+        var etag = ctx.Response.Headers[Constants.HttpHeaders.ETag].ToString();
+
+        // Second request with If-None-Match → 304.
+        var (writer2, ctx2, _) = NewHarness();
+        ctx2.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = etag;
+
+        await writer2.WriteAsync(
+            BuildFound("# x\n"),
+            "/home",
+            "en-GB",
+            contentSignal: "ai-train=no",
+            ctx2);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ctx2.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+            Assert.That(ctx2.Response.Headers[Constants.HttpHeaders.ContentSignal].ToString(),
+                Is.EqualTo("ai-train=no"),
+                "Content-Signal must travel on 304 — RFC 7232 § 4.1 representation-metadata contract");
+            Assert.That(ctx2.Response.Headers.ContainsKey(Constants.HttpHeaders.XMarkdownTokens), Is.False,
+                "X-Markdown-Tokens is body-derived; MUST NOT appear on 304");
+        });
+    }
+
+    [Test]
+    public async Task WriteAsync_Found_ContentSignalNullOrWhitespace_HeaderNotEmitted()
+    {
+        var (writer, ctx, _) = NewHarness();
+
+        await writer.WriteAsync(
+            BuildFound("# x\n"),
+            "/home",
+            "en-GB",
+            contentSignal: "   ",
+            ctx);
+
+        Assert.That(ctx.Response.Headers.ContainsKey(Constants.HttpHeaders.ContentSignal), Is.False,
+            "Whitespace-only content-signal value MUST NOT produce a header");
+    }
+
+    [Test]
+    public async Task WriteAsync_NotModified_ContentSignalNull_HeaderNotEmitted()
+    {
+        // Sanity: 304 path with no configured signal stays clean — no
+        // accidental empty Content-Signal header leaks onto the response.
+        var (writer, ctx, _) = NewHarness();
+        await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
+        var etag = ctx.Response.Headers[Constants.HttpHeaders.ETag].ToString();
+
+        var (writer2, ctx2, _) = NewHarness();
+        ctx2.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = etag;
+
+        await writer2.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx2);
+
+        Assert.That(ctx2.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        Assert.That(ctx2.Response.Headers.ContainsKey(Constants.HttpHeaders.ContentSignal), Is.False);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -312,6 +435,7 @@ public class MarkdownResponseWriterTests
             BuildFound("# x\n", culture: culture, updatedUtc: updatedUtc),
             canonicalPath,
             culture,
+            contentSignal: null,
             ctx);
         return ctx.Response.Headers["ETag"].ToString();
     }

@@ -19,8 +19,11 @@
     <link href="/assets/css/vs2015.css" rel="stylesheet" asp-append-version="true" />
     <link href="/assets/css/highlightjs-copy.min.css" rel="stylesheet" asp-append-version="true" />
     <link href="/assets/css/swiffy-slider.min.css" rel="stylesheet" asp-append-version="true" />
+    <link href="/llms-txt-umbraco.css" rel="stylesheet" asp-append-version="true" />
+    <llms-link />
 </head>
 <body>
+    <llms-hint />
     @await Html.CachedPartialAsync("~/Views/Partials/mainNavigation.cshtml", model: Model, cacheTimeout: TimeSpan.FromMinutes(60))
     @RenderBody()
     @await Html.CachedPartialAsync("~/Views/Partials/footer.cshtml", model: Model, cacheTimeout: TimeSpan.FromMinutes(60))
