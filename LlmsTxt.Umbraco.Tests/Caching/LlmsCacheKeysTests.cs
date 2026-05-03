@@ -340,4 +340,27 @@ public class LlmsCacheKeysTests
             Assert.That(LlmsCacheKeys.Settings(null), Does.StartWith(LlmsCacheKeys.SettingsPrefix));
         });
     }
+
+    [Test]
+    public void Robots_HostOnly_FormatsAsLowercase()
+    {
+        // Story 4.2 — robots audit cache key. Host-only (no culture); host
+        // normalisation reuses NormaliseHost → lowercased + port-stripped.
+        // Same key shape across casings + invariant + missing-host paths.
+        Assert.Multiple(() =>
+        {
+            Assert.That(LlmsCacheKeys.Robots("Sitea.Example"),
+                Is.EqualTo("llms:robots:sitea.example"));
+            Assert.That(LlmsCacheKeys.Robots("SITEA.EXAMPLE:443"),
+                Is.EqualTo("llms:robots:sitea.example"),
+                "port stripped");
+            Assert.That(LlmsCacheKeys.Robots(null),
+                Is.EqualTo("llms:robots:_"),
+                "null host falls back to '_' sentinel");
+            Assert.That(LlmsCacheKeys.Robots("sitea.example"),
+                Does.StartWith(LlmsCacheKeys.RobotsPrefix));
+            Assert.That(LlmsCacheKeys.Robots("sitea.example"),
+                Does.StartWith(LlmsCacheKeys.Prefix));
+        });
+    }
 }

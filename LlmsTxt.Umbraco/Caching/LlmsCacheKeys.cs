@@ -129,6 +129,26 @@ public static class LlmsCacheKeys
         => $"{SettingsPrefix}{NormaliseCulture(culture)}";
 
     /// <summary>
+    /// Story 4.2 — robots audit cache prefix. Shape:
+    /// <c>llms:robots:{hostname}</c>. The robots audit lives under a
+    /// different invalidation regime than per-page / manifest caches:
+    /// <see cref="LlmsTxt.Umbraco.Background.RobotsAuditRefreshJob"/>
+    /// rewrites the entry on the configured cadence; content-cache
+    /// refresher notifications do NOT clear this prefix (audit results
+    /// don't change when content publishes). The host is normalised
+    /// via <see cref="NormaliseHost"/> for cross-key shape consistency.
+    /// </summary>
+    public const string RobotsPrefix = "llms:robots:";
+
+    /// <summary>
+    /// Robots audit cache key. Shape: <c>llms:robots:{hostname}</c>.
+    /// Host-only (no culture) — robots.txt is a host-level directive and
+    /// not language-variant-aware.
+    /// </summary>
+    public static string Robots(string? hostname)
+        => $"{RobotsPrefix}{NormaliseHost(hostname)}";
+
+    /// <summary>
     /// Normalises a culture for cache-key composition: lowercases BCP-47 tags so
     /// <c>en-GB</c>/<c>en-gb</c>/<c>EN-GB</c> share an entry, and represents
     /// invariant content (null/empty culture) as <c>"_"</c> so it never collides

@@ -21,6 +21,118 @@
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
+  <!--
+    Story 4.2 — build-time AI-bot-list sync.
+    Source of truth: ai-robots-txt/ai.robots.txt. Pin the SHA-256 of the upstream
+    snapshot we last reviewed; refresh via PR (see docs/maintenance.md). Online build
+    fetches + verifies SHA + embeds; offline / SHA-fail-fetch falls back to the
+    committed snapshot at HealthChecks/AiBotList.fallback.txt. SHA mismatch on a
+    successful fetch is a hard fail (forced maintainer review — protects against
+    silent feed tampering).
+  -->
+  <PropertyGroup>
+    <!-- SHA-256 of the upstream snapshot we last reviewed. Refresh both this
+         and ExpectedAiBotListFallbackSha256 in lockstep (see docs/maintenance.md). -->
+    <ExpectedAiBotListSha256>27e5fd38751c2bdf64994d91239f4a653614145def6103e7da8882929edc7bf0</ExpectedAiBotListSha256>
+    <!-- SHA-256 of the committed fallback file. Verified at build time so the
+         csproj pin and the on-disk fallback can never drift independently. When
+         the fallback is byte-identical to upstream (the common case) this equals
+         ExpectedAiBotListSha256; both pins exist as separate properties so a
+         maintainer can deliberately ship a fallback that differs from upstream
+         (e.g. during an upstream-broken interregnum) without losing the
+         tampering-detection layer. -->
+    <ExpectedAiBotListFallbackSha256>27e5fd38751c2bdf64994d91239f4a653614145def6103e7da8882929edc7bf0</ExpectedAiBotListFallbackSha256>
+    <AiBotListSourceUrl>https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt</AiBotListSourceUrl>
+    <AiBotListFallback>$(MSBuildThisFileDirectory)HealthChecks\AiBotList.fallback.txt</AiBotListFallback>
+  </PropertyGroup>
+
+  <!-- Tampering protection layer 1: the committed fallback file's SHA-256
+       MUST match the pinned ExpectedAiBotListFallbackSha256. Any edit to the
+       fallback file (intentional refresh or accidental drift) requires a
+       lockstep csproj pin update. -->
+  <Target Name="VerifyAiBotListFallbackHash" BeforeTargets="BeforeBuild">
+    <GetFileHash Files="$(AiBotListFallback)" Algorithm="SHA256" HashEncoding="hex">
+      <Output TaskParameter="Hash" PropertyName="_AiBotListFallbackSha" />
+    </GetFileHash>
+    <PropertyGroup>
+      <_AiBotListFallbackShaLower>$(_AiBotListFallbackSha.ToLowerInvariant())</_AiBotListFallbackShaLower>
+      <_ExpectedAiBotListFallbackShaLower>$(ExpectedAiBotListFallbackSha256.ToLowerInvariant())</_ExpectedAiBotListFallbackShaLower>
+    </PropertyGroup>
+    <Error Condition="'$(_AiBotListFallbackShaLower)' != '$(_ExpectedAiBotListFallbackShaLower)'"
+           Text="LlmsTxt: AI bot list FALLBACK SHA mismatch — expected $(_ExpectedAiBotListFallbackShaLower), got $(_AiBotListFallbackShaLower). Refresh ExpectedAiBotListFallbackSha256 in the csproj alongside the fallback file (see docs/maintenance.md)." />
+  </Target>
+
+  <Target Name="SyncAiBotList" BeforeTargets="BeforeBuild" DependsOnTargets="VerifyAiBotListFallbackHash">
+    <!-- Resolve the embed path INSIDE the target so $(IntermediateOutputPath)
+         (which is set by the Razor SDK pre-build flow) is populated. Defining it
+         in a top-level PropertyGroup leaves it empty and lands the embed file in
+         the project root. -->
+    <PropertyGroup>
+      <_AiBotListEmbed>$(IntermediateOutputPath)AiBotList.embed.txt</_AiBotListEmbed>
+      <_AiBotListFetched>$(IntermediateOutputPath)AiBotList.fetched.txt</_AiBotListFetched>
+      <_ExpectedAiBotListShaLower>$(ExpectedAiBotListSha256.ToLowerInvariant())</_ExpectedAiBotListShaLower>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+
+    <!-- Delete any stale fetched file from a prior build so a current fetch
+         failure can't shadow itself with last build's bytes. -->
+    <Delete Files="$(_AiBotListFetched)" Condition="Exists('$(_AiBotListFetched)')" />
+
+    <DownloadFile SourceUrl="$(AiBotListSourceUrl)"
+                  DestinationFolder="$(IntermediateOutputPath)"
+                  DestinationFileName="AiBotList.fetched.txt"
+                  Timeout="5000"
+                  Retries="0"
+                  SkipUnchangedFiles="false"
+                  ContinueOnError="WarnAndContinue">
+      <Output TaskParameter="DownloadedFile" ItemName="_FetchedAiBotList" />
+    </DownloadFile>
+
+    <GetFileHash Files="@(_FetchedAiBotList)"
+                 Algorithm="SHA256"
+                 HashEncoding="hex"
+                 Condition="'@(_FetchedAiBotList)' != ''">
+      <Output TaskParameter="Hash" PropertyName="_FetchedAiBotListSha" />
+    </GetFileHash>
+
+    <!-- SHA is compared case-insensitively because <GetFileHash> emits uppercase
+         hex while the pinned constant is lowercase per common SHA convention.
+         Both sides are lowercased so a maintainer paste in either case works. -->
+    <PropertyGroup Condition="'$(_FetchedAiBotListSha)' != ''">
+      <_FetchedAiBotListShaLower>$(_FetchedAiBotListSha.ToLowerInvariant())</_FetchedAiBotListShaLower>
+    </PropertyGroup>
+
+    <!-- Distinguish empty hash (fetch produced a 0-byte / unreadable file) from
+         a real SHA mismatch — the diagnostic message points the maintainer at
+         the right corrective action. -->
+    <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == ''"
+           Text="LlmsTxt: AI bot list fetch produced an unreadable or zero-byte file at $(_AiBotListFetched). Network or proxy may be returning truncated content; investigate before bumping the pinned SHA." />
+
+    <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' != '' AND '$(_FetchedAiBotListShaLower)' != '$(_ExpectedAiBotListShaLower)'"
+           Text="LlmsTxt: AI bot list SHA mismatch — expected $(_ExpectedAiBotListShaLower), got $(_FetchedAiBotListShaLower). Refresh the pinned SHA via docs/maintenance.md after reviewing the upstream change." />
+
+    <Copy SourceFiles="@(_FetchedAiBotList)"
+          DestinationFiles="$(_AiBotListEmbed)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
+    <Message Importance="High"
+             Text="LlmsTxt: AI bot list synced from upstream (SHA $(_FetchedAiBotListShaLower))."
+             Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
+
+    <Copy SourceFiles="$(AiBotListFallback)"
+          DestinationFiles="$(_AiBotListEmbed)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_FetchedAiBotList)' == ''" />
+    <Warning Text="LlmsTxt: Falling back to AiBotList.fallback.txt — upstream fetch failed (network unreachable, timeout, or HTTP non-2xx). Build is offline-safe."
+             Condition="'@(_FetchedAiBotList)' == ''" />
+
+    <ItemGroup>
+      <EmbeddedResource Include="$(_AiBotListEmbed)"
+                        LogicalName="LlmsTxt.Umbraco.HealthChecks.AiBotList.txt" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Umbraco.Cms.Api.Common" />
     <PackageReference Include="Umbraco.Cms.Api.Management" />
@@ -46,6 +158,10 @@
 
     <!-- However make the umbraco-package.json included for dotnet pack or nuget package and visible to the solution -->
     <None Include="Client\public\umbraco-package.json" Pack="false" />
+
+    <!-- Story 4.2 — fallback bot list is committed but NOT included in the .nupkg
+         (it gets embedded as a resource via the SyncAiBotList target above). -->
+    <None Include="HealthChecks\AiBotList.fallback.txt" Pack="false" />
   </ItemGroup>
 
   <ItemGroup>

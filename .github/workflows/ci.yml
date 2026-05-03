@@ -1,0 +1,118 @@
+# Story 4.2 — CI build matrix: online + offline.
+#
+# The package's MSBuild pipeline fetches the AI-crawler list from upstream
+# (ai-robots-txt/ai.robots.txt) at build time and verifies the SHA against a
+# pinned constant in `LlmsTxt.Umbraco/LlmsTxt.Umbraco.csproj`. To exercise both
+# code paths, this workflow runs two independent jobs:
+#
+#   - build-online   — network reachable; expects the SHA-pinned fetch to
+#                      succeed and the assembly to embed the upstream content.
+#   - build-offline  — egress blocked; expects the build to fall back to the
+#                      committed `HealthChecks/AiBotList.fallback.txt` and emit
+#                      the offline-safe warning.
+#
+# Both jobs run the full test suite. If either fails, the PR is blocked.
+#
+# SHA refresh is a maintainer action only (PR review). Do NOT add a scheduled
+# job that auto-bumps the pinned SHA — that defeats the protection
+# (architect note A6, see docs/maintenance.md).
+
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+
+jobs:
+  build-online:
+    name: Build + test (online — fetches AI-bot list from upstream)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.1'
+
+      - name: npm ci (Backoffice TS)
+        run: npm ci
+        working-directory: LlmsTxt.Umbraco/Client
+
+      - name: npm run build (Backoffice TS)
+        run: npm run build
+        working-directory: LlmsTxt.Umbraco/Client
+
+      - name: dotnet restore
+        run: dotnet restore LlmsTxt.Umbraco.slnx
+
+      - name: dotnet build (Release)
+        run: |
+          set -euo pipefail
+          # Capture stdout so we can assert the online-path log line is present.
+          dotnet build LlmsTxt.Umbraco.slnx --configuration Release --no-restore | tee build-online.log
+          if ! grep -q "AI bot list synced from upstream" build-online.log; then
+            echo "::error::Online build did not emit the expected SHA-synced message — fetch path may be broken or skipped."
+            exit 1
+          fi
+
+      - name: dotnet test (Release)
+        run: dotnet test LlmsTxt.Umbraco.slnx --configuration Release --no-build --verbosity normal
+
+  build-offline:
+    name: Build + test (offline — falls back to committed snapshot)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.1'
+
+      - name: npm ci (Backoffice TS, online — TypeScript build is a separate concern)
+        run: npm ci
+        working-directory: LlmsTxt.Umbraco/Client
+
+      - name: npm run build (Backoffice TS)
+        run: npm run build
+        working-directory: LlmsTxt.Umbraco/Client
+
+      - name: dotnet restore
+        run: dotnet restore LlmsTxt.Umbraco.slnx
+
+      # Override the source URL so the MSBuild fetch fails deterministically
+      # (no network access required — :65535 is reserved port-zero shape that
+      # never resolves to a listener). This is cleaner than blocking egress at
+      # the runner level and keeps the offline test path verifiable on any CI.
+      - name: dotnet build (Release, offline simulated via unreachable AI-bot URL)
+        run: |
+          set -euo pipefail
+          dotnet build LlmsTxt.Umbraco.slnx \
+            --configuration Release \
+            --no-restore \
+            "/p:AiBotListSourceUrl=http://localhost:65535/unreachable.txt" \
+            | tee build-offline.log
+          if ! grep -q "Falling back to AiBotList.fallback.txt" build-offline.log; then
+            echo "::error::Offline build did not emit the expected fallback warning — the offline fall-through path may be broken."
+            exit 1
+          fi
+
+      - name: dotnet test (Release)
+        run: dotnet test LlmsTxt.Umbraco.slnx --configuration Release --no-build --verbosity normal

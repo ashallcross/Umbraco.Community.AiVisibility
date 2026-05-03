@@ -2,6 +2,37 @@
 
 All notable changes to **LlmsTxt.Umbraco** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v0.8] — Story 4.2: Robots audit Health Check + build-time AI-bot-list sync
+
+### Added
+
+- **Backoffice Health Check `LLMs robots.txt audit`** at `Settings → Health Check → LLMs`. Auto-discovered via Umbraco's `TypeLoader`; surfaces matched-and-blocked AI crawlers grouped by category (training / search-retrieval / user-triggered / opt-out) with copy-pasteable suggested removals. Read-only — never modifies the host's `/robots.txt`. Stable Health Check ID at `Constants.HealthChecks.RobotsAuditGuid` (do NOT regenerate between releases — Umbraco persists IDs in adopter logs).
+- **`IRobotsAuditor` public extension point** (Singleton lifetime). Default implementation `DefaultRobotsAuditor` fetches `/robots.txt` via `IHttpClientFactory`, parses User-agent / Disallow blocks (RFC 9309-tolerant), and cross-references against the embedded AI-bot list. Adopters override via `services.AddSingleton<IRobotsAuditor, MyImpl>()`.
+- **Build-time AI-bot-list sync**. New `<Target Name="SyncAiBotList" BeforeTargets="BeforeBuild">` MSBuild target fetches `https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt`, verifies SHA-256 against the pinned `<ExpectedAiBotListSha256>` constant, and embeds the content as `LlmsTxt.Umbraco.HealthChecks.AiBotList.txt`. **SHA mismatch on a successful fetch is a hard build failure** (deliberate; protects against silent feed tampering). Offline / unreachable-source builds fall back to the committed snapshot at `LlmsTxt.Umbraco/HealthChecks/AiBotList.fallback.txt` with a warning.
+- **`AiBotList`** Singleton loader with a hand-curated category map for ~80 known AI-crawler tokens. Two deprecated tokens flagged with their modern replacements: `anthropic-ai` → `ClaudeBot`, `Claude-Web` → `ClaudeBot`. Bytespider/Grok robots-noncompliance caveat surfaces in the Health Check description when those tokens are blocked.
+- **`StartupRobotsAuditRunner : IHostedService`** — fires the audit once per bound hostname at host startup. Gated on `LlmsTxt:RobotsAuditOnStartup` (default `true`) and `IServerRoleAccessor.CurrentServerRole ∈ { SchedulingPublisher, Single }` (defensive — multi-front-end installs don't all hammer their own origin at boot).
+- **`RobotsAuditRefreshJob : IDistributedBackgroundJob`** — recurring exactly-once refresh via Umbraco's host-DB-lock coordination. Period configured by `LlmsTxt:RobotsAuditor:RefreshIntervalHours` (default 24h; set to `0` to disable). Emits `Robots audit refresh job RUN — InstanceId={InstanceId} CycleStart={CycleStart}` log line for two-instance gate verification.
+- **CI build matrix** at `.github/workflows/ci.yml` — `build-online` (fetches AI-bot list from upstream) + `build-offline` (forced fallback path via unreachable source URL). Both jobs run the full test suite. **No scheduled SHA-bump action** — refresh is maintainer-only (PR review).
+- **Configuration keys.** `LlmsTxt:RobotsAuditOnStartup` (default `true`), `LlmsTxt:RobotsAuditor:RefreshIntervalHours` (default `24`), `LlmsTxt:RobotsAuditor:FetchTimeoutSeconds` (default `5`).
+- **Documentation.** New `docs/robots-audit.md` (full audit contract), new `docs/maintenance.md` (SHA-refresh process + two-instance shared-SQL-Server manual gate setup). `docs/getting-started.md` bumps v0.7 → v0.8 with the Story 4.2 surface section.
+
+### Changed
+
+- **`Constants.cs`** — added `Constants.HealthChecks.RobotsAuditGuid` and `Constants.Cache.RobotsPrefix`.
+- **`LlmsCacheKeys.cs`** — added `RobotsPrefix` constant + `Robots(string? hostname)` helper. The robots-audit cache lives under a different invalidation regime than per-page / manifest caches (rewritten by the refresh job, not by content-cache refresher notifications).
+- **`LlmsTxtSettings.cs`** — added `RobotsAuditOnStartup` + `RobotsAuditor` sub-section (`RefreshIntervalHours`, `FetchTimeoutSeconds`).
+- **New `LlmsTxt.Umbraco/HealthChecks/` namespace** — `AiBotList`, `AiBotEntry`, `BotCategory`, `IRobotsAuditor`, `DefaultRobotsAuditor`, `RobotsAuditResult`, `RobotsAuditFinding`, `RobotsAuditOutcome`, `RobotsAuditHealthCheck`, `StartupRobotsAuditRunner`.
+- **New `LlmsTxt.Umbraco/Background/` namespace** — `RobotsAuditRefreshJob` (introduced ahead of Story 5.1's `LogRetentionJob` per the architecture.md commented placeholder).
+- **New `LlmsTxt.Umbraco/Composers/HealthChecksComposer.cs`** — wires `AiBotList` (Singleton), `IRobotsAuditor` (Singleton + `TryAdd*`), `RobotsAuditHealthCheck` (Transient), `StartupRobotsAuditRunner` (HostedService), `RobotsAuditRefreshJob` (Singleton `IDistributedBackgroundJob`).
+
+### Migration
+
+Non-breaking for adopters. The robots audit ships as net-new surface; existing routes, headers, controllers, and DI seams are unchanged. Adopters who want different audit semantics override `IRobotsAuditor` with a Singleton implementation. See [`docs/robots-audit.md` § Custom auditors](docs/robots-audit.md#custom-auditors).
+
+### Notes
+
+- Architect note A5 in [`epics.md:1235`](_bmad-output/planning-artifacts/epics.md#L1235) referenced `RunJobAsync(CancellationToken)` as the canonical `IDistributedBackgroundJob` method. The actual canonical surface in Umbraco.Cms.Infrastructure 17.3.2 is `Task ExecuteAsync()` (parameterless) — verified against `~/.nuget/packages/umbraco.cms.infrastructure/17.3.2/lib/net10.0/Umbraco.Infrastructure.xml` lines 60-64. Story 4.2 implements `ExecuteAsync` and flagged the drift in Spec Drift Notes for the next reconciliation pass.
+
 ## [v0.7] — Story 4.1: HTTP `Link` discoverability header + Razor TagHelpers + Cloudflare addendum headers
 
 ### Added

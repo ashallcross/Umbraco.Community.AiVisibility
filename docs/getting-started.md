@@ -391,6 +391,33 @@ Two additional response headers ride the existing Markdown writer (Story 1.3):
 
 The MCP Server Card / Agent Skills / WebMCP / OAuth / commerce-protocol surfaces that the [`isitagentready.com`](https://isitagentready.com) scanner checks for are intentionally NOT shipped — they're concerns of the application layer (what services the site offers, who the agent is, how transactions clear), not the content-rendering middleware. See [`docs/data-attributes.md` § Out of scope (intentionally)](data-attributes.md#out-of-scope-intentionally) for the full list and rationale.
 
+## Robots audit Health Check (Story 4.2)
+
+From v0.8, the Backoffice **Settings → Health Check → LLMs** group surfaces a `LLMs robots.txt audit` check that fetches your site's `/robots.txt` and cross-references it against the [`ai-robots-txt/ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt) AI-crawler list. Findings appear grouped by category (training / search-retrieval / user-triggered / opt-out) with copy-pasteable suggested removals.
+
+**The package never modifies your `/robots.txt`** — it audits and surfaces, you decide. See [`docs/robots-audit.md`](robots-audit.md) for the full contract.
+
+| Setting | Default | Effect |
+|---|---|---|
+| `LlmsTxt:RobotsAuditOnStartup` | `true` | Run a one-shot audit at host startup (per scheduling-publisher / single-instance role only — multi-front-end installs don't all hammer their own origin). |
+| `LlmsTxt:RobotsAuditor:RefreshIntervalHours` | `24` | Recurring refresh cadence via Umbraco's `IDistributedBackgroundJob` (exactly-once across a load-balanced deployment). Set to `0` to disable the recurring refresh; the on-demand Health Check view still works. |
+| `LlmsTxt:RobotsAuditor:FetchTimeoutSeconds` | `5` | Per-host `/robots.txt` fetch timeout (seconds). Clamped to `[1, 60]` at consumption. |
+| `LlmsTxt:RobotsAuditor:DevFetchPort` | `null` | **Dev-only escape hatch.** Overrides the scheme default port for the audit fetch (e.g. `44314` for a TestSite on Kestrel). **DO NOT set in production** — production deploys serve `/robots.txt` on 443/80. Live in `appsettings.Development.json` only. |
+| `LlmsTxt:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev-only escape hatch.** Forces seconds-precision refresh cycles instead of `RefreshIntervalHours`. Used by the architect-A5 two-instance shared-SQL-Server exactly-once gate. **DO NOT set in production** — would hammer adopter origins. Live in `appsettings.Development.json` only. |
+
+The AI-bot list is **synced from upstream at build time** with SHA pinning — the build hard-fails on a SHA mismatch (deliberate; protects against silent feed tampering). Offline / disconnected builds fall back to the committed snapshot at `LlmsTxt.Umbraco/HealthChecks/AiBotList.fallback.txt` with a warning. See [`docs/maintenance.md`](maintenance.md) for the SHA-refresh process.
+
+Adopters can replace the auditor entirely by registering a Singleton `IRobotsAuditor` of their own (Singleton lifetime is required — see [`docs/robots-audit.md` § Custom auditors](robots-audit.md#custom-auditors)).
+
+## Upgrading from v0.7 to v0.8
+
+Story 4.2 is **non-breaking** for adopters. The robots audit ships as net-new surface; existing routes, headers, and DI shapes are unchanged. Notable new artefacts:
+
+- New `LlmsTxt.Umbraco/HealthChecks/` and `LlmsTxt.Umbraco/Background/` namespaces.
+- New build-time MSBuild target `SyncAiBotList` — embeds an AI-bot list resource into the assembly. Online + offline build paths both work; see `docs/maintenance.md`.
+- New `IRobotsAuditor` extension point. Adopters wanting custom audit semantics override via `services.AddSingleton<IRobotsAuditor, MyImpl>()`.
+- New `LlmsTxt:RobotsAuditOnStartup` + `LlmsTxt:RobotsAuditor:*` configuration keys.
+
 ## Upgrading from v0.6 to v0.7
 
 Story 4.1 is a **breaking** v0.7 release for adopters who have customised the Markdown response pipeline. The full set of changes is in [`CHANGELOG.md`](../CHANGELOG.md); the load-bearing items:
@@ -405,11 +432,10 @@ Story 4.1 is a **breaking** v0.7 release for adopters who have customised the Ma
 
 Single-route adopters (only consuming `/llms.txt`, `/llms-full.txt`, or `.md` URLs without subclassing or implementing the package interfaces) need no code changes.
 
-## What's not in v0.7
+## What's not in v0.8
 
 Coming in later epics:
 
-- Robots.txt audit Health Check + build-time AI bot list sync (Story 4.2)
 - Request log + AI traffic dashboard (Epic 5)
 - Auto-hide of the Settings-dashboard onboarding notice once the AI traffic dashboard has logged at least one request (Story 5.2)
 - v1.0 NuGet release readiness (Epic 6)

@@ -209,6 +209,87 @@ public sealed class LlmsTxtSettings
     /// for the rationale.
     /// </summary>
     public ContentSignalSettings ContentSignal { get; init; } = new();
+
+    /// <summary>
+    /// Story 4.2 — toggles whether the robots audit fires once on host startup
+    /// via <c>StartupRobotsAuditRunner</c>. Default <c>true</c> per
+    /// package-spec.md § 13. Setting to <c>false</c> disables the startup
+    /// invocation; the Backoffice Health Check view still triggers the audit
+    /// on demand and the <c>RobotsAuditRefreshJob</c> still runs on its
+    /// configured cadence.
+    /// </summary>
+    public bool RobotsAuditOnStartup { get; init; } = true;
+
+    /// <summary>
+    /// Story 4.2 — robots audit configuration sub-section. Carries the
+    /// recurring refresh cadence and per-host fetch timeout used by
+    /// <c>DefaultRobotsAuditor</c> + <c>RobotsAuditRefreshJob</c>.
+    /// </summary>
+    public RobotsAuditorSettings RobotsAuditor { get; init; } = new();
+}
+
+/// <summary>
+/// Story 4.2 — configuration block for <c>DefaultRobotsAuditor</c> +
+/// <c>RobotsAuditRefreshJob</c>. Bound from <c>LlmsTxt:RobotsAuditor</c>.
+/// </summary>
+public sealed class RobotsAuditorSettings
+{
+    /// <summary>
+    /// How often the <see cref="LlmsTxt.Umbraco.Background.RobotsAuditRefreshJob"/>
+    /// (registered as an <c>IDistributedBackgroundJob</c>) re-runs the audit
+    /// for every bound hostname. Default <c>24</c> hours. Set to <c>0</c> or
+    /// negative to disable the recurring refresh — the Health Check view
+    /// still triggers on-demand audits via the cache-miss path.
+    /// </summary>
+    public int RefreshIntervalHours { get; init; } = 24;
+
+    /// <summary>
+    /// Per-host <c>/robots.txt</c> fetch timeout in seconds. Default
+    /// <c>5</c>. Distinct from the build-time fetch's MSBuild
+    /// <c>Timeout="5000"</c> (also 5 seconds, but those are independent
+    /// contracts).
+    /// </summary>
+    public int FetchTimeoutSeconds { get; init; } = 5;
+
+    /// <summary>
+    /// Dev/test-only escape hatch. When set, the auditor composes the
+    /// <c>/robots.txt</c> URI with the supplied port instead of the
+    /// scheme default (443 for HTTPS, 80 for HTTP). Useful when running
+    /// the TestSite on Kestrel's dev port (e.g. 44314) so the live audit
+    /// can round-trip against the running site.
+    /// <para>
+    /// <b>Do NOT set this in production.</b> Standard hosting deploys
+    /// serve <c>/robots.txt</c> on the scheme default port; overriding
+    /// it would point the audit at the wrong listener (or fail entirely
+    /// if nothing is bound). Convention: live in <c>appsettings.Development.json</c>
+    /// only.
+    /// </para>
+    /// <para>
+    /// <c>null</c> (default) means "use the scheme default port" —
+    /// the production-correct behaviour.
+    /// </para>
+    /// </summary>
+    public int? DevFetchPort { get; init; }
+
+    /// <summary>
+    /// Dev/test-only escape hatch. When set, the recurring refresh job's
+    /// <c>Period</c> uses this value (in seconds) instead of
+    /// <see cref="RefreshIntervalHours"/>. Useful for the architect-A5
+    /// two-instance shared-SQL-Server exactly-once gate (where 1-hour cycles
+    /// would make the test run prohibitively long).
+    /// <para>
+    /// <b>Do NOT set this in production.</b> Seconds-precision cycles would
+    /// hammer adopter origins with /robots.txt fetches every minute; the
+    /// hours-precision default reflects the actual production cadence
+    /// recommended by the architecture.
+    /// </para>
+    /// <para>
+    /// <c>null</c> (default) means "use <see cref="RefreshIntervalHours"/>
+    /// in hours" — the production-correct behaviour. Values <c>&lt;= 0</c>
+    /// are treated as unset.
+    /// </para>
+    /// </summary>
+    public int? RefreshIntervalSecondsOverride { get; init; }
 }
 
 /// <summary>

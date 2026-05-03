@@ -117,6 +117,19 @@ public class LlmsTxtSettingsDefaultsTests
             Assert.That(settings.ContentSignal.PerDocTypeAlias, Is.Not.Null);
             Assert.That(settings.ContentSignal.PerDocTypeAlias.Count, Is.EqualTo(0),
                 "ContentSignal.PerDocTypeAlias defaults to empty (Story 4.1 AC9)");
+
+            // Story 4.2 — robots audit defaults
+            Assert.That(settings.RobotsAuditOnStartup, Is.True,
+                "RobotsAuditOnStartup defaults to true (Story 4.2 AC3 — package-spec.md § 13)");
+            Assert.That(settings.RobotsAuditor, Is.Not.Null);
+            Assert.That(settings.RobotsAuditor.RefreshIntervalHours, Is.EqualTo(24),
+                "RobotsAuditor.RefreshIntervalHours defaults to 24 (Story 4.2 AC8)");
+            Assert.That(settings.RobotsAuditor.FetchTimeoutSeconds, Is.EqualTo(5),
+                "RobotsAuditor.FetchTimeoutSeconds defaults to 5 (Story 4.2 — matches MSBuild build-time fetch timeout)");
+            Assert.That(settings.RobotsAuditor.DevFetchPort, Is.Null,
+                "RobotsAuditor.DevFetchPort defaults to null — production uses scheme default port (443/80) (Story 4.2 dev-knob)");
+            Assert.That(settings.RobotsAuditor.RefreshIntervalSecondsOverride, Is.Null,
+                "RobotsAuditor.RefreshIntervalSecondsOverride defaults to null — production uses RefreshIntervalHours (Story 4.2 dev-knob, used by architect-A5 two-instance gate)");
         });
     }
 
