@@ -432,11 +432,36 @@ Story 4.1 is a **breaking** v0.7 release for adopters who have customised the Ma
 
 Single-route adopters (only consuming `/llms.txt`, `/llms-full.txt`, or `.md` URLs without subclassing or implementing the package interfaces) need no code changes.
 
-## What's not in v0.8
+## Notifications + request log + UA classification (Story 5.1)
+
+From v0.9, every successful Markdown / `/llms.txt` / `/llms-full.txt` response publishes a sealed Umbraco notification (fire-and-forget) and the package's default writer persists a non-PII row to `llmsTxtRequestLog` in your host DB. **Subscribe in your composer to consume the events; override `ILlmsRequestLog` to redirect to App Insights / Serilog / a custom sink.** See [`docs/extension-points.md`](extension-points.md) for the full contract.
+
+### Configuration keys reference (Story 5.1 additions)
+
+| Key | Default | Effect |
+|---|---|---|
+| `LlmsTxt:RequestLog:Enabled` | `true` | Kill switch for the package's default writer. When `false`, notifications STILL fire (they're public events decoupled from the writer) — only the default DB write short-circuits. |
+| `LlmsTxt:RequestLog:QueueCapacity` | `1024` | Bounded channel capacity. Clamped at runtime to `[64, 65536]`. `DropOldest` semantics shed oldest entries on overflow. |
+| `LlmsTxt:RequestLog:BatchSize` | `50` | Drainer batch size. Clamped to `[1, 1000]`. |
+| `LlmsTxt:RequestLog:MaxBatchIntervalSeconds` | `1` | Maximum interval between batch flushes when the queue isn't yet full. Clamped to `[1, 60]`. |
+| `LlmsTxt:RequestLog:OverflowLogIntervalSeconds` | `60` | How often the writer logs an overflow Warning under sustained crawl. Clamped to `[5, 3600]`. |
+| `LlmsTxt:LogRetention:DurationDays` | `90` | Days to retain rows in `llmsTxtRequestLog`. Set to `0` (or any value `≤ 0`) to disable retention — rows persist indefinitely. Otherwise clamped to `[1, 3650]` (10 years). The disable check happens BEFORE clamping. |
+| `LlmsTxt:LogRetention:RunIntervalHours` | `24` | Retention job cadence. Set to `0` (or any value `≤ 0`) to disable the recurring DELETE — `Period` returns `Timeout.InfiniteTimeSpan`. Otherwise clamped to `[1, 8760]`. The disable check happens BEFORE clamping. |
+| `LlmsTxt:LogRetention:RunIntervalSecondsOverride` | `null` | Dev-only escape hatch — seconds-precision cycles for the architect-A5 two-instance shared-SQL-Server gate. **Do not set in production.** Clamped to `[1, 86400]`. |
+
+### PII discipline
+
+The notification payloads + the `llmsTxtRequestLog` columns capture **path, content key, culture, UA classification, referrer host** ONLY. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers MUST honour the same discipline if they forward data to external sinks.
+
+## Upgrading from v0.8 to v0.9
+
+Story 5.1 is a **breaking** v0.9 release for adopters who construct `MarkdownController`, `LlmsTxtController`, `LlmsFullTxtController`, or `AcceptHeaderNegotiationMiddleware` directly. Each gained one new constructor parameter (`ILlmsNotificationPublisher`); the controllers are intended as the package's own surfaces, so the breaking change is loud-by-design. Adopters who consume the routes via HTTP only — or who subscribe via `INotificationAsyncHandler<T>` — need no code changes.
+
+## What's not in v0.9
 
 Coming in later epics:
 
-- Request log + AI traffic dashboard (Epic 5)
+- AI traffic dashboard + analytics Management API (Story 5.2)
 - Auto-hide of the Settings-dashboard onboarding notice once the AI traffic dashboard has logged at least one request (Story 5.2)
 - v1.0 NuGet release readiness (Epic 6)
 

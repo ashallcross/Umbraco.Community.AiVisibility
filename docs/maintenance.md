@@ -115,6 +115,14 @@ dotnet run --project LlmsTxt.Umbraco.TestSite \
 
 Watch both instances' logs for `Robots audit refresh job RUN — InstanceId=…`. The architect-mandated invariant per cycle: **exactly one** RUN entry across the two instances. If you see two entries for the same `CycleStart`, stop — `IDistributedBackgroundJob` coordination is broken and re-running Spike 0.B is cheaper than absorbing the drift.
 
+### Verifying `LogRetentionJob` exactly-once (Story 5.1)
+
+The same Docker SQL Server 2022 setup verifies Story 5.1's `LogRetentionJob` (`IDistributedBackgroundJob`). Configure both TestSite instances with `LlmsTxt:LogRetention:DurationDays: 30` and `LlmsTxt:LogRetention:RunIntervalSecondsOverride: 30` (the dev-only escape hatch — do NOT use in production) so cycles tick every 30 seconds rather than every 24 hours. Hit a few `.md` / `/llms.txt` / `/llms-full.txt` URLs across both instances to populate `llmsTxtRequestLog`.
+
+Watch both instances' logs for `LlmsTxt log retention job RUN — InstanceId=… CycleStart=… RowsDeleted=…`. Same invariant: **exactly one** RUN entry per cycle across the two instances. If you see two entries for the same `CycleStart`, stop — re-running Spike 0.B is cheaper than absorbing the drift.
+
+Story 5.1 is the second consumer of this two-instance setup; future stories with `IDistributedBackgroundJob` exactly-once gates reuse the same procedure.
+
 ### Teardown
 
 ```bash

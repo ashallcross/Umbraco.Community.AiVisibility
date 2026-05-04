@@ -226,6 +226,111 @@ public sealed class LlmsTxtSettings
     /// <c>DefaultRobotsAuditor</c> + <c>RobotsAuditRefreshJob</c>.
     /// </summary>
     public RobotsAuditorSettings RobotsAuditor { get; init; } = new();
+
+    /// <summary>
+    /// Story 5.1 — request log configuration. Controls the kill switch
+    /// for the package's default <c>ILlmsRequestLog</c> writer + the
+    /// bounded queue / batch drainer parameters.
+    /// </summary>
+    public RequestLogSettings RequestLog { get; init; } = new();
+
+    /// <summary>
+    /// Story 5.1 — log retention configuration. Drives the
+    /// <c>LogRetentionJob</c> (<c>IDistributedBackgroundJob</c>) that
+    /// deletes rows older than <see cref="LogRetentionSettings.DurationDays"/>.
+    /// </summary>
+    public LogRetentionSettings LogRetention { get; init; } = new();
+}
+
+/// <summary>
+/// Story 5.1 — configuration block for the request log writer + bounded
+/// queue + batch drainer. Bound from <c>LlmsTxt:RequestLog</c>.
+/// </summary>
+public sealed class RequestLogSettings
+{
+    /// <summary>
+    /// When <c>false</c>, the package's default
+    /// <c>DefaultLlmsRequestLogHandler</c> short-circuits — notifications
+    /// still fire (per AC3 — they're public events decoupled from the
+    /// writer), but the default writer's <c>EnqueueAsync</c> is never
+    /// called. Adopter notification handlers continue to receive events.
+    /// Default <c>true</c>.
+    /// </summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>
+    /// Bounded channel capacity. When full, oldest entries are dropped
+    /// (<c>BoundedChannelFullMode.DropOldest</c>) — adopters debugging
+    /// recent traffic see fresh entries even under sustained crawl load.
+    /// Clamped at consumption time to <c>[64, 65536]</c>. Default
+    /// <c>1024</c>.
+    /// </summary>
+    public int QueueCapacity { get; init; } = 1024;
+
+    /// <summary>
+    /// Drain batch size — each scope opens once and inserts up to
+    /// <c>BatchSize</c> entries. Clamped at consumption time to
+    /// <c>[1, 1000]</c>. Default <c>50</c>.
+    /// </summary>
+    public int BatchSize { get; init; } = 50;
+
+    /// <summary>
+    /// Maximum interval between batch flushes when the queue isn't yet
+    /// full to <see cref="BatchSize"/>. Clamped at consumption time to
+    /// <c>[1, 60]</c>. Default <c>1</c> second.
+    /// </summary>
+    public int MaxBatchIntervalSeconds { get; init; } = 1;
+
+    /// <summary>
+    /// How often the writer logs an overflow Warning (with the dropped
+    /// count) when the bounded queue is full. Throttled to avoid log
+    /// spam under heavy crawl. Clamped at consumption time to
+    /// <c>[5, 3600]</c>. Default <c>60</c> seconds.
+    /// </summary>
+    public int OverflowLogIntervalSeconds { get; init; } = 60;
+}
+
+/// <summary>
+/// Story 5.1 — configuration block for the log retention job. Bound from
+/// <c>LlmsTxt:LogRetention</c>.
+/// </summary>
+public sealed class LogRetentionSettings
+{
+    /// <summary>
+    /// Number of days to retain rows in <c>llmsTxtRequestLog</c>. Rows
+    /// with <c>createdUtc &lt; UtcNow - DurationDays</c> are deleted by
+    /// <c>LogRetentionJob</c> on every cycle. Set to <c>0</c> or negative
+    /// to disable retention (<c>Period</c> returns
+    /// <c>Timeout.InfiniteTimeSpan</c> — the runner never fires); the
+    /// disable check runs BEFORE clamping. Otherwise clamped at
+    /// consumption time to <c>[1, 3650]</c> (10 years). Default <c>90</c>.
+    /// </summary>
+    public int DurationDays { get; init; } = 90;
+
+    /// <summary>
+    /// How often the retention job runs. Set to <c>0</c> or negative to
+    /// disable the recurring cycle (<c>Period</c> returns
+    /// <c>Timeout.InfiniteTimeSpan</c>); the disable check runs BEFORE
+    /// clamping. Otherwise clamped at consumption time to <c>[1, 8760]</c>
+    /// (one year). Default <c>24</c> hours.
+    /// </summary>
+    public int RunIntervalHours { get; init; } = 24;
+
+    /// <summary>
+    /// Dev/test-only escape hatch. When set positive, the retention job's
+    /// <c>Period</c> uses this value (in seconds) instead of
+    /// <see cref="RunIntervalHours"/>. Lets the architect-A5 two-instance
+    /// shared-SQL-Server exactly-once gate verify ≥3 cycles in minutes
+    /// rather than days.
+    /// <para>
+    /// <b>Do NOT set this in production.</b> Seconds-precision cycles
+    /// would hammer the host DB. <c>null</c> (default) means "use
+    /// <see cref="RunIntervalHours"/>". Values <c>&lt;= 0</c> are treated
+    /// as unset. Clamped at consumption time to <c>[1, 86400]</c> (one
+    /// day).
+    /// </para>
+    /// </summary>
+    public int? RunIntervalSecondsOverride { get; init; }
 }
 
 /// <summary>

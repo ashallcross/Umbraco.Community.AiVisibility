@@ -94,7 +94,9 @@ public class LlmsTxtControllerTests
         _umbracoContext.Dispose();
     }
 
-    private LlmsTxtController MakeController(string requestHost = Host)
+    private LlmsTxtController MakeController(
+        string requestHost = Host,
+        LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher? notificationPublisher = null)
     {
         var ctrl = new LlmsTxtController(
             _builder,
@@ -105,6 +107,7 @@ public class LlmsTxtControllerTests
             _navigation,
             _appCaches,
             _settings,
+            notificationPublisher ?? Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
             NullLogger<LlmsTxtController>.Instance);
         var http = new DefaultHttpContext();
         http.Request.Method = "GET";
@@ -792,5 +795,113 @@ public class LlmsTxtControllerTests
         var ctx = (LlmsTxtBuilderContext)calls[0].GetArguments()[0]!;
         Assert.That(ctx.Settings.SiteName, Is.EqualTo("Fallback Acme"),
             "fallback record carries appsettings SiteName verbatim");
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 5.1 — publication-site pinning (Task 9.5)
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task Render_Success_PublishesLlmsTxtNotification()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext)
+            .Returns(HostnameRootResolution.Found(root, Culture));
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+        var ctrl = MakeController(notificationPublisher: publisher);
+
+        await ctrl.Render(CancellationToken.None);
+
+        await publisher.Received(1).PublishLlmsTxtAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Is<string>(h => h == LlmsCacheKeys.NormaliseHost(Host)),
+            Arg.Is<string?>(c => c == Culture),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_NoResolvableRoot_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        _resolver.Resolve(Arg.Any<string>(), _umbracoContext)
+            .Returns(HostnameRootResolution.NotFound());
+        var ctrl = MakeController(notificationPublisher: publisher);
+
+        await ctrl.Render(CancellationToken.None);
+
+        await publisher.DidNotReceiveWithAnyArgs().PublishLlmsTxtAsync(
+            default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Render_BuilderThrows_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext)
+            .Returns(HostnameRootResolution.Found(root, Culture));
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns<Task<string>>(_ => throw new InvalidOperationException("boom"));
+        var ctrl = MakeController(notificationPublisher: publisher);
+
+        await ctrl.Render(CancellationToken.None);
+
+        await publisher.DidNotReceiveWithAnyArgs().PublishLlmsTxtAsync(
+            default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Render_IfNoneMatchMatches_Returns304_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n> \n";
+        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrl = MakeController(notificationPublisher: publisher);
+        ctrl.Request.Headers["If-None-Match"] = etag;
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        await publisher.DidNotReceiveWithAnyArgs().PublishLlmsTxtAsync(
+            default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task PublishesOncePerRequest_MultiIDomain_DistinctHostnames()
+    {
+        // Failure & Edge Cases line 153 — siteA and siteB log under their
+        // own normalised hostname; one publication per HTTP request.
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var rootA = StubContent("Acme A");
+        var rootB = StubContent("Acme B");
+        _resolver.Resolve("sitea.example", _umbracoContext)
+            .Returns(HostnameRootResolution.Found(rootA, Culture));
+        _resolver.Resolve("siteb.example", _umbracoContext)
+            .Returns(HostnameRootResolution.Found(rootB, Culture));
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# x\n> \n"));
+
+        var ctrlA = MakeController(requestHost: "sitea.example", notificationPublisher: publisher);
+        var ctrlB = MakeController(requestHost: "siteb.example", notificationPublisher: publisher);
+
+        await ctrlA.Render(CancellationToken.None);
+        await ctrlB.Render(CancellationToken.None);
+
+        await publisher.Received(1).PublishLlmsTxtAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Is<string>(h => h == "sitea.example"),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await publisher.Received(1).PublishLlmsTxtAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Is<string>(h => h == "siteb.example"),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 }

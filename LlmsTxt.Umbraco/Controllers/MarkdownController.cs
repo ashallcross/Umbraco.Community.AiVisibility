@@ -1,5 +1,6 @@
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using LlmsTxt.Umbraco.Notifications;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -41,6 +42,7 @@ public sealed class MarkdownController : Controller
     private readonly IMarkdownResponseWriter _responseWriter;
     private readonly ILlmsExclusionEvaluator _exclusionEvaluator;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly ILlmsNotificationPublisher _notificationPublisher;
     private readonly ILogger<MarkdownController> _logger;
 
     public MarkdownController(
@@ -49,6 +51,7 @@ public sealed class MarkdownController : Controller
         IMarkdownResponseWriter responseWriter,
         ILlmsExclusionEvaluator exclusionEvaluator,
         IOptionsMonitor<LlmsTxtSettings> settings,
+        ILlmsNotificationPublisher notificationPublisher,
         ILogger<MarkdownController> logger)
     {
         _extractor = extractor;
@@ -56,6 +59,7 @@ public sealed class MarkdownController : Controller
         _responseWriter = responseWriter;
         _exclusionEvaluator = exclusionEvaluator;
         _settings = settings;
+        _notificationPublisher = notificationPublisher;
         _logger = logger;
     }
 
@@ -151,6 +155,21 @@ public sealed class MarkdownController : Controller
                     resolution.Content.ContentType.Alias);
 
                 await _responseWriter.WriteAsync(result, canonicalPath, resolution.Culture, contentSignal, HttpContext);
+
+                // Story 5.1 — publish MarkdownPageRequestedNotification on
+                // successful (200) response only. Skip 304 (revalidation;
+                // same body already delivered) and any non-2xx the writer
+                // landed on.
+                if (HttpContext.Response.StatusCode == StatusCodes.Status200OK)
+                {
+                    await _notificationPublisher.PublishMarkdownPageAsync(
+                        HttpContext,
+                        canonicalPath,
+                        resolution.Content.Key,
+                        resolution.Culture,
+                        cancellationToken);
+                }
+
                 return new EmptyResult();
 
             default:

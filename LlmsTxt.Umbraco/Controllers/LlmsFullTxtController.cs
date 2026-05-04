@@ -47,6 +47,7 @@ public sealed class LlmsFullTxtController : Controller
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly AppCaches _appCaches;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly Notifications.ILlmsNotificationPublisher _notificationPublisher;
     private readonly ILogger<LlmsFullTxtController> _logger;
 
     public LlmsFullTxtController(
@@ -57,6 +58,7 @@ public sealed class LlmsFullTxtController : Controller
         IDocumentNavigationQueryService navigation,
         AppCaches appCaches,
         IOptionsMonitor<LlmsTxtSettings> settings,
+        Notifications.ILlmsNotificationPublisher notificationPublisher,
         ILogger<LlmsFullTxtController> logger)
     {
         _builder = builder;
@@ -66,6 +68,7 @@ public sealed class LlmsFullTxtController : Controller
         _navigation = navigation;
         _appCaches = appCaches;
         _settings = settings;
+        _notificationPublisher = notificationPublisher;
         _logger = logger;
     }
 
@@ -247,9 +250,33 @@ public sealed class LlmsFullTxtController : Controller
         response.StatusCode = StatusCodes.Status200OK;
         response.ContentType = Constants.HttpHeaders.MarkdownContentType;
 
-        if (!HttpMethods.IsHead(HttpContext.Request.Method))
+        var isHead = HttpMethods.IsHead(HttpContext.Request.Method);
+        if (!isHead)
         {
             await response.WriteAsync(entry.Body, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Story 5.1 — publish LlmsFullTxtRequestedNotification on the 200
+        // path. The 304 short-circuit returned earlier so this only runs on
+        // a successful 200. The StatusCode == 200 guard mirrors the
+        // MarkdownController + AcceptHeaderNegotiationMiddleware shape — a
+        // response filter / OnStarting that mutates StatusCode after
+        // WriteAsync would otherwise cause a notification to fire for a
+        // non-200 response.
+        if (response.StatusCode == StatusCodes.Status200OK)
+        {
+            // Decision D1 (Story 5.1 code review) — HEAD requests do not
+            // write a body, so BytesServed reports 0 (matches the
+            // notification's xmldoc contract: "byte count of the manifest
+            // body actually written to the response"). GET serves the body
+            // and reports the UTF-8 byte count.
+            var bytesServed = isHead ? 0 : Encoding.UTF8.GetByteCount(entry.Body);
+            await _notificationPublisher.PublishLlmsFullTxtAsync(
+                HttpContext,
+                hostname: hostForBuild,
+                culture: resolution.Culture,
+                bytesServed: bytesServed,
+                cancellationToken: cancellationToken);
         }
 
         return new EmptyResult();

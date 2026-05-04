@@ -1,5 +1,6 @@
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
+using LlmsTxt.Umbraco.Notifications;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -29,6 +30,7 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
     private readonly IMarkdownResponseWriter _writer;
     private readonly ILlmsExclusionEvaluator _exclusionEvaluator;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly ILlmsNotificationPublisher _notificationPublisher;
     private readonly ILogger<AcceptHeaderNegotiationMiddleware> _logger;
 
     public AcceptHeaderNegotiationMiddleware(
@@ -36,12 +38,14 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
         IMarkdownResponseWriter writer,
         ILlmsExclusionEvaluator exclusionEvaluator,
         IOptionsMonitor<LlmsTxtSettings> settings,
+        ILlmsNotificationPublisher notificationPublisher,
         ILogger<AcceptHeaderNegotiationMiddleware> logger)
     {
         _extractor = extractor;
         _writer = writer;
         _exclusionEvaluator = exclusionEvaluator;
         _settings = settings;
+        _notificationPublisher = notificationPublisher;
         _logger = logger;
     }
 
@@ -140,6 +144,20 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
                     _settings.CurrentValue,
                     content.ContentType.Alias);
                 await _writer.WriteAsync(result, canonicalPath, culture, contentSignal, context);
+
+                // Story 5.1 — publish notification on 200 only. The writer
+                // mutates StatusCode to 304 on If-None-Match match (per
+                // Story 2.3); same skip-on-304 discipline as the .md route.
+                if (context.Response.StatusCode == StatusCodes.Status200OK)
+                {
+                    await _notificationPublisher.PublishMarkdownPageAsync(
+                        context,
+                        canonicalPath,
+                        content.Key,
+                        culture,
+                        context.RequestAborted);
+                }
+
                 return;
 
             case MarkdownExtractionStatus.Error:

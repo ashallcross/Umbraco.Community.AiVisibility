@@ -257,7 +257,9 @@ public class AcceptHeaderNegotiationMiddlewareTests
             settingsResolver,
             NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
         var middleware = new AcceptHeaderNegotiationMiddleware(
-            extractor, writer, exclusionEvaluator, optionsMonitor, logger);
+            extractor, writer, exclusionEvaluator, optionsMonitor,
+            Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
+            logger);
         var nextCalled = false;
         await middleware.InvokeAsync(ctx, _ => { nextCalled = true; return Task.CompletedTask; });
 
@@ -402,6 +404,88 @@ public class AcceptHeaderNegotiationMiddlewareTests
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    // Story 5.1 — publication-site pinning (Task 9.5)
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task DivertSuccess_PublishesMarkdownPageNotification()
+    {
+        // 200 path on the Accept-negotiated divert: middleware writes the
+        // Markdown body via MarkdownResponseWriter, then publishes the
+        // notification (StatusCode == 200 guard).
+        var harness = NewHarness(
+            method: "GET", accept: "text/markdown",
+            path: "/home", routeValues: BuildRouteValues(culture: "en-GB"));
+
+        await harness.Middleware.InvokeAsync(harness.Ctx, harness.Next);
+
+        await harness.Publisher.Received(1).PublishMarkdownPageAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Is<string>(p => p == "/home"),
+            Arg.Any<Guid>(),
+            Arg.Is<string?>(c => c == "en-GB"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ExtractorErrorOnDivert_DoesNotPublish()
+    {
+        var harness = NewHarness(
+            method: "GET", accept: "text/markdown",
+            path: "/buggy", routeValues: BuildRouteValues(),
+            extractorResult: MarkdownExtractionResult.Failed(
+                new InvalidOperationException("boom"),
+                sourceUrl: "https://example.test/buggy",
+                contentKey: HomeKey));
+
+        await harness.Middleware.InvokeAsync(harness.Ctx, harness.Next);
+
+        Assert.That(harness.Ctx.Response.StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+        await harness.Publisher.DidNotReceiveWithAnyArgs().PublishMarkdownPageAsync(
+            default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task EmptyBodyFallthroughOnDivert_DoesNotPublish()
+    {
+        // Empty Markdown → middleware falls through to the HTML pipeline.
+        // No notification published — the Markdown route did not serve a body.
+        // BuildFound prepends YAML front-matter; for a truly empty body we
+        // construct the Found result inline (mirrors the sibling
+        // Invoke_AcceptMarkdown_ExtractorReturnsFoundWithEmptyBody_FallsThroughToHtml_LogsWarning).
+        var empty = MarkdownExtractionResult.Found(
+            markdown: string.Empty,
+            contentKey: HomeKey,
+            culture: "en-GB",
+            updatedUtc: HomeUpdated,
+            sourceUrl: "https://example.test/home");
+        var harness = NewHarness(
+            method: "GET", accept: "text/markdown",
+            path: "/empty", routeValues: BuildRouteValues(),
+            extractorResult: empty);
+
+        await harness.Middleware.InvokeAsync(harness.Ctx, harness.Next);
+
+        Assert.That(harness.NextWasCalled, Is.True, "empty-body fall-through must continue to HTML pipeline");
+        await harness.Publisher.DidNotReceiveWithAnyArgs().PublishMarkdownPageAsync(
+            default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task NonGetRequest_DoesNotPublish()
+    {
+        // POST/PUT/DELETE never enter the divert — middleware short-circuits to next().
+        var harness = NewHarness(
+            method: "POST", accept: "text/markdown",
+            path: "/home", routeValues: BuildRouteValues());
+
+        await harness.Middleware.InvokeAsync(harness.Ctx, harness.Next);
+
+        await harness.Publisher.DidNotReceiveWithAnyArgs().PublishMarkdownPageAsync(
+            default!, default!, default, default, default);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // Cache-entry sharing — symmetry with .md route
     // ────────────────────────────────────────────────────────────────────────
 
@@ -441,6 +525,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
             writer,
             controllerExclusion,
             optionsMonitor,
+            Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
             NullLogger<MarkdownController>.Instance);
         var controllerCtx = new DefaultHttpContext();
         controllerCtx.Request.Method = "GET";
@@ -492,6 +577,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
         public required StubExtractor Extractor { get; init; }
         public required MemoryStream Body { get; init; }
         public required RecordingLogger<AcceptHeaderNegotiationMiddleware> Logger { get; init; }
+        public required LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher Publisher { get; init; }
         public RequestDelegate Next { get; set; } = ctx => Task.CompletedTask;
         public bool NextWasCalled => _nextCalled;
         private bool _nextCalled;
@@ -573,11 +659,13 @@ public class AcceptHeaderNegotiationMiddlewareTests
         var exclusionEvaluator = new DefaultLlmsExclusionEvaluator(
             settingsResolver,
             NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor,
             writer,
             exclusionEvaluator,
             optionsMonitor,
+            publisher,
             logger);
 
         return new Harness
@@ -587,6 +675,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
             Extractor = extractor,
             Body = body,
             Logger = logger,
+            Publisher = publisher,
         };
     }
 

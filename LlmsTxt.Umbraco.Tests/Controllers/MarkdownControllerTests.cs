@@ -509,6 +509,114 @@ public class MarkdownControllerTests
         });
     }
 
+    // Story 5.1 — publication-site pinning (Task 9.5 + DoD line 127).
+    // The publisher's own defence-in-depth + payload shaping is pinned by
+    // DefaultLlmsNotificationPublisherTests + NotificationShapeTests; these
+    // tests pin the controller's CONTRACT against the publisher: publish on
+    // 200, skip on 304/404/500/non-2xx.
+
+    [Test]
+    public async Task Render_Success_PublishesMarkdownPageNotification()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var extractor = new StubExtractor(BuildFound("# Home\n"));
+        var resolver = MakeStubResolver(content: BuildContent(), culture: "en-GB");
+        var body = new MemoryStream();
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md",
+            body: body, notificationPublisher: publisher);
+
+        await controller.Render(path: "/home.md", CancellationToken.None);
+
+        await publisher.Received(1).PublishMarkdownPageAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Is<string>(p => p == "/home"),
+            Arg.Is<Guid>(g => g == HomeKey),
+            Arg.Is<string?>(c => c == "en-GB"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_NotFound_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var extractor = new StubExtractor(BuildFound("never reached"));
+        var resolver = StubResolverNotFound();
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test",
+            "/does-not-exist.md", notificationPublisher: publisher);
+
+        await controller.Render(path: "/does-not-exist.md", CancellationToken.None);
+
+        await publisher.DidNotReceiveWithAnyArgs().PublishMarkdownPageAsync(
+            default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task Render_ExtractorError_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var extractor = new StubExtractor(MarkdownExtractionResult.Failed(
+            new InvalidOperationException("boom"),
+            sourceUrl: "https://example.test/buggy",
+            contentKey: HomeKey));
+        var resolver = MakeStubResolver(content: BuildContent(), culture: null);
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/buggy.md",
+            notificationPublisher: publisher);
+
+        await controller.Render(path: "/buggy.md", CancellationToken.None);
+
+        await publisher.DidNotReceiveWithAnyArgs().PublishMarkdownPageAsync(
+            default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task Render_IfNoneMatch_Matches_Returns304_DoesNotPublish()
+    {
+        // 304 revalidation: same body already delivered, no new request to log.
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var etag = await RunAndCaptureETag("/home.md", "en-GB", HomeUpdated);
+
+        var body = new MemoryStream();
+        var controller = MakeController(
+            new StubExtractor(BuildFound("# x\n", culture: "en-GB", updatedUtc: HomeUpdated)),
+            MakeStubResolver(content: BuildContent(), culture: "en-GB"),
+            "GET", "https", "example.test", "/home.md", body: body, notificationPublisher: publisher);
+        controller.Request.Headers[Constants.HttpHeaders.IfNoneMatch] = etag;
+
+        await controller.Render(path: "/home.md", CancellationToken.None);
+
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        await publisher.DidNotReceiveWithAnyArgs().PublishMarkdownPageAsync(
+            default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task PublishesNotification_QueryStringStripped()
+    {
+        // PII discipline gate (DoD line 127): canonical Path on the
+        // notification carries no query string components even when the
+        // request URL includes them. Manual Gate Step 6.
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var extractor = new StubExtractor(BuildFound("# Home\n"));
+        var resolver = MakeStubResolver(content: BuildContent(), culture: "en-GB");
+        var body = new MemoryStream();
+        var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md",
+            body: body, notificationPublisher: publisher);
+        controller.Request.QueryString = new QueryString("?secret=xyz&token=abc");
+
+        await controller.Render(path: "/home.md", CancellationToken.None);
+
+        await publisher.Received(1).PublishMarkdownPageAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Is<string>(p =>
+                !p.Contains("secret", StringComparison.Ordinal)
+                && !p.Contains("token", StringComparison.Ordinal)
+                && !p.Contains("?", StringComparison.Ordinal)
+                && !p.Contains("=", StringComparison.Ordinal)),
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private static MarkdownExtractionResult BuildFound(
         string body,
         string? culture = "en-GB",
@@ -580,7 +688,8 @@ public class MarkdownControllerTests
         string path,
         LlmsTxtSettings? settings = null,
         MemoryStream? body = null,
-        ILlmsSettingsResolver? settingsResolverOverride = null)
+        ILlmsSettingsResolver? settingsResolverOverride = null,
+        LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher? notificationPublisher = null)
     {
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = method;
@@ -618,6 +727,7 @@ public class MarkdownControllerTests
             writer,
             exclusionEvaluator,
             optionsMonitor,
+            notificationPublisher ?? Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
             NullLogger<MarkdownController>.Instance);
         controller.ControllerContext = new ControllerContext
         {

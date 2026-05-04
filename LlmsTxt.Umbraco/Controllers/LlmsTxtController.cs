@@ -2,6 +2,7 @@ using System.Text;
 using LlmsTxt.Umbraco.Builders;
 using LlmsTxt.Umbraco.Caching;
 using LlmsTxt.Umbraco.Configuration;
+using LlmsTxt.Umbraco.Notifications;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -47,6 +48,7 @@ public sealed class LlmsTxtController : Controller
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly AppCaches _appCaches;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly ILlmsNotificationPublisher _notificationPublisher;
     private readonly ILogger<LlmsTxtController> _logger;
 
     public LlmsTxtController(
@@ -58,6 +60,7 @@ public sealed class LlmsTxtController : Controller
         IDocumentNavigationQueryService navigation,
         AppCaches appCaches,
         IOptionsMonitor<LlmsTxtSettings> settings,
+        ILlmsNotificationPublisher notificationPublisher,
         ILogger<LlmsTxtController> logger)
     {
         _builder = builder;
@@ -68,6 +71,7 @@ public sealed class LlmsTxtController : Controller
         _navigation = navigation;
         _appCaches = appCaches;
         _settings = settings;
+        _notificationPublisher = notificationPublisher;
         _logger = logger;
     }
 
@@ -265,6 +269,22 @@ public sealed class LlmsTxtController : Controller
         if (!HttpMethods.IsHead(HttpContext.Request.Method))
         {
             await response.WriteAsync(entry.Body, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Story 5.1 — publish LlmsTxtRequestedNotification on the 200 path
+        // only. The 304 short-circuit returned earlier; HEAD still emits
+        // (the request HIT the route, just without a body — analytics still
+        // wants the visibility). The StatusCode == 200 guard mirrors
+        // MarkdownController + AcceptHeaderNegotiationMiddleware — defends
+        // against a response filter / OnStarting that mutates StatusCode
+        // after WriteAsync.
+        if (response.StatusCode == StatusCodes.Status200OK)
+        {
+            await _notificationPublisher.PublishLlmsTxtAsync(
+                HttpContext,
+                hostname: hostForBuild,
+                culture: culture,
+                cancellationToken: cancellationToken);
         }
 
         return new EmptyResult();

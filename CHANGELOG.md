@@ -2,6 +2,42 @@
 
 All notable changes to **LlmsTxt.Umbraco** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v0.9] — Story 5.1: Public notifications + log table + `ILlmsRequestLog` writer + `IUserAgentClassifier`
+
+### Added
+
+- **Three sealed public notifications** in `LlmsTxt.Umbraco.Notifications/`: `MarkdownPageRequestedNotification` (fires from `MarkdownController` + `AcceptHeaderNegotiationMiddleware`), `LlmsTxtRequestedNotification` (fires from `LlmsTxtController`), `LlmsFullTxtRequestedNotification` (fires from `LlmsFullTxtController`, carries `BytesServed`). All implement `Umbraco.Cms.Core.Notifications.INotification`; published fire-and-forget via `IEventAggregator.PublishAsync`. **Skipped on 304 / 404 / 500** so adopter analytics aren't double-counted by revalidation.
+- **`IUserAgentClassifier`** Singleton extension point + `DefaultUserAgentClassifier` projecting Story 4.2's `AiBotList` to a coarse 7-value `UserAgentClass` enum (`Unknown`, `AiTraining`, `AiSearchRetrieval`, `AiUserTriggered`, `AiDeprecated`, `HumanBrowser`, `CrawlerOther`). Match priority: AI tokens (longest substring first) → curated non-AI crawlers → browser tells.
+- **`ILlmsRequestLog`** Singleton extension point + `DefaultLlmsRequestLog` (process-wide bounded `Channel<LlmsTxtRequestLogEntry>`, `BoundedChannelFullMode.DropOldest`). Adopters override with `services.AddSingleton<ILlmsRequestLog, MyImpl>()`; **composer-time hard-validation throws if a non-Singleton lifetime is registered** (Story 4.2 chunk-3 D2 ratification — same shape as `IRobotsAuditor`).
+- **`DefaultLlmsRequestLogHandler`** — Scoped, subscribes to all three notifications via `INotificationAsyncHandler<T>`. Translates each notification to a `LlmsTxtRequestLogEntry` and forwards via `ILlmsRequestLog.EnqueueAsync`. Short-circuits when `LlmsTxt:RequestLog:Enabled: false` (notifications still fire — the kill switch is on the writer, not on the events).
+- **`LlmsRequestLogDrainHostedService`** Singleton hosted service. Drains the channel into `llmsTxtRequestLog` in batches via Infrastructure-flavour `IScopeProvider` + NPoco `Database.InsertBulk`. Boot is never blocked (`Task.Run` pattern). Server-role gate (`SchedulingPublisher` / `Single` only) prevents N front-end servers all writing to shared DB. Tunable batch flush via `LlmsTxt:RequestLog:BatchSize` + `MaxBatchIntervalSeconds`.
+- **`LogRetentionJob : IDistributedBackgroundJob`** — recurring exactly-once DELETE of rows older than `LlmsTxt:LogRetention:DurationDays` (default 90). Canonical `Task ExecuteAsync()` parameterless surface. Period clamps via `RunIntervalHours` (default 24h); `Timeout.InfiniteTimeSpan` when disabled (NOT `TimeSpan.Zero` — Story 4.2 chunk-3 P2 precedent). Concurrent-cycle guard via `Interlocked.CompareExchange`. Emits `LlmsTxt log retention job RUN — InstanceId={InstanceId} CycleStart={CycleStart} RowsDeleted={RowsDeleted}` for two-instance gate verification.
+- **`AddRequestLogTable_1_0 : AsyncMigrationBase`** — chained into the existing `LlmsTxtSettingsMigrationPlan` (key remains `"LlmsTxt.Umbraco"`). Idempotent via `DatabaseSchemaCreatorFactory.Create(db).TableExists("llmsTxtRequestLog")`. Schema-from-annotations via NPoco `[TableName]` + `[Column]` + `[Length]` + `[NullSetting]` + `[Index]` on `LlmsTxtRequestLogEntry`.
+- **`NotificationsComposer`** orchestrates the new graph. Registers `TimeProvider.System`, `IUserAgentClassifier`, `ILlmsNotificationPublisher` (the internal helper), `ILlmsRequestLog`, the drainer, the retention job, and three `AddNotificationAsyncHandler<T, DefaultLlmsRequestLogHandler>()` calls. Throws at composition time if `ILlmsRequestLog` is registered with a non-Singleton lifetime.
+- **`ILlmsNotificationPublisher`** internal helper centralising the four publication sites' shared work (UA classification, referrer host parsing, exception-isolated `IEventAggregator.PublishAsync`). Not a public extension point — adopters subscribe via `INotificationAsyncHandler<T>` rather than replacing this helper.
+- **Configuration keys.** `LlmsTxt:RequestLog:{Enabled, QueueCapacity, BatchSize, MaxBatchIntervalSeconds, OverflowLogIntervalSeconds}`. `LlmsTxt:LogRetention:{DurationDays, RunIntervalHours, RunIntervalSecondsOverride}`. All bounded values clamped at consumption time per project-context.md "no nasa" + Story 4.2 chunk-3 P7 precedent.
+- **Documentation.** New `docs/extension-points.md` (canonical adopter reference for the three notifications + `ILlmsRequestLog` + `IUserAgentClassifier` + cross-links to existing extension points). `docs/getting-started.md` bumps v0.8 → v0.9 with the Story 5.1 surface section + config table. `docs/maintenance.md` extends the two-instance shared-SQL-Server setup with the `LogRetentionJob` exactly-once verification procedure.
+
+### Changed
+
+- **`LlmsTxtSettings.cs`** — added `RequestLog` (`RequestLogSettings`) and `LogRetention` (`LogRetentionSettings`) sub-sections.
+- **`LlmsTxt.Umbraco/Persistence/`** — extended with `IUserAgentClassifier`, `DefaultUserAgentClassifier`, `UserAgentClass`, `ILlmsRequestLog`, `DefaultLlmsRequestLog`, `Entities/LlmsTxtRequestLogEntry`.
+- **`LlmsTxt.Umbraco/Notifications/`** — new namespace housing the three notifications, `DefaultLlmsRequestLogHandler`, `ILlmsNotificationPublisher`, `DefaultLlmsNotificationPublisher`.
+- **`LlmsTxt.Umbraco/Background/`** — added `LlmsRequestLogDrainHostedService` + `LogRetentionJob` alongside Story 4.2's `RobotsAuditRefreshJob`.
+- **`LlmsTxt.Umbraco/Composers/`** — added `NotificationsComposer`.
+- **`LlmsTxtSettingsMigrationPlan.DefinePlan()`** — chained the new `AddRequestLogTable_1_0` step (state-record GUID `9B3D7E4A-2C8F-4F1B-A5E0-7D9B2A6F1C8E`).
+
+### Breaking changes
+
+- **`MarkdownController`, `LlmsTxtController`, `LlmsFullTxtController`, `AcceptHeaderNegotiationMiddleware`** each gained one new constructor parameter (`ILlmsNotificationPublisher`). These types are package-internal surfaces, not public extension seams, but adopters who subclass / service-locate them directly will need to update. Adopters who consume the routes via HTTP only — or who subscribe to notifications via `INotificationAsyncHandler<T>` — need no changes.
+
+### Spec drift logged
+
+- **`UmbracoDatabaseExtensions.HasTable(IUmbracoDatabase, string)`** — the canonical xml docs (`Umbraco.Infrastructure.xml` line 8357) document this as the migration idempotency primitive. **The compiled type is `internal`** (verified via reflection during implementation); the C# compiler refuses cross-assembly access. Pivoted to `DatabaseSchemaCreatorFactory.Create(db).TableExists(name)` — both public per reflection probe.
+- **`Umbraco.Cms.Core.Notifications.INotification`** — the marker interface DOES exist in v17. The Framework API Pre-flight grep against `Umbraco.Cms.Core.Events.INotification` missed it because it lives in the `Notifications` namespace, not `Events`. The three Story 5.1 notification classes implement it.
+- **`architecture.md` line 386** lists `ILlmsRequestLog` as Scoped/transient — drift vs Story 5.1's Singleton-with-channel design. Recommend patch at next epic retro reconciliation.
+- **`architecture.md` line 344** describes Story 5.1 migrations as "Standard `MigrationPlan` + `MigrationBase`". Story 5.1 inherits Story 3.1's `PackageMigrationPlan` + `AsyncMigrationBase` shape (extends the existing plan, single `LlmsTxtSettingsMigrationPlan` key). Recommend patch at next epic retro reconciliation.
+
 ## [v0.8] — Story 4.2: Robots audit Health Check + build-time AI-bot-list sync
 
 ### Added

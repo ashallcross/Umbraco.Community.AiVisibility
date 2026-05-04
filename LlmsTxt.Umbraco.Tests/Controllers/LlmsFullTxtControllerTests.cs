@@ -82,7 +82,10 @@ public class LlmsFullTxtControllerTests
         _umbracoContext.Dispose();
     }
 
-    private LlmsFullTxtController MakeController(string requestHost = Host)
+    private LlmsFullTxtController MakeController(
+        string requestHost = Host,
+        LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher? notificationPublisher = null,
+        string method = "GET")
     {
         var ctrl = new LlmsFullTxtController(
             _builder,
@@ -92,9 +95,10 @@ public class LlmsFullTxtControllerTests
             _navigation,
             _appCaches,
             _settings,
+            notificationPublisher ?? Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
             NullLogger<LlmsFullTxtController>.Instance);
         var http = new DefaultHttpContext();
-        http.Request.Method = "GET";
+        http.Request.Method = method;
         http.Request.Scheme = "https";
         http.Request.Host = new HostString(requestHost);
         http.Request.Path = "/llms-full.txt";
@@ -833,5 +837,103 @@ public class LlmsFullTxtControllerTests
             Assert.That(result, Is.InstanceOf<EmptyResult>());
             Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
         });
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 5.1 — publication-site pinning (Task 9.5) + D1 (HEAD bytes-served)
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task Render_Success_PublishesLlmsFullTxtNotification_WithUtf8ByteCount()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var root = StubContent("Acme", "homePage");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n\n_Source: x_\n\nBody.";
+        _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrl = MakeController(notificationPublisher: publisher);
+
+        await ctrl.Render(CancellationToken.None);
+
+        var expectedBytes = Encoding.UTF8.GetByteCount(body);
+        await publisher.Received(1).PublishLlmsFullTxtAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Is<string>(h => h == LlmsCacheKeys.NormaliseHost(Host)),
+            Arg.Is<string?>(c => c == Culture),
+            Arg.Is<int>(b => b == expectedBytes),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_HeadRequest_PublishesWithBytesServedZero()
+    {
+        // Decision D1 (Story 5.1 code review): HEAD writes no body, so
+        // BytesServed reports 0 (matches notification xmldoc — "actually
+        // written to the response").
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var root = StubContent("Acme", "homePage");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n\n_Source: x_\n\nBody."));
+        var ctrl = MakeController(notificationPublisher: publisher, method: "HEAD");
+
+        await ctrl.Render(CancellationToken.None);
+
+        await publisher.Received(1).PublishLlmsFullTxtAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Is<int>(b => b == 0),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Render_NoResolvableRoot_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        _resolver.Resolve(Arg.Any<string>(), _umbracoContext).Returns(HostnameRootResolution.NotFound());
+        var ctrl = MakeController(notificationPublisher: publisher);
+
+        await ctrl.Render(CancellationToken.None);
+
+        await publisher.DidNotReceiveWithAnyArgs().PublishLlmsFullTxtAsync(
+            default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task Render_BuilderThrows_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var root = StubContent("Acme", "homePage");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns<Task<string>>(_ => throw new InvalidOperationException("boom"));
+        var ctrl = MakeController(notificationPublisher: publisher);
+
+        await ctrl.Render(CancellationToken.None);
+
+        await publisher.DidNotReceiveWithAnyArgs().PublishLlmsFullTxtAsync(
+            default!, default!, default, default, default);
+    }
+
+    [Test]
+    public async Task Render_IfNoneMatchMatches_Returns304_DoesNotPublish()
+    {
+        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var root = StubContent("Acme", "homePage");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        const string body = "# Acme\n\n_Source: x_\n\nBody.";
+        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(body));
+        var ctrl = MakeController(notificationPublisher: publisher);
+        ctrl.Request.Headers["If-None-Match"] = etag;
+
+        await ctrl.Render(CancellationToken.None);
+
+        Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status304NotModified));
+        await publisher.DidNotReceiveWithAnyArgs().PublishLlmsFullTxtAsync(
+            default!, default!, default, default, default);
     }
 }
