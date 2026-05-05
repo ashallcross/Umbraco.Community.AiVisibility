@@ -43,7 +43,7 @@
          tampering-detection layer. -->
     <ExpectedAiBotListFallbackSha256>27e5fd38751c2bdf64994d91239f4a653614145def6103e7da8882929edc7bf0</ExpectedAiBotListFallbackSha256>
     <AiBotListSourceUrl>https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt</AiBotListSourceUrl>
-    <AiBotListFallback>$(MSBuildThisFileDirectory)HealthChecks\AiBotList.fallback.txt</AiBotListFallback>
+    <AiBotListFallback>$(MSBuildThisFileDirectory)Robots\AiBotList.fallback.txt</AiBotListFallback>
   </PropertyGroup>
 
   <!-- Tampering protection layer 1: the committed fallback file's SHA-256
@@ -129,7 +129,7 @@
 
     <ItemGroup>
       <EmbeddedResource Include="$(_AiBotListEmbed)"
-                        LogicalName="LlmsTxt.Umbraco.HealthChecks.AiBotList.txt" />
+                        LogicalName="Umbraco.Community.AiVisibility.Robots.AiBotList.txt" />
     </ItemGroup>
   </Target>
 
@@ -161,7 +161,7 @@
 
     <!-- Story 4.2 — fallback bot list is committed but NOT included in the .nupkg
          (it gets embedded as a resource via the SyncAiBotList target above). -->
-    <None Include="HealthChecks\AiBotList.fallback.txt" Pack="false" />
+    <None Include="Robots\AiBotList.fallback.txt" Pack="false" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,13 +1,13 @@
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 
-namespace LlmsTxt.Umbraco.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — Singleton holder for the AI-crawler list. The list is embedded
 /// into the assembly at build time by the <c>SyncAiBotList</c> MSBuild target
 /// (see <c>LlmsTxt.Umbraco.csproj</c>) under the resource name
-/// <c>LlmsTxt.Umbraco.HealthChecks.AiBotList.txt</c>.
+/// <c>Umbraco.Community.AiVisibility.Robots.AiBotList.txt</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -41,7 +41,7 @@ public sealed class AiBotList
     /// Resource name as embedded by <c>SyncAiBotList</c> MSBuild target's
     /// <c>LogicalName</c>. MUST match — changing this breaks the loader.
     /// </summary>
-    internal const string EmbeddedResourceName = "LlmsTxt.Umbraco.HealthChecks.AiBotList.txt";
+    internal const string EmbeddedResourceName = "Umbraco.Community.AiVisibility.Robots.AiBotList.txt";
 
     /// <summary>
     /// Tokens flagged as deprecated. Lookup is case-insensitive.

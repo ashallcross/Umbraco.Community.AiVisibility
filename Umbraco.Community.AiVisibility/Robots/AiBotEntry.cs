@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — one entry in the AI-crawler list ingested at build time from

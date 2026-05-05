@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — AI-crawler taxonomy used by <see cref="DefaultRobotsAuditor"/>

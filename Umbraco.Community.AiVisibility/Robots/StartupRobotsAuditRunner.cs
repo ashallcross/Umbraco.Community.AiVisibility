@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Sync;
 
-namespace LlmsTxt.Umbraco.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — fires the robots audit once per bound hostname during host

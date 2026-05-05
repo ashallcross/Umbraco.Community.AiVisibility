@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — outcome of a single host's <c>/robots.txt</c> audit. Cached

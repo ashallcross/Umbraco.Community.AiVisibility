@@ -1,12 +1,12 @@
 using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Umbraco.Cms.Core.Cache;
 
-namespace LlmsTxt.Umbraco.Tests.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Tests.Robots;
 
 /// <summary>
 /// Story 4.2 — pinpoints the parser/match semantics in

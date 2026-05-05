@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

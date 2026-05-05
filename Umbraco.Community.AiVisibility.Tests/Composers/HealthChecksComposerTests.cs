@@ -1,7 +1,7 @@
 using LlmsTxt.Umbraco.Background;
 using LlmsTxt.Umbraco.Composers;
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

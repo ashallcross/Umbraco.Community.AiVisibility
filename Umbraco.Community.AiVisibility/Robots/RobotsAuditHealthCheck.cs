@@ -1,10 +1,11 @@
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using LlmsTxt.Umbraco;
 using Umbraco.Cms.Core.HealthChecks;
 using Umbraco.Cms.Core.Services;
 
-namespace LlmsTxt.Umbraco.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — Backoffice Health Check that surfaces the LlmsTxt robots.txt

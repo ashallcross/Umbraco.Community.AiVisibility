@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — public extension point for the LlmsTxt robots.txt audit. The

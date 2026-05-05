@@ -1,8 +1,8 @@
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace LlmsTxt.Umbraco.Tests.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Tests.Robots;
 
 [TestFixture]
 public class AiBotListTests

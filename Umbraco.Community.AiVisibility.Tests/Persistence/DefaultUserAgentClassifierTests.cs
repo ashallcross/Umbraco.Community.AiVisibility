@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -1,7 +1,7 @@
 using LlmsTxt.Umbraco.Background;
 using LlmsTxt.Umbraco.Composers;
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 using LlmsTxt.Umbraco.Notifications;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;

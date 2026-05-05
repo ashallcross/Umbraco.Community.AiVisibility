@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 
 namespace Umbraco.Community.AiVisibility.Persistence;
 

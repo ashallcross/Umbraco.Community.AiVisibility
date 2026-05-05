@@ -1,7 +1,7 @@
-using LlmsTxt.Umbraco.HealthChecks;
+using Umbraco.Community.AiVisibility.Robots;
 using Umbraco.Cms.Core.HealthChecks;
 
-namespace LlmsTxt.Umbraco.Tests.HealthChecks;
+namespace Umbraco.Community.AiVisibility.Tests.Robots;
 
 /// <summary>
 /// Story 4.2 — pinpoints the per-result <see cref="HealthCheckStatus"/>
