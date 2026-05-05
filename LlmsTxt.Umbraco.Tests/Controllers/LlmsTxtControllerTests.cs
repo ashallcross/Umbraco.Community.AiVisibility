@@ -904,4 +904,58 @@ public class LlmsTxtControllerTests
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 6.0a (Codex finding #3) — CachePolicySeconds zero/negative parity
+    // ────────────────────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task Render_CachePolicySecondsZero_BypassesCache_BuilderInvokedEachRequest()
+    {
+        // Story 6.0a AC3 — CachePolicySeconds = 0 disables the manifest cache
+        // entirely (matches the LlmsTxtSettings.CachePolicySeconds xmldoc — "0
+        // effectively disables caching"). Builder is invoked on every request;
+        // cache stays empty. Mirrors LlmsFullTxtControllerTests of the same
+        // shape.
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _currentSettings = new LlmsTxtSettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 0 },
+        };
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+
+        var ctrl1 = MakeController();
+        await ctrl1.Render(CancellationToken.None);
+        var ctrl2 = MakeController();
+        await ctrl2.Render(CancellationToken.None);
+
+        await _builder.Received(2).BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>());
+        Assert.That(_appCaches.RuntimeCache.Get(LlmsCacheKeys.LlmsTxt(Host, Culture)), Is.Null,
+            "CachePolicySeconds = 0 must not persist anything in the runtime cache");
+    }
+
+    [Test]
+    public async Task Render_CachePolicySecondsNegative_TreatedAsZero_BuilderInvokedEachRequest()
+    {
+        // Story 6.0a AC3 — negative is an operator typo; treat as 0 (cache
+        // disabled) and rely on logged Warning to surface it. Mirrors
+        // LlmsFullTxtController's "negative → 0 + Warning" defensive policy.
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
+        _currentSettings = new LlmsTxtSettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = -10 },
+        };
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+
+        var ctrl1 = MakeController();
+        await ctrl1.Render(CancellationToken.None);
+        var ctrl2 = MakeController();
+        await ctrl2.Render(CancellationToken.None);
+
+        await _builder.Received(2).BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>());
+    }
 }

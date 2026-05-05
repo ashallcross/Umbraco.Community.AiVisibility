@@ -2,6 +2,9 @@ using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
+using Umbraco.Cms.Core.Models.PublishedContent;
+using Umbraco.Cms.Core.Routing;
 
 namespace LlmsTxt.Umbraco.Tests.Extraction;
 
@@ -539,6 +542,54 @@ public class DefaultMarkdownContentExtractorTests
             Assert.That(firstHeadingIdx, Is.GreaterThan(0), "first heading must be present");
             Assert.That(secondHeadingIdx, Is.GreaterThan(firstHeadingIdx),
                 "second heading must come after the first (document order preserved)");
+        });
+    }
+
+    [Test]
+    public void ResolveAbsoluteContentUrl_NonDefaultCulture_PassesCultureToProvider()
+    {
+        // Story 6.0a AC4 (Codex finding #4) — multilingual frontmatter URL bug.
+        // Pre-6.0a path called the 1-arg `GetUrl(content, UrlMode.Absolute)`
+        // which defaulted to the site's default culture, so non-default culture
+        // pages emitted the default-culture URL in `url:` frontmatter. AC4
+        // requires the resolved culture is forwarded to the URL provider.
+        var content = Substitute.For<IPublishedContent>();
+        content.Key.Returns(Guid.Parse("22222222-2222-2222-2222-222222222222"));
+
+        var urlProvider = Substitute.For<IPublishedUrlProvider>();
+        urlProvider.GetUrl(content, UrlMode.Absolute, "fr-FR", Arg.Any<Uri?>())
+            .Returns("https://example.fr/about/");
+        urlProvider.GetUrl(content, UrlMode.Absolute, "en-GB", Arg.Any<Uri?>())
+            .Returns("https://example.com/about/");
+
+        var settings = new LlmsTxtSettings { MainContentSelectors = Array.Empty<string>() };
+        var extractor = new DefaultMarkdownContentExtractor(
+            pageRenderer: null!,
+            regionSelector: new DefaultContentRegionSelector(NullLogger<DefaultContentRegionSelector>.Instance),
+            converter: new MarkdownConverter(),
+            publishedUrlProvider: urlProvider,
+            httpContextAccessor: null!,
+            settings: new StubOptionsSnapshot<LlmsTxtSettings>(settings),
+            logger: NullLogger<DefaultMarkdownContentExtractor>.Instance);
+
+        var requestUri = new Uri("https://example.fr/about/");
+
+        var resolvedFr = extractor.ResolveAbsoluteContentUrl(content, requestUri, "fr-FR");
+        var resolvedEn = extractor.ResolveAbsoluteContentUrl(content, requestUri, "en-GB");
+        var resolvedDefault = extractor.ResolveAbsoluteContentUrl(content, requestUri, culture: null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolvedFr, Is.EqualTo("https://example.fr/about/"),
+                "non-default culture must resolve to the requested-culture URL, NOT the default-culture URL");
+            Assert.That(resolvedEn, Is.EqualTo("https://example.com/about/"),
+                "default culture path unchanged");
+            // Provider receives the resolved culture verbatim on every call.
+            // Single-culture sites pass null culture; provider forwarded as null.
+            urlProvider.Received(1).GetUrl(content, UrlMode.Absolute, "fr-FR", Arg.Any<Uri?>());
+            urlProvider.Received(1).GetUrl(content, UrlMode.Absolute, "en-GB", Arg.Any<Uri?>());
+            urlProvider.Received(1).GetUrl(content, UrlMode.Absolute, (string?)null, Arg.Any<Uri?>());
+            _ = resolvedDefault;
         });
     }
 

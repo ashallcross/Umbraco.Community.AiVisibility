@@ -22,24 +22,33 @@ namespace LlmsTxt.Umbraco.Background;
 /// <c>StartupRobotsAuditRunner</c> locked.
 /// </para>
 /// <para>
-/// <b>Server-role gate:</b> drains only when
-/// <see cref="IServerRoleAccessor.CurrentServerRole"/> is
-/// <see cref="ServerRole.SchedulingPublisher"/> or
-/// <see cref="ServerRole.Single"/>. Multi-instance front-end servers all
-/// hold their own per-process <see cref="DefaultLlmsRequestLog"/> channel
-/// — the writer's <c>DropOldest</c> semantics shed entries on those
-/// instances; only the scheduling instance's drain reaches the host DB.
-/// Documented in <c>docs/extension-points.md</c> as "best-effort logging
-/// by design — adopters needing durable analytics override
-/// <see cref="ILlmsRequestLog"/>".
+/// <b>Per-instance drain (Story 6.0a, Codex finding #1).</b> Every
+/// instance using the default <see cref="DefaultLlmsRequestLog"/> drains
+/// its own per-process channel to the host DB regardless of
+/// <see cref="IServerRoleAccessor.CurrentServerRole"/>. The previous
+/// "Subscriber-suppress" gate caused subscriber/front-end nodes to silently
+/// shed traffic via <c>DropOldest</c> on a channel no other process could
+/// reach; the AI traffic dashboard then under-reported (or appeared empty)
+/// in load-balanced topologies. Each instance's channel is process-local;
+/// the host DB's identity column on <c>llmsTxtRequestLog</c> guarantees
+/// distinct rows across concurrent inserts, so per-instance drainers do
+/// not need cross-instance coordination. Singleton scheduling for
+/// cluster-wide jobs (<c>LogRetentionJob</c>,
+/// <c>RobotsAuditRefreshJob</c>) remains gated via
+/// <c>IDistributedBackgroundJob</c>'s host-DB lock — that contract is
+/// unchanged.
 /// </para>
 /// <para>
 /// <b>Adopter override:</b> when an adopter registers a custom
 /// <see cref="ILlmsRequestLog"/> (e.g. App Insights writer), the runtime
 /// resolves their type, NOT <see cref="DefaultLlmsRequestLog"/>. The
 /// drainer's cast at <see cref="StartAsync"/> sees a non-default writer,
-/// logs Trace, and exits — the adopter's writer owns its own persistence
-/// path. No drain runs against an unknown channel.
+/// logs Information, and exits — the adopter's writer owns its own
+/// persistence path. No drain runs against an unknown channel. Adopter
+/// overrides MUST register <see cref="ILlmsRequestLog"/> as Singleton;
+/// <c>NotificationsComposer</c> throws
+/// <see cref="InvalidOperationException"/> at composer-time on
+/// Scoped/Transient overrides.
 /// </para>
 /// <para>
 /// <b>DB writes via Infrastructure-flavour <see cref="IScopeProvider"/>.</b>
@@ -95,23 +104,13 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
             return Task.CompletedTask;
         }
 
+        // Story 6.0a (Codex finding #1) — no role gate. Every instance
+        // running the default DefaultLlmsRequestLog drains its own
+        // per-process channel; the previous Subscriber-suppress branch
+        // caused front-end nodes to silently shed traffic via DropOldest.
+        // The role is read for the started-log line below as observational
+        // context only; it does not gate the start decision.
         var role = _serverRoleAccessor.CurrentServerRole;
-        // Permit Unknown alongside SchedulingPublisher / Single. Umbraco's
-        // ServerRegistrationService heartbeat doesn't run until ~15s after
-        // boot (`TouchServerJob` Delay), so StartAsync sees Unknown on
-        // every fresh boot. Treating Unknown as drain-permitted is safe:
-        // (a) single-instance dev: there's no other instance to compete;
-        // (b) multi-instance broken-cluster: each instance drains its own
-        //     per-process channel — distinct rows, no duplicate writes.
-        // Subscriber explicitly excluded because the elected scheduler will
-        // own the drain on a healthy cluster.
-        if (role == ServerRole.Subscriber)
-        {
-            _logger.LogInformation(
-                "LlmsTxt request log drainer suppressed on server role {Role} — only the SchedulingPublisher / Single instance drains its channel to the host DB.",
-                role);
-            return Task.CompletedTask;
-        }
 
         // Adopter override path: a custom ILlmsRequestLog owns its own
         // persistence — there's no channel for us to drain.

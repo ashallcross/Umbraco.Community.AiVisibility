@@ -53,18 +53,32 @@ namespace LlmsTxt.Umbraco.Composers
             protected override string ApiName => Constants.ApiName;
         }
 
-        // This is used to generate nice operation IDs in our swagger json file
-        // So that the gnerated TypeScript client has nice method names and not too verbose
+        // Story 6.0a (Codex finding #2) — explicit allow-list of intended
+        // Management API controllers. The previous namespace-prefix match
+        // (`LlmsTxt.Umbraco.Controllers`) silently captured every controller
+        // under that namespace, including the deleted spike + template
+        // scaffolds, and would silently produce duplicate operation IDs in
+        // Swagger if two future actions named identically appeared across
+        // controllers. New controllers MUST be added to AllowedControllers
+        // explicitly — do NOT replace this with reflection-based discovery
+        // of all `ManagementApiControllerBase` subclasses; that re-introduces
+        // the original "everything in this namespace" footgun.
         // https://docs.umbraco.com/umbraco-cms/tutorials/creating-a-backoffice-api/umbraco-schema-and-operation-ids#operation-ids
         public class CustomOperationHandler : OperationIdHandler
         {
+            private static readonly Type[] AllowedControllers = new[]
+            {
+                typeof(LlmsTxt.Umbraco.Controllers.Backoffice.LlmsSettingsManagementApiController),
+                typeof(LlmsTxt.Umbraco.Controllers.Backoffice.LlmsAnalyticsManagementApiController),
+            };
+
             public CustomOperationHandler(IOptions<ApiVersioningOptions> apiVersioningOptions) : base(apiVersioningOptions)
             {
             }
 
             protected override bool CanHandle(ApiDescription apiDescription, ControllerActionDescriptor controllerActionDescriptor)
             {
-                return controllerActionDescriptor.ControllerTypeInfo.Namespace?.StartsWith("LlmsTxt.Umbraco.Controllers", comparisonType: StringComparison.InvariantCultureIgnoreCase) is true;
+                return Array.IndexOf(AllowedControllers, controllerActionDescriptor.ControllerTypeInfo.AsType()) >= 0;
             }
 
             public override string Handle(ApiDescription apiDescription) => $"{apiDescription.ActionDescriptor.RouteValues["action"]}";

@@ -138,7 +138,23 @@ public sealed class LlmsTxtController : Controller
         var pages = FilterExcludedPages(allPages, resolvedSettings, resolution.Culture);
 
         var cacheKey = LlmsCacheKeys.LlmsTxt(host, resolution.Culture);
-        var ttl = TimeSpan.FromSeconds(Math.Max(0, settingsSnapshot.LlmsTxtBuilder.CachePolicySeconds));
+
+        // Story 6.0a (Codex finding #3) — CachePolicySeconds policy mirrors
+        // LlmsFullTxtController: 0 disables the manifest cache entirely
+        // (matches LlmsTxtSettings.CachePolicySeconds xmldoc — "0 effectively
+        // disables caching"). Negative values are an operator typo — log
+        // Warning, treat as 0. The pre-6.0a path always called
+        // GetCacheItem with TimeSpan.Zero on disable, which ObjectCacheAppCache
+        // rejects/misbehaves on; bypass the cache entirely instead.
+        var policySeconds = settingsSnapshot.LlmsTxtBuilder.CachePolicySeconds;
+        if (policySeconds < 0)
+        {
+            _logger.LogWarning(
+                "/llms.txt — CachePolicySeconds {Value} is negative for {Host}; treating as 0 (cache disabled)",
+                policySeconds,
+                host);
+            policySeconds = 0;
+        }
 
         // Capture root + culture + pages for the factory closure (cancellation token
         // is per-call; the cached body itself is shared across requests so we must
@@ -153,71 +169,84 @@ public sealed class LlmsTxtController : Controller
         var pagesForBuild = pages;
         var resolvedForBuild = resolvedSettings;
 
-        ManifestCacheEntry? entry;
-        try
+        ManifestCacheEntry Build()
         {
-            entry = _appCaches.RuntimeCache.GetCacheItem<ManifestCacheEntry>(
-                cacheKey,
-                () =>
+            // Code-review P1 (2026-04-30) — hreflang resolution moved
+            // INSIDE the cache factory. Previously ran on every request
+            // (including cache hits), defeating AC2 single-flight intent
+            // for the hreflang work even though the cached body already
+            // contained the variants. Now runs exactly once per cache
+            // miss, in lock-step with the builder.
+            //
+            // We open a fresh EnsureUmbracoContext scope here because the
+            // outer scope (used for hostname resolution + page collection)
+            // is closed by the time the factory runs on a cache miss.
+            IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? hreflangVariants = null;
+            if (settingsSnapshot.Hreflang.Enabled && pagesForBuild.Count > 0)
+            {
+                using var factoryCtxRef = _umbracoContextFactory.EnsureUmbracoContext();
+                try
                 {
-                    // Code-review P1 (2026-04-30) — hreflang resolution moved
-                    // INSIDE the cache factory. Previously ran on every request
-                    // (including cache hits), defeating AC2 single-flight intent
-                    // for the hreflang work even though the cached body already
-                    // contained the variants. Now runs exactly once per cache
-                    // miss, in lock-step with the builder.
-                    //
-                    // We open a fresh EnsureUmbracoContext scope here because the
-                    // outer scope (used for hostname resolution + page collection)
-                    // is closed by the time the factory runs on a cache miss.
-                    IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? hreflangVariants = null;
-                    if (settingsSnapshot.Hreflang.Enabled && pagesForBuild.Count > 0)
-                    {
-                        using var factoryCtxRef = _umbracoContextFactory.EnsureUmbracoContext();
-                        try
-                        {
-                            hreflangVariants = _hreflangResolver
-                                .ResolveAsync(pagesForBuild, culture, root.Key, factoryCtxRef.UmbracoContext, CancellationToken.None)
-                                .ConfigureAwait(false)
-                                .GetAwaiter()
-                                .GetResult();
-                        }
-                        catch (Exception ex) when (ex is not OperationCanceledException)
-                        {
-                            // Graceful degradation per spec § Failure & Edge Cases
-                            // line 211 — log and proceed with no variants. Note:
-                            // the variant-less body IS cached for full TTL; this
-                            // residual symptom is captured in deferred-work as a
-                            // bounded-by-TTL trade-off (same class as D1).
-                            _logger.LogWarning(
-                                ex,
-                                "/llms.txt — hreflang resolver threw for {Host} {Culture}; emitting manifest without variants",
-                                hostForBuild,
-                                culture);
-                            hreflangVariants = null;
-                        }
-                    }
-
-                    var ctx = new LlmsTxtBuilderContext(
-                        Hostname: hostForBuild,
-                        Culture: culture,
-                        RootContent: root,
-                        Pages: pagesForBuild,
-                        Settings: resolvedForBuild,
-                        HreflangVariants: hreflangVariants);
-                    // Inner build is sync-over-async by IAppPolicyCache contract.
-                    // The builder honours CancellationToken.None inside the cache
-                    // factory; per-request cancellation is handled by the outer
-                    // WriteAsync (response stream).
-                    var body = _builder.BuildAsync(ctx, CancellationToken.None)
+                    hreflangVariants = _hreflangResolver
+                        .ResolveAsync(pagesForBuild, culture, root.Key, factoryCtxRef.UmbracoContext, CancellationToken.None)
                         .ConfigureAwait(false)
                         .GetAwaiter()
                         .GetResult();
-                    // ETag computed once at cache-write time and reused across
-                    // hits — Story 2.3 AC6.
-                    return new ManifestCacheEntry(body, ManifestETag.Compute(body));
-                },
-                timeout: ttl);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Graceful degradation per spec § Failure & Edge Cases
+                    // line 211 — log and proceed with no variants. Note:
+                    // the variant-less body IS cached for full TTL; this
+                    // residual symptom is captured in deferred-work as a
+                    // bounded-by-TTL trade-off (same class as D1).
+                    _logger.LogWarning(
+                        ex,
+                        "/llms.txt — hreflang resolver threw for {Host} {Culture}; emitting manifest without variants",
+                        hostForBuild,
+                        culture);
+                    hreflangVariants = null;
+                }
+            }
+
+            var ctx = new LlmsTxtBuilderContext(
+                Hostname: hostForBuild,
+                Culture: culture,
+                RootContent: root,
+                Pages: pagesForBuild,
+                Settings: resolvedForBuild,
+                HreflangVariants: hreflangVariants);
+            // Inner build is sync-over-async by IAppPolicyCache contract.
+            // The builder honours CancellationToken.None inside the cache
+            // factory; per-request cancellation is handled by the outer
+            // WriteAsync (response stream).
+            var body = _builder.BuildAsync(ctx, CancellationToken.None)
+                .ConfigureAwait(false)
+                .GetAwaiter()
+                .GetResult();
+            // ETag computed once at cache-write time and reused across
+            // hits — Story 2.3 AC6.
+            return new ManifestCacheEntry(body, ManifestETag.Compute(body));
+        }
+
+        ManifestCacheEntry? entry;
+        try
+        {
+            if (policySeconds == 0)
+            {
+                entry = Build();
+            }
+            else
+            {
+                entry = _appCaches.RuntimeCache.GetCacheItem<ManifestCacheEntry>(
+                    cacheKey,
+                    Build,
+                    timeout: TimeSpan.FromSeconds(policySeconds));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

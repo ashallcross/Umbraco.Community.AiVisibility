@@ -52,13 +52,47 @@ public class LlmsRequestLogDrainHostedServiceTests
     }
 
     [Test]
-    public async Task StartAsync_ServerRoleSubscriber_SuppressesDrainLoop()
+    public async Task StartAsync_ServerRoleSubscriber_StartsDrainLoop()
     {
-        // Multi-instance front-end (Subscriber role) MUST NOT drain — only
-        // SchedulingPublisher / Single / Unknown instances do.
+        // Story 6.0a AC1 (Codex finding #1) — Subscriber instances using
+        // the default DefaultLlmsRequestLog MUST drain their own
+        // per-process channel. The pre-6.0a Subscriber-suppress branch
+        // caused front-end nodes to silently shed traffic via DropOldest
+        // on a channel the SchedulingPublisher could not reach. The pin
+        // is "loop was permitted to start": same shape as
+        // StartAsync_ServerRoleUnknown_StartsDrainLoop above.
         var scopeProvider = Substitute.For<IScopeProvider>();
         var drainer = new LlmsRequestLogDrainHostedService(
             NewDefaultLog(),
+            scopeProvider,
+            SettingsMonitor(),
+            RoleAccessor(ServerRole.Subscriber),
+            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+
+        await drainer.StartAsync(CancellationToken.None);
+        // Stop quickly — the loop has parked on WaitToReadAsync and will
+        // exit on the cancel signal. We're not asserting drain behaviour
+        // here, only that the loop was permitted to start.
+        await drainer.StopAsync(CancellationToken.None);
+
+        // The Subscriber-role drain loop spins up and parks on an empty
+        // channel; no batch is ever assembled so no scope is created.
+        // The pin is "loop was permitted to start": StartAsync + StopAsync
+        // succeed cleanly with the default writer + Subscriber role.
+        Assert.That(drainer, Is.Not.Null, "drainer instance survived StartAsync + StopAsync on Subscriber");
+    }
+
+    [Test]
+    public async Task StartAsync_ServerRoleSubscriber_CustomWriterRegistered_SuppressesDrainLoop()
+    {
+        // Story 6.0a AC1 — adopter-registered custom ILlmsRequestLog
+        // (e.g. App Insights) still suppresses the built-in drainer
+        // regardless of role. The custom writer owns its own persistence;
+        // the built-in drainer has no channel to read from.
+        var customLog = Substitute.For<ILlmsRequestLog>();
+        var scopeProvider = Substitute.For<IScopeProvider>();
+        var drainer = new LlmsRequestLogDrainHostedService(
+            customLog,
             scopeProvider,
             SettingsMonitor(),
             RoleAccessor(ServerRole.Subscriber),

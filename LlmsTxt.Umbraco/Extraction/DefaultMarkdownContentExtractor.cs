@@ -90,13 +90,14 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
                 content.Key);
         }
 
-        var sourceUrl = ResolveAbsoluteContentUrl(content, absoluteUri) ?? absoluteUri.ToString();
+        var resolvedCulture = renderResult.ResolvedCulture ?? culture;
+        var sourceUrl = ResolveAbsoluteContentUrl(content, absoluteUri, resolvedCulture) ?? absoluteUri.ToString();
         var metadata = new ContentMetadata(
             Title: content.Name ?? string.Empty,
             AbsoluteUrl: sourceUrl,
             UpdatedUtc: ToUtc(content.UpdateDate),
             ContentKey: content.Key,
-            Culture: renderResult.ResolvedCulture ?? culture ?? string.Empty);
+            Culture: resolvedCulture ?? string.Empty);
 
         return await ExtractFromHtmlAsync(renderResult.Html!, absoluteUri, metadata, cancellationToken);
     }
@@ -251,11 +252,20 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
             sourceUrl: metadata.AbsoluteUrl);
     }
 
-    private string? ResolveAbsoluteContentUrl(IPublishedContent content, Uri requestUri)
+    internal string? ResolveAbsoluteContentUrl(IPublishedContent content, Uri requestUri, string? culture)
     {
         try
         {
-            var url = _publishedUrlProvider.GetUrl(content, UrlMode.Absolute);
+            // Story 6.0a (Codex finding #4) — pass the resolved culture so
+            // multilingual sites emit a culture-correct `url:` in YAML
+            // frontmatter. Pre-6.0a path called the 1-arg overload which
+            // defaulted to the site's default culture, causing non-default
+            // culture pages to advertise the default-culture URL. Canonical
+            // 4-arg overload `IPublishedUrlProvider.GetUrl(IPublishedContent,
+            // UrlMode, string culture, Uri current)` pinned at
+            // Umbraco.Core.xml:63210; trailing `Uri` is unused for
+            // UrlMode.Absolute.
+            var url = _publishedUrlProvider.GetUrl(content, UrlMode.Absolute, culture);
             if (string.IsNullOrWhiteSpace(url))
             {
                 return null;
