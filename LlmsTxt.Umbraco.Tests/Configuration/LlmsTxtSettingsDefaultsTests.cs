@@ -130,6 +130,19 @@ public class LlmsTxtSettingsDefaultsTests
                 "RobotsAuditor.DevFetchPort defaults to null — production uses scheme default port (443/80) (Story 4.2 dev-knob)");
             Assert.That(settings.RobotsAuditor.RefreshIntervalSecondsOverride, Is.Null,
                 "RobotsAuditor.RefreshIntervalSecondsOverride defaults to null — production uses RefreshIntervalHours (Story 4.2 dev-knob, used by architect-A5 two-instance gate)");
+
+            // Story 5.2 — analytics defaults
+            Assert.That(settings.Analytics, Is.Not.Null);
+            Assert.That(settings.Analytics.DefaultPageSize, Is.EqualTo(50),
+                "Analytics.DefaultPageSize defaults to 50 (Story 5.2 AC2)");
+            Assert.That(settings.Analytics.MaxPageSize, Is.EqualTo(200),
+                "Analytics.MaxPageSize defaults to 200 (Story 5.2 AC2 — defends against unbounded JSON response sizes)");
+            Assert.That(settings.Analytics.DefaultRangeDays, Is.EqualTo(7),
+                "Analytics.DefaultRangeDays defaults to 7 (Story 5.2 AC6 — last-week default range)");
+            Assert.That(settings.Analytics.MaxRangeDays, Is.EqualTo(365),
+                "Analytics.MaxRangeDays defaults to 365 (Story 5.2 AC2 — wider requests trigger X-Llms-Range-Clamped header)");
+            Assert.That(settings.Analytics.MaxResultRows, Is.EqualTo(10000),
+                "Analytics.MaxResultRows defaults to 10000 (Story 5.2 epic Failure case 3 — cap surface footer)");
         });
     }
 

@@ -240,6 +240,12 @@ public sealed class LlmsTxtSettings
     /// deletes rows older than <see cref="LogRetentionSettings.DurationDays"/>.
     /// </summary>
     public LogRetentionSettings LogRetention { get; init; } = new();
+
+    /// <summary>
+    /// Story 5.2 — server-side caps + defaults for the AI Traffic Backoffice
+    /// dashboard's <c>LlmsAnalyticsManagementApiController</c> query surface.
+    /// </summary>
+    public AnalyticsSettings Analytics { get; init; } = new();
 }
 
 /// <summary>
@@ -331,6 +337,53 @@ public sealed class LogRetentionSettings
     /// </para>
     /// </summary>
     public int? RunIntervalSecondsOverride { get; init; }
+}
+
+/// <summary>
+/// Story 5.2 — configuration block for the AI Traffic Backoffice dashboard's
+/// Management API (<c>LlmsAnalyticsManagementApiController</c>). Bound from
+/// <c>LlmsTxt:Analytics</c>. All values are CEILINGS not floors per
+/// project-context.md § Testing Rules — adopters narrow them to suit their
+/// host DB sizing.
+/// </summary>
+public sealed class AnalyticsSettings
+{
+    /// <summary>
+    /// Default page size when the request omits <c>?pageSize=</c>. Clamped at
+    /// consumption time to <c>[1, MaxPageSize]</c>. Default <c>50</c>.
+    /// </summary>
+    public int DefaultPageSize { get; init; } = 50;
+
+    /// <summary>
+    /// Maximum allowed page size; requests above this clamp DOWN. Defends
+    /// against unbounded JSON response sizes for large host DBs. Default
+    /// <c>200</c>.
+    /// </summary>
+    public int MaxPageSize { get; init; } = 200;
+
+    /// <summary>
+    /// Default range span when the request omits <c>?from=</c>. Default 7 days.
+    /// </summary>
+    public int DefaultRangeDays { get; init; } = 7;
+
+    /// <summary>
+    /// Maximum allowed range span; wider requests clamp <c>from = to -
+    /// MaxRangeDays</c> AND surface the <c>X-Llms-Range-Clamped: true</c>
+    /// response header so the dashboard can display the effective range.
+    /// Default <c>365</c> days.
+    /// </summary>
+    public int MaxRangeDays { get; init; } = 365;
+
+    /// <summary>
+    /// Soft cap on total in-range matching rows. When a query's
+    /// <c>TotalItems</c> exceeds this, the response body carries
+    /// <c>totalCappedAt</c> populated; the dashboard shows the
+    /// "Showing first N results — narrow your date range" footer
+    /// (epic Failure &amp; Edge Cases case 3). Set to <c>0</c> or negative to
+    /// disable the cap surface entirely (the cap is informational only —
+    /// pagination already bounds response size). Default <c>10000</c>.
+    /// </summary>
+    public int MaxResultRows { get; init; } = 10000;
 }
 
 /// <summary>

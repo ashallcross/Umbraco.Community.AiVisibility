@@ -184,6 +184,20 @@ services.AddSingleton<IUserAgentClassifier, CustomClassifier>();
 
 ---
 
+## Backoffice consumers of `ILlmsRequestLog` (Story 5.2)
+
+Story 5.2's AI Traffic Backoffice dashboard (under `Settings`) reads recent request rows DIRECTLY from the host DB's `llmsTxtRequestLog` table via NPoco — it does **NOT** go through `ILlmsRequestLog`. The interface is write-only by design (`EnqueueAsync` is its only method).
+
+**Implications when you replace `ILlmsRequestLog`:**
+
+- The dashboard will appear **empty** for adopters who redirect `EnqueueAsync` to App Insights / Serilog / custom queues — no rows ever land in `llmsTxtRequestLog`, so there's nothing for the read path to surface.
+- This is by design for v1. A pluggable read seam (`ILlmsAnalyticsReader`) is **deferred to v1.1+** pending real-adopter demand. Adopters who need analytics over their own sink ship their own dashboard against their own data.
+- The `ILlmsAnalyticsReader` interface DOES exist in the package surface (testability seam), but is not advertised as an adopter extension point and the default implementation is internal — substitutions are unsupported in v1.
+
+If the empty-dashboard state is unacceptable, the v1 path is: keep the default `ILlmsRequestLog` writer (the package's host-DB bounded-channel drainer) AND additionally subscribe your own `INotificationAsyncHandler<T>` to forward to App Insights / Serilog / etc. The notifications fire regardless of the writer override; both can coexist.
+
+---
+
 ## Other extension points (cross-references)
 
 - **`IRobotsAuditor`** (Story 4.2) — runs the build-time AI-bot list against the host site's `robots.txt` and surfaces blocking advice via the Backoffice Health Check view. See [`robots-audit.md`](robots-audit.md). Lifetime: Singleton (composer-time hard-validation enforced by `HealthChecksComposer`).

@@ -5,7 +5,7 @@ const t = [
     type: "backofficeEntryPoint",
     js: () => import("./entrypoint-BSlTz4-p.js")
   }
-], s = [
+], a = [
   {
     type: "dashboard",
     alias: "Llms.Dashboard.Settings",
@@ -23,11 +23,30 @@ const t = [
       }
     ]
   }
-], a = [
+], i = [
+  {
+    type: "dashboard",
+    alias: "Llms.Dashboard.AiTraffic",
+    name: "LlmsTxt AI Traffic Dashboard",
+    element: () => import("./llms-ai-traffic-dashboard.element-C3obrJpd.js"),
+    weight: 90,
+    meta: {
+      label: "AI Traffic",
+      pathname: "llmstxt-ai-traffic"
+    },
+    conditions: [
+      {
+        alias: "Umb.Condition.SectionAlias",
+        match: "Umb.Section.Settings"
+      }
+    ]
+  }
+], s = [
   ...t,
-  ...s
+  ...a,
+  ...i
 ];
 export {
-  a as manifests
+  s as manifests
 };
 //# sourceMappingURL=llms-txt-umbraco.js.map

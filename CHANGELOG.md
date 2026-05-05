@@ -2,6 +2,43 @@
 
 All notable changes to **LlmsTxt.Umbraco** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v0.10] — Story 5.2: AI Traffic Backoffice dashboard + Management API + permissions
+
+### Added
+
+- **AI Traffic Backoffice dashboard** — second dashboard tile under `Umb.Section.Settings` alongside Story 3.2's "LlmsTxt" Settings tile. Manifest alias `Llms.Dashboard.AiTraffic`, custom element tag `<llms-ai-traffic-dashboard>`, weight 90 (Settings tile @100 renders first). Read-only mini-analytics surface backed by Story 5.1's `llmsTxtRequestLog` table.
+- **`LlmsAnalyticsManagementApiController`** — sealed; routes to `/umbraco/management/api/v1/llmstxt/analytics/...` via `[VersionedApiBackOfficeRoute("llmstxt/analytics")]`. Four GET actions:
+  - `GET /requests` — paginated rows ordered `createdUtc DESC, id DESC`. Query parameters: `?from=` / `?to=` (ISO-8601 UTC, explicit timezone designator required); `?class=` (repeated, validated against `UserAgentClass` enum names); `?page=` (1-based) / `?pageSize=` (clamped to `[1, MaxPageSize]`). Surfaces `X-Llms-Range-Clamped: true` header when range exceeds `MaxRangeDays`. Surfaces `totalCappedAt` body field when total in-range rows exceed `MaxResultRows`.
+  - `GET /classifications` — distinct UA classifications with at least one row in range, sorted by descending count. Drives the chip-toggle source so editors never see chips with zero matching rows (epic Failure case 4 — "avoid empty filter options").
+  - `GET /summary` — single-row aggregate (count + first-seen + last-seen). Feeds the dashboard's "Showing N requests from X to Y" header line.
+  - `GET /retention` — one-shot read of `LlmsTxt:LogRetention:DurationDays` for the AC9 retention-aware empty-state hint.
+  - All four gated by `[Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]`. Bearer-token auth via OpenIddict (cookie-only fetches return 401). 401/403 schemas auto-added by the framework's `BackOfficeSecurityRequirementsOperationFilterBase` — explicit `[ProducesResponseType(401|403)]` deliberately omitted (Story 3.2 SDN #6 Swagger-500 collision precedent).
+- **Lit dashboard element** `LlmsAiTrafficDashboardElement` (file `llms-ai-traffic-dashboard.element.ts`). `UMB_AUTH_CONTEXT.getOpenApiConfiguration()` bearer-token fetches; AbortController-per-refresh prevents stale state mutation on rapid filter changes; native `<input type="date">` date-range pickers (UUI v17.3.x has no polished date primitive — Story 3.2 multi-select substitution precedent); `<uui-tag>`-based classification chip toggle with semantic colour mapping (AI training/search/user-triggered → primary; AI deprecated → warning; HumanBrowser → positive; CrawlerOther + Unknown → default); `<uui-pagination>` with `Math.min(totalPages, 200)` UI cap (DOM-explosion defence); empty-state with retention-aware hint pulled from `/retention` endpoint.
+- **`ILlmsAnalyticsReader`** + **`DefaultLlmsAnalyticsReader`** — testability seam wrapping the three NPoco queries (paged rows, GROUP-BY classification counts, single-row aggregate). Public interface; internal default impl. **NOT a documented public extension point in v1** — adopters who replace `ILlmsRequestLog` with a non-DB sink ship their own dashboard against their own analytics surface.
+- **`AnalyticsSettings` configuration block** under `LlmsTxt:Analytics:`. Properties: `DefaultPageSize` (50), `MaxPageSize` (200), `DefaultRangeDays` (7), `MaxRangeDays` (365), `MaxResultRows` (10000). All values are CEILINGS not floors per project-context.md "no nasa" rule — adopters narrow to suit their host DB sizing.
+- **Vite output** — new `llms-ai-traffic-dashboard.element-<hash>.js` chunk (13.11 kB raw / 4.00 kB gzipped) emitted alongside the existing Story 3.2 settings dashboard chunk. Both dashboards coexist; bundle output committed to the repo per AgentRun precedent.
+- **27 new tests** — `LlmsAnalyticsManagementApiControllerTests` (24 — auth-attribute reflection, GetRequests happy / validation / filtering, GetClassifications, GetSummary, GetRetention, sealed-class assertion, all-actions-are-GET assertion, cancellation, TryParseUtc helper) + `LlmsAnalyticsApiControllerCompositionTests` (1 — canonical `Compose_StartupValidation_LlmsAnalyticsApiController_NoCaptiveDependency` gate) + `LlmsTxtSettingsDefaultsTests` extension (5 new asserts pinning the Analytics defaults).
+- **Documentation.** `docs/getting-started.md` bumps v0.9 → v0.10 with the Story 5.2 dashboard section + Analytics config-keys table. `docs/extension-points.md` adds a "Backoffice consumers of `ILlmsRequestLog`" section explaining the read-side caveat for adopters who override the writer with a non-DB sink.
+
+### Changed
+
+- **`NotificationsComposer`** — registers `ILlmsAnalyticsReader → DefaultLlmsAnalyticsReader` Singleton via `TryAddSingleton`. The composer-time hard-validation logic for `ILlmsRequestLog` is unchanged (still enforces `Singleton` lifetime on adopter overrides).
+- **`Client/src/bundle.manifests.ts`** — additive import + spread of `dashboardAiTraffic` manifests alongside the existing `dashboardSettings`. The Story 3.2 settings dashboard tile is unaffected.
+
+### Architectural decisions
+
+- **Read path bypasses `ILlmsRequestLog`.** Story 5.1's `ILlmsRequestLog` is intentionally write-only (`EnqueueAsync` is its only method). Story 5.2's controller queries the host DB's `llmsTxtRequestLog` table directly via NPoco. Pluggable read seam deferred to v1.1+ pending real-adopter demand.
+- **Section placement: `Umb.Section.Settings`.** UX-DR4 line 165 named "Content section access"; architecture.md:376 + Spike 0.B converged on Settings. Architecture wins. Both dashboards (Settings + AI Traffic) coexist under the same section. Captured as Story 5.2 § Architectural drift entry 1.
+- **Class naming: `LlmsAnalyticsManagementApiController`.** Sibling to Story 3.2's `LlmsSettingsManagementApiController`; both under `Controllers/Backoffice/`. Matches the per-concern prefix shape Story 3.2 ratified.
+
+### Tests
+
+- **737/737 passing** (711 baseline at Story 5.1 close → +26 net new this story; +1 Analytics defaults assert in the existing `LlmsTxtSettingsDefaultsTests` fixture brings the total to +27).
+
+### Non-breaking
+
+- Story 5.2 is **non-breaking**. The dashboard manifest is additive — Story 3.2's "LlmsTxt" Settings tile is unaffected. Adopters upgrading from v0.9 see the new "AI Traffic" tile appear under Settings as soon as they restart.
+
 ## [v0.9] — Story 5.1: Public notifications + log table + `ILlmsRequestLog` writer + `IUserAgentClassifier`
 
 ### Added

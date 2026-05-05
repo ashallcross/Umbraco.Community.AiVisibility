@@ -1,9 +1,11 @@
 using LlmsTxt.Umbraco.Background;
+using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.HealthChecks;
 using LlmsTxt.Umbraco.Notifications;
 using LlmsTxt.Umbraco.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
@@ -53,6 +55,19 @@ public sealed class NotificationsComposer : IComposer
         builder.Services.TryAddSingleton<IUserAgentClassifier, DefaultUserAgentClassifier>();
         builder.Services.TryAddSingleton<ILlmsNotificationPublisher, DefaultLlmsNotificationPublisher>();
         builder.Services.TryAddSingleton<ILlmsRequestLog, DefaultLlmsRequestLog>();
+
+        // Story 5.2 — analytics read path. Singleton because
+        // DefaultLlmsAnalyticsReader is stateless (constructs scopes on
+        // demand) and the controller it serves is Transient. TryAdd* honours
+        // adopter-provided substitutes (testability seam — not a documented
+        // public extension point per Story 5.2 § What NOT to Build).
+        builder.Services.TryAddSingleton<ILlmsAnalyticsReader, DefaultLlmsAnalyticsReader>();
+
+        // Story 5.2 code-review P11 — startup validation for the Analytics
+        // settings sub-block. Surfaces operator typos at first config read
+        // instead of letting Math.Max defences silently coerce values.
+        builder.Services.TryAddEnumerable(ServiceDescriptor
+            .Singleton<IValidateOptions<LlmsTxtSettings>, LlmsTxtSettingsValidator>());
 
         builder.Services.AddHostedService<LlmsRequestLogDrainHostedService>();
         builder.Services.AddSingleton<IDistributedBackgroundJob, LogRetentionJob>();

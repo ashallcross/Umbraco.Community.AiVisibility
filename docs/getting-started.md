@@ -457,12 +457,41 @@ The notification payloads + the `llmsTxtRequestLog` columns capture **path, cont
 
 Story 5.1 is a **breaking** v0.9 release for adopters who construct `MarkdownController`, `LlmsTxtController`, `LlmsFullTxtController`, or `AcceptHeaderNegotiationMiddleware` directly. Each gained one new constructor parameter (`ILlmsNotificationPublisher`); the controllers are intended as the package's own surfaces, so the breaking change is loud-by-design. Adopters who consume the routes via HTTP only — or who subscribe via `INotificationAsyncHandler<T>` — need no code changes.
 
-## What's not in v0.9
+## AI Traffic Backoffice dashboard (Story 5.2)
+
+From v0.10, the Backoffice **Settings** section adds a second tile: **AI Traffic**. The dashboard is a read-only mini-analytics surface backed by the `llmsTxtRequestLog` table that Story 5.1 populates.
+
+- **Default range** is the last 7 UTC days. Use the date-range pickers (top of the dashboard) to widen up to 365 days; wider ranges clamp server-side and surface the `X-Llms-Range-Clamped: true` response header (the dashboard updates the `From` field to the effective post-clamp value).
+- **Classification chips** — one per UA class with at least one row in the current range, sorted by descending count. Click to filter (multi-select); click again to deselect; deselect all to see every class. Chip colours: AI classes (training / search / user-triggered) render primary; deprecated AI tokens render warning; human browsers render positive; non-AI crawlers + unknown render neutral.
+- **Pagination** — `<uui-pagination>` appears when results span more than one page (default page size 50; clamped at 200 per request via `LlmsTxt:Analytics:MaxPageSize`). Ordering is `createdUtc DESC, id DESC` for stable round-trips across page changes.
+- **Soft cap** — when total in-range rows exceed `LlmsTxt:Analytics:MaxResultRows` (default 10000), the dashboard surfaces a "Showing first N results" footer prompting you to narrow the range or filter by class.
+- **Empty state** — when zero rows match the current filter, the dashboard surfaces "No AI traffic recorded yet for this filter. The package is logging — check back later." plus an additional retention-aware hint when the range is older than `LlmsTxt:LogRetention:DurationDays`.
+- **Permissions** — the dashboard mounts under `Umb.Section.Settings`. Editors without Settings-section access do not see the tile; direct API calls return HTTP 403.
+
+The dashboard reads via four `Management API` operations under `/umbraco/management/api/v1/llmstxt/analytics/`: `requests` (paginated rows), `classifications` (chip source), `summary` (header total + first/last seen), `retention` (one-shot `DurationDays` lookup). All require bearer-token auth via the standard `UMB_AUTH_CONTEXT.getOpenApiConfiguration()` pattern.
+
+### Configuration keys reference (Story 5.2 additions)
+
+| Key | Default | Notes |
+|---|---|---|
+| `LlmsTxt:Analytics:DefaultPageSize` | `50` | Default page size when the request omits `?pageSize=`. Clamped at runtime to `[1, MaxPageSize]`. |
+| `LlmsTxt:Analytics:MaxPageSize` | `200` | Maximum allowed page size; requests above this clamp DOWN. Defends against unbounded JSON response sizes. |
+| `LlmsTxt:Analytics:DefaultRangeDays` | `7` | Default range span when the request omits `?from=`. |
+| `LlmsTxt:Analytics:MaxRangeDays` | `365` | Maximum allowed range span. Wider requests clamp `from = to - MaxRangeDays.Days` AND surface the `X-Llms-Range-Clamped: true` response header. |
+| `LlmsTxt:Analytics:MaxResultRows` | `10000` | Soft cap on total in-range matching rows. When exceeded, the response body carries `totalCappedAt`; the dashboard shows the "Showing first N results — narrow your date range" footer. Set to `0` (or any value `≤ 0`) to disable the cap surface entirely. |
+
+### Read-side caveat (adopter `ILlmsRequestLog` overrides)
+
+The dashboard reads DIRECTLY from the host DB's `llmsTxtRequestLog` table via NPoco. Adopters who replace the default `ILlmsRequestLog` with a non-DB sink (App Insights, Serilog, custom queue) will see an **empty dashboard** — the table is the empty-by-design state when no writes land in it. v1 does not ship a pluggable read seam; ship your own dashboard against your own analytics sink. See [`docs/extension-points.md`](extension-points.md) for the full discussion.
+
+## Upgrading from v0.9 to v0.10
+
+Story 5.2 is **non-breaking**. The new dashboard manifest is additive — the existing Story 3.2 "LlmsTxt" Settings tile is unaffected. Adopters who already shipped v0.9 see the new "AI Traffic" tile appear under Settings as soon as they upgrade.
+
+## What's not in v0.10
 
 Coming in later epics:
 
-- AI traffic dashboard + analytics Management API (Story 5.2)
-- Auto-hide of the Settings-dashboard onboarding notice once the AI traffic dashboard has logged at least one request (Story 5.2)
 - v1.0 NuGet release readiness (Epic 6)
 
 ## Anti-patterns the package will NOT ship
