@@ -18,10 +18,10 @@ nupkg/
 ##
 ## TestSite local runtime state (Adam's local Umbraco instance — db, logs, media)
 ##
-LlmsTxt.Umbraco.TestSite/App_Data/
-LlmsTxt.Umbraco.TestSite/umbraco/Data/
-LlmsTxt.Umbraco.TestSite/umbraco/Logs/
-LlmsTxt.Umbraco.TestSite/wwwroot/media/
+Umbraco.Community.AiVisibility.TestSite/App_Data/
+Umbraco.Community.AiVisibility.TestSite/umbraco/Data/
+Umbraco.Community.AiVisibility.TestSite/umbraco/Logs/
+Umbraco.Community.AiVisibility.TestSite/wwwroot/media/
 
 ##
 ## Visual Studio / .NET standard ignores
