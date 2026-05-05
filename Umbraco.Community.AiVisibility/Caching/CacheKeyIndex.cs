@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 
-namespace LlmsTxt.Umbraco.Caching;
+namespace Umbraco.Community.AiVisibility.Caching;
 
 /// <summary>
 /// <see cref="ConcurrentDictionary{TKey, TValue}"/>-backed singleton implementation of
-/// <see cref="ILlmsCacheKeyIndex"/>. The data shape is locked by architecture.md §
+/// <see cref="ICacheKeyIndex"/>. The data shape is locked by architecture.md §
 /// Caching &amp; HTTP: <c>ConcurrentDictionary&lt;Guid, HashSet&lt;string&gt;&gt;</c>.
 /// <para>
 /// <see cref="HashSet{T}"/> itself is not thread-safe; mutations and reads on the inner
@@ -12,7 +12,7 @@ namespace LlmsTxt.Umbraco.Caching;
 /// so callers iterate without lock contention.
 /// </para>
 /// </summary>
-internal sealed class LlmsCacheKeyIndex : ILlmsCacheKeyIndex
+internal sealed class CacheKeyIndex : ICacheKeyIndex
 {
     private readonly ConcurrentDictionary<Guid, HashSet<string>> _store = new();
 

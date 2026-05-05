@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Caching;
+namespace Umbraco.Community.AiVisibility.Caching;
 
 /// <summary>
 /// Stable cache-key shapes for all LlmsTxt entries. Keys are inspectable,
@@ -6,7 +6,7 @@ namespace LlmsTxt.Umbraco.Caching;
 /// <see cref="Umbraco.Cms.Core.Cache.IAppCache.ClearByKey"/> can prefix-clear
 /// the whole namespace on <c>RefreshAll</c>.
 /// </summary>
-public static class LlmsCacheKeys
+public static class AiVisibilityCacheKeys
 {
     public const string Prefix = "llms:";
     public const string PagePrefix = "llms:page:";
@@ -54,7 +54,7 @@ public static class LlmsCacheKeys
     /// rules, not two.
     /// <para>
     /// Pessimistic invalidation in <c>ContentCacheRefresherHandler</c> calls
-    /// <c>IAppPolicyCache.ClearByKey(LlmsCacheKeys.LlmsTxtHostPrefix(host))</c> to
+    /// <c>IAppPolicyCache.ClearByKey(AiVisibilityCacheKeys.LlmsTxtHostPrefix(host))</c> to
     /// drop every culture entry for a hostname in one call (manifests are cheap
     /// to rebuild and any node change can change the manifest output).
     /// </para>
@@ -90,7 +90,7 @@ public static class LlmsCacheKeys
     /// inspecting cache contents see one set of rules, not three.
     /// <para>
     /// Pessimistic invalidation in <c>ContentCacheRefresherHandler</c> calls
-    /// <c>IAppPolicyCache.ClearByKey(LlmsCacheKeys.LlmsFullHostPrefix(host))</c> to
+    /// <c>IAppPolicyCache.ClearByKey(AiVisibilityCacheKeys.LlmsFullHostPrefix(host))</c> to
     /// drop every culture entry for a hostname in one call (manifests are cheap
     /// to rebuild and any node change can change the manifest output).
     /// </para>

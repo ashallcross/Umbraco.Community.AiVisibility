@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Caching;
+namespace Umbraco.Community.AiVisibility.Caching;
 
 /// <summary>
 /// Singleton, thread-safe map from <see cref="System.Guid"/> nodeKey to the
@@ -14,7 +14,7 @@ namespace LlmsTxt.Umbraco.Caching;
 /// § Caching &amp; HTTP).
 /// </para>
 /// </summary>
-public interface ILlmsCacheKeyIndex
+public interface ICacheKeyIndex
 {
     /// <summary>
     /// Register a <paramref name="cacheKey"/> against a <paramref name="nodeKey"/>.

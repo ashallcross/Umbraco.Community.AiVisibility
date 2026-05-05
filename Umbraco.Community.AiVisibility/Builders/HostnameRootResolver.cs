@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Models.PublishedContent;
@@ -65,7 +65,7 @@ public sealed class HostnameRootResolver : IHostnameRootResolver
             return HostnameRootResolution.NotFound();
         }
 
-        var normalisedHost = LlmsCacheKeys.NormaliseHost(requestHost);
+        var normalisedHost = AiVisibilityCacheKeys.NormaliseHost(requestHost);
         var domains = _domainService.GetAll(includeWildcards: true).ToList();
 
         foreach (var domain in domains)
@@ -158,7 +158,7 @@ public sealed class HostnameRootResolver : IHostnameRootResolver
         // bind the apex explicitly as a separate IDomain.
         if (domain.IsWildcard || raw.StartsWith(WildcardPrefix, StringComparison.Ordinal))
         {
-            var suffix = LlmsCacheKeys.NormaliseHost(
+            var suffix = AiVisibilityCacheKeys.NormaliseHost(
                 raw.StartsWith(WildcardPrefix, StringComparison.Ordinal) ? raw[WildcardPrefix.Length..] : raw);
             return !string.IsNullOrWhiteSpace(suffix)
                 && suffix != "_"
@@ -166,7 +166,7 @@ public sealed class HostnameRootResolver : IHostnameRootResolver
         }
 
         // Exact host match (case-insensitive via NormaliseHost on both sides).
-        var domainHost = LlmsCacheKeys.NormaliseHost(StripScheme(raw));
+        var domainHost = AiVisibilityCacheKeys.NormaliseHost(StripScheme(raw));
         return string.Equals(domainHost, normalisedHost, StringComparison.Ordinal)
                && domainHost != "_";
     }

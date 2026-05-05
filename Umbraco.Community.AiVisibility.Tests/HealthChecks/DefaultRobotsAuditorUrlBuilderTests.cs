@@ -1,5 +1,5 @@
 using System.Net;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;

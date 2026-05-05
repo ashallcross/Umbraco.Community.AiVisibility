@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Caching;
+namespace Umbraco.Community.AiVisibility.Caching;
 
 /// <summary>
 /// Story 2.3 — cache value for both manifest endpoints (<c>/llms.txt</c> and

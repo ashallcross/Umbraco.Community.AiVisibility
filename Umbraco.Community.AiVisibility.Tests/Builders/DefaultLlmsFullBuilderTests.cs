@@ -1,4 +1,5 @@
 using LlmsTxt.Umbraco.Builders;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
@@ -117,7 +118,7 @@ public class DefaultLlmsFullBuilderTests
         var a = StubPage("A", "contentPage", "/a", absolute: null, relativeUrl: "/a");
         StubExtractorReturnsBody(a, body: "Body.");
         var ctx = new LlmsFullBuilderContext(
-            Hostname: LlmsTxt.Umbraco.Caching.LlmsCacheKeys.NormaliseHost(null),
+            Hostname: AiVisibilityCacheKeys.NormaliseHost(null),
             Culture: Culture,
             RootContent: a,
             Pages: new[] { a },

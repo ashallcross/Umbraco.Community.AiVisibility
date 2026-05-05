@@ -1,5 +1,5 @@
 using System.Linq;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Composers;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.Extensions.DependencyInjection;

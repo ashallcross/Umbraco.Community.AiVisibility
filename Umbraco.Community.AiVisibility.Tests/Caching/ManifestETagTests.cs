@@ -1,6 +1,6 @@
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 
-namespace LlmsTxt.Umbraco.Tests.Caching;
+namespace Umbraco.Community.AiVisibility.Tests.Caching;
 
 [TestFixture]
 public class ManifestETagTests

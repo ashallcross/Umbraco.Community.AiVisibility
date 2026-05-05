@@ -6,12 +6,12 @@ using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Cache;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Caching;
+namespace Umbraco.Community.AiVisibility.Caching;
 
 /// <summary>
 /// Decorator over <see cref="IMarkdownContentExtractor"/> that caches successful
 /// extractions in <see cref="AppCaches.RuntimeCache"/> and registers the cache
-/// key against the node's <see cref="System.Guid"/> in <see cref="ILlmsCacheKeyIndex"/>
+/// key against the node's <see cref="System.Guid"/> in <see cref="ICacheKeyIndex"/>
 /// so <see cref="ContentCacheRefresherHandler"/> can invalidate by nodeKey on publish.
 ///
 /// <para>
@@ -33,7 +33,7 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
 {
     private readonly IMarkdownContentExtractor _inner;
     private readonly AppCaches _appCaches;
-    private readonly ILlmsCacheKeyIndex _index;
+    private readonly ICacheKeyIndex _index;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
     private readonly ILogger<CachingMarkdownExtractorDecorator> _logger;
@@ -41,7 +41,7 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
     public CachingMarkdownExtractorDecorator(
         IMarkdownContentExtractor inner,
         AppCaches appCaches,
-        ILlmsCacheKeyIndex index,
+        ICacheKeyIndex index,
         IHttpContextAccessor httpContextAccessor,
         IOptionsMonitor<LlmsTxtSettings> settings,
         ILogger<CachingMarkdownExtractorDecorator> logger)
@@ -79,7 +79,7 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
         var host = _httpContextAccessor.HttpContext?.Request.Host.HasValue == true
             ? _httpContextAccessor.HttpContext.Request.Host.Host
             : null;
-        var key = LlmsCacheKeys.Page(content.Key, host, culture);
+        var key = AiVisibilityCacheKeys.Page(content.Key, host, culture);
         var ttl = TimeSpan.FromSeconds(seconds);
 
         // sync-over-async inside the factory: IAppPolicyCache.Get is sync, and Umbraco's

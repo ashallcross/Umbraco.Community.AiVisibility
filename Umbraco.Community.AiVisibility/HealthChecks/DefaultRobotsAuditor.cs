@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -99,11 +99,11 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
         }
 
         var settings = _settings.CurrentValue.RobotsAuditor;
-        // Cache key uses LlmsCacheKeys.NormaliseHost (lowercase + port-strip)
+        // Cache key uses AiVisibilityCacheKeys.NormaliseHost (lowercase + port-strip)
         // so callers with casing variants share the entry; the URL builder
         // applies the same normalisation so cache lookups and fetched URIs
         // agree on the canonical host form.
-        var cacheKey = LlmsCacheKeys.Robots(hostname);
+        var cacheKey = AiVisibilityCacheKeys.Robots(hostname);
         // Clamp RefreshIntervalHours to [1, 8760] (one year) so int.MaxValue
         // doesn't overflow TimeSpan.FromHours. Refresh-disabled (≤ 0) uses
         // the lower bound 1h cache TTL — the recurring job won't rewrite it,
@@ -163,7 +163,7 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
         // worker thread for hours.
         var fetchTimeout = TimeSpan.FromSeconds(Math.Clamp(settings.FetchTimeoutSeconds, 1, 60));
         var resolvedScheme = string.IsNullOrWhiteSpace(scheme) ? "https" : scheme;
-        var cacheKey = LlmsCacheKeys.Robots(hostname);
+        var cacheKey = AiVisibilityCacheKeys.Robots(hostname);
         // Clamp RefreshIntervalHours to [1, 8760] (one year) so int.MaxValue
         // doesn't overflow TimeSpan.FromHours. Refresh-disabled (≤ 0) uses
         // the lower bound 1h cache TTL — the recurring job won't rewrite it,
@@ -190,7 +190,7 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
     {
         // Match the cache-key normalisation (lowercase + port-strip) so the
         // URI we fetch is the same canonical host we cached against.
-        var canonicalHost = LlmsCacheKeys.NormaliseHost(hostname);
+        var canonicalHost = AiVisibilityCacheKeys.NormaliseHost(hostname);
         var capturedAt = _timeProvider.GetUtcNow().UtcDateTime;
 
         // Reject schemes outside http/https — defends against a hostile

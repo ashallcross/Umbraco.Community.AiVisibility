@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Cache;
@@ -30,7 +30,7 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// <para>
 /// <b>Cache layer:</b> <see cref="IAppPolicyCache"/> via
 /// <see cref="AppCaches.RuntimeCache"/> at
-/// <see cref="LlmsCacheKeys.Settings"/>. Single-flight on cache miss is
+/// <see cref="AiVisibilityCacheKeys.Settings"/>. Single-flight on cache miss is
 /// provided by <c>GetCacheItem</c>'s factory-delegate serialisation per key
 /// per instance (Story 1.2 / 2.3 contract).
 /// </para>
@@ -130,7 +130,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
         // (D1-A decision, code review 2026-04-30). The hostname parameter stays
         // on the public surface for adopter implementations that DO want
         // per-host overlays (TryAddScoped extension point per AC8).
-        var cacheKey = LlmsCacheKeys.Settings(culture);
+        var cacheKey = AiVisibilityCacheKeys.Settings(culture);
         var resolved = _appCaches.RuntimeCache.GetCacheItem<ResolvedLlmsSettings>(
             cacheKey,
             () => BuildSnapshot(hostname, culture, settings),
@@ -150,8 +150,8 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
     /// </summary>
     private ResolvedLlmsSettings BuildSnapshot(string? hostname, string? culture, LlmsTxtSettings settings)
     {
-        var normalisedHost = LlmsCacheKeys.NormaliseHost(hostname);
-        var normalisedCulture = LlmsCacheKeys.NormaliseCulture(culture);
+        var normalisedHost = AiVisibilityCacheKeys.NormaliseHost(hostname);
+        var normalisedCulture = AiVisibilityCacheKeys.NormaliseCulture(culture);
 
         if (!_umbracoContextAccessor.TryGetUmbracoContext(out var umbracoContext))
         {

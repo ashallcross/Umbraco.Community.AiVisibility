@@ -1,5 +1,5 @@
 using System.Linq;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
@@ -18,7 +18,7 @@ namespace LlmsTxt.Umbraco.Composers;
 /// <summary>
 /// Wires Story 1.2's caching layer:
 /// <list type="bullet">
-/// <item>Singleton <see cref="ILlmsCacheKeyIndex"/> backing the publish-driven
+/// <item>Singleton <see cref="ICacheKeyIndex"/> backing the publish-driven
 /// invalidation lookup.</item>
 /// <item><see cref="ContentCacheRefresherHandler"/> as
 /// <see cref="INotificationAsyncHandler{T}"/> for
@@ -39,7 +39,7 @@ public sealed class CachingComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
-        builder.Services.TryAddSingleton<ILlmsCacheKeyIndex, LlmsCacheKeyIndex>();
+        builder.Services.TryAddSingleton<ICacheKeyIndex, CacheKeyIndex>();
 
         builder.AddNotificationAsyncHandler<
             ContentCacheRefresherNotification,
@@ -96,7 +96,7 @@ public sealed class CachingComposer : IComposer
             new CachingMarkdownExtractorDecorator(
                 sp.GetRequiredService<DefaultMarkdownContentExtractor>(),
                 sp.GetRequiredService<AppCaches>(),
-                sp.GetRequiredService<ILlmsCacheKeyIndex>(),
+                sp.GetRequiredService<ICacheKeyIndex>(),
                 sp.GetRequiredService<IHttpContextAccessor>(),
                 sp.GetRequiredService<IOptionsMonitor<LlmsTxtSettings>>(),
                 sp.GetRequiredService<ILogger<CachingMarkdownExtractorDecorator>>()));

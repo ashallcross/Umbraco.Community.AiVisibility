@@ -1,6 +1,6 @@
 using System.Text;
 using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
@@ -167,7 +167,7 @@ public class LlmsFullTxtControllerTests
 
         var etag = ctrl.Response.Headers["ETag"].ToString();
         Assert.That(etag, Is.Not.Empty, "ETag header is now emitted (Story 2.3 AC1+AC6)");
-        Assert.That(etag, Is.EqualTo(LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body)));
+        Assert.That(etag, Is.EqualTo(ManifestETag.Compute(body)));
     }
 
     [Test]
@@ -177,10 +177,10 @@ public class LlmsFullTxtControllerTests
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# CachedAcme\n\n_Source: x_\n\nBody.";
         _appCaches.RuntimeCache.Insert(
-            LlmsCacheKeys.LlmsFull(Host, Culture),
-            () => new LlmsTxt.Umbraco.Caching.ManifestCacheEntry(
+            AiVisibilityCacheKeys.LlmsFull(Host, Culture),
+            () => new ManifestCacheEntry(
                 body,
-                LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body)),
+                ManifestETag.Compute(body)),
             TimeSpan.FromMinutes(5));
         var ctrl = MakeController();
 
@@ -301,7 +301,7 @@ public class LlmsFullTxtControllerTests
         await ctrl2.Render(CancellationToken.None);
 
         await _builder.Received(2).BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>());
-        Assert.That(_appCaches.RuntimeCache.Get(LlmsCacheKeys.LlmsFull(Host, Culture)), Is.Null,
+        Assert.That(_appCaches.RuntimeCache.Get(AiVisibilityCacheKeys.LlmsFull(Host, Culture)), Is.Null,
             "empty manifest must not persist in the runtime cache");
     }
 
@@ -326,7 +326,7 @@ public class LlmsFullTxtControllerTests
         await ctrl2.Render(CancellationToken.None);
 
         await _builder.Received(2).BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>());
-        Assert.That(_appCaches.RuntimeCache.Get(LlmsCacheKeys.LlmsFull(Host, Culture)), Is.Null,
+        Assert.That(_appCaches.RuntimeCache.Get(AiVisibilityCacheKeys.LlmsFull(Host, Culture)), Is.Null,
             "CachePolicySeconds = 0 must not persist anything in the runtime cache");
     }
 
@@ -587,7 +587,7 @@ public class LlmsFullTxtControllerTests
         var root = StubContent("Acme", "homePage");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# Acme\n\n_Source: x_\n\nBody.";
-        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        var etag = ManifestETag.Compute(body);
         _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(body));
         var ctrl = MakeController();
@@ -664,7 +664,7 @@ public class LlmsFullTxtControllerTests
 
         // Force cache evict so the second request rebuilds (we want byte equality
         // against a fresh build, not a cached entry from the first call).
-        _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsFull(Host, Culture));
+        _appCaches.RuntimeCache.ClearByKey(AiVisibilityCacheKeys.LlmsFull(Host, Culture));
 
         // Run with Hreflang ON
         _currentSettings = new LlmsTxtSettings
@@ -712,7 +712,7 @@ public class LlmsFullTxtControllerTests
 
         Assert.That(ctrl.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
         Assert.That(ctrl.Response.Headers["ETag"].ToString(),
-            Is.EqualTo(LlmsTxt.Umbraco.Caching.ManifestETag.Compute(string.Empty)),
+            Is.EqualTo(ManifestETag.Compute(string.Empty)),
             "empty manifest emits ETag of zero-byte hash");
     }
 
@@ -859,7 +859,7 @@ public class LlmsFullTxtControllerTests
         var expectedBytes = Encoding.UTF8.GetByteCount(body);
         await publisher.Received(1).PublishLlmsFullTxtAsync(
             Arg.Any<HttpContext>(),
-            Arg.Is<string>(h => h == LlmsCacheKeys.NormaliseHost(Host)),
+            Arg.Is<string>(h => h == AiVisibilityCacheKeys.NormaliseHost(Host)),
             Arg.Is<string?>(c => c == Culture),
             Arg.Is<int>(b => b == expectedBytes),
             Arg.Any<CancellationToken>());
@@ -924,7 +924,7 @@ public class LlmsFullTxtControllerTests
         var root = StubContent("Acme", "homePage");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# Acme\n\n_Source: x_\n\nBody.";
-        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        var etag = ManifestETag.Compute(body);
         _builder.BuildAsync(Arg.Any<LlmsFullBuilderContext>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(body));
         var ctrl = MakeController(notificationPublisher: publisher);

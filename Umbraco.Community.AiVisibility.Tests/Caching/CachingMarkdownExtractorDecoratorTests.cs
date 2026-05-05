@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
@@ -8,7 +8,7 @@ using NSubstitute;
 using Umbraco.Cms.Core.Cache;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Tests.Caching;
+namespace Umbraco.Community.AiVisibility.Tests.Caching;
 
 [TestFixture]
 public class CachingMarkdownExtractorDecoratorTests
@@ -18,7 +18,7 @@ public class CachingMarkdownExtractorDecoratorTests
     private static readonly DateTime UpdatedUtc = new(2026, 4, 29, 0, 0, 0, DateTimeKind.Utc);
     private const string TestHost = "test.example";
 
-    private LlmsCacheKeyIndex _index = null!;
+    private CacheKeyIndex _index = null!;
     private AppCaches _appCaches = null!;
     private IHttpContextAccessor _httpContextAccessor = null!;
     private IOptionsMonitor<LlmsTxtSettings> _settings = null!;
@@ -26,7 +26,7 @@ public class CachingMarkdownExtractorDecoratorTests
     [SetUp]
     public void Setup()
     {
-        _index = new LlmsCacheKeyIndex();
+        _index = new CacheKeyIndex();
         _appCaches = new AppCaches(
             new ObjectCacheAppCache(),
             Substitute.For<IRequestCache>(),
@@ -66,7 +66,7 @@ public class CachingMarkdownExtractorDecoratorTests
 
         await decorator.ExtractAsync(content, "en-GB", CancellationToken.None);
 
-        var key = LlmsCacheKeys.Page(NodeA, TestHost, "en-GB");
+        var key = AiVisibilityCacheKeys.Page(NodeA, TestHost, "en-GB");
         Assert.That(_index.GetKeysFor(NodeA), Contains.Item(key));
     }
 
@@ -158,7 +158,7 @@ public class CachingMarkdownExtractorDecoratorTests
         await decorator.ExtractAsync(content, null, CancellationToken.None);
 
         Assert.That(inner.CallCount, Is.EqualTo(1));
-        Assert.That(_index.GetKeysFor(NodeA), Contains.Item(LlmsCacheKeys.Page(NodeA, TestHost, null)));
+        Assert.That(_index.GetKeysFor(NodeA), Contains.Item(AiVisibilityCacheKeys.Page(NodeA, TestHost, null)));
     }
 
     [Test, CancelAfter(5000)]

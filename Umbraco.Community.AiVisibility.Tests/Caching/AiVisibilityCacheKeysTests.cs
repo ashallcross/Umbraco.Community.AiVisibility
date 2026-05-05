@@ -1,9 +1,9 @@
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 
-namespace LlmsTxt.Umbraco.Tests.Caching;
+namespace Umbraco.Community.AiVisibility.Tests.Caching;
 
 [TestFixture]
-public class LlmsCacheKeysTests
+public class CacheKeysTests
 {
     private static readonly Guid Node = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private const string Host = "sitea.example";
@@ -11,22 +11,22 @@ public class LlmsCacheKeysTests
     [Test]
     public void Page_WithCulture_FormatsAsLowercaseN()
     {
-        var key = LlmsCacheKeys.Page(Node, Host, "en-GB");
+        var key = AiVisibilityCacheKeys.Page(Node, Host, "en-GB");
         Assert.That(key, Is.EqualTo("llms:page:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sitea.example:en-gb"));
     }
 
     [Test]
     public void Page_WithUppercaseCulture_NormalisesToLowercase()
     {
-        var lower = LlmsCacheKeys.Page(Node, Host, "en-GB");
-        var upper = LlmsCacheKeys.Page(Node, Host, "EN-gb");
+        var lower = AiVisibilityCacheKeys.Page(Node, Host, "en-GB");
+        var upper = AiVisibilityCacheKeys.Page(Node, Host, "EN-gb");
         Assert.That(upper, Is.EqualTo(lower));
     }
 
     [Test]
     public void Page_WithNullCulture_UsesInvariantSentinel()
     {
-        var key = LlmsCacheKeys.Page(Node, Host, null);
+        var key = AiVisibilityCacheKeys.Page(Node, Host, null);
         Assert.That(key, Is.EqualTo("llms:page:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sitea.example:_"));
     }
 
@@ -34,21 +34,21 @@ public class LlmsCacheKeysTests
     public void Page_WithEmptyCulture_UsesInvariantSentinel()
     {
         Assert.That(
-            LlmsCacheKeys.Page(Node, Host, string.Empty),
-            Is.EqualTo(LlmsCacheKeys.Page(Node, Host, null)));
+            AiVisibilityCacheKeys.Page(Node, Host, string.Empty),
+            Is.EqualTo(AiVisibilityCacheKeys.Page(Node, Host, null)));
     }
 
     [Test]
     public void Page_StartsWithPagePrefix()
     {
-        Assert.That(LlmsCacheKeys.Page(Node, Host, "en-GB"), Does.StartWith(LlmsCacheKeys.PagePrefix));
+        Assert.That(AiVisibilityCacheKeys.Page(Node, Host, "en-GB"), Does.StartWith(AiVisibilityCacheKeys.PagePrefix));
     }
 
     [Test]
     public void Page_StartsWithGlobalPrefix()
     {
         // ClearByKey(Prefix) must cover every key shape we ever issue.
-        Assert.That(LlmsCacheKeys.Page(Node, Host, "en-GB"), Does.StartWith(LlmsCacheKeys.Prefix));
+        Assert.That(AiVisibilityCacheKeys.Page(Node, Host, "en-GB"), Does.StartWith(AiVisibilityCacheKeys.Prefix));
     }
 
     [Test]
@@ -57,38 +57,38 @@ public class LlmsCacheKeysTests
         // Story 1.5: nodeKey stays as the second segment so the handler's
         // race-mitigating prefix-clear `llms:page:{nodeKey:N}:` still finds
         // and clears every per-host entry for that node.
-        var key = LlmsCacheKeys.Page(Node, Host, "en-GB");
-        Assert.That(key, Does.StartWith($"{LlmsCacheKeys.PagePrefix}{Node:N}:"));
+        var key = AiVisibilityCacheKeys.Page(Node, Host, "en-GB");
+        Assert.That(key, Does.StartWith($"{AiVisibilityCacheKeys.PagePrefix}{Node:N}:"));
     }
 
     [Test]
     public void Page_DifferentNode_DifferentKey()
     {
-        var a = LlmsCacheKeys.Page(Node, Host, "en-GB");
-        var b = LlmsCacheKeys.Page(Guid.NewGuid(), Host, "en-GB");
+        var a = AiVisibilityCacheKeys.Page(Node, Host, "en-GB");
+        var b = AiVisibilityCacheKeys.Page(Guid.NewGuid(), Host, "en-GB");
         Assert.That(b, Is.Not.EqualTo(a));
     }
 
     [Test]
     public void Page_DifferentHost_DifferentKey()
     {
-        var a = LlmsCacheKeys.Page(Node, "sitea.example", "en-GB");
-        var b = LlmsCacheKeys.Page(Node, "siteb.example", "en-GB");
+        var a = AiVisibilityCacheKeys.Page(Node, "sitea.example", "en-GB");
+        var b = AiVisibilityCacheKeys.Page(Node, "siteb.example", "en-GB");
         Assert.That(b, Is.Not.EqualTo(a));
     }
 
     [Test]
     public void Page_UppercaseHost_NormalisesToLowercase()
     {
-        var lower = LlmsCacheKeys.Page(Node, "sitea.example", "en-GB");
-        var upper = LlmsCacheKeys.Page(Node, "SiteA.Example", "en-GB");
+        var lower = AiVisibilityCacheKeys.Page(Node, "sitea.example", "en-GB");
+        var upper = AiVisibilityCacheKeys.Page(Node, "SiteA.Example", "en-GB");
         Assert.That(upper, Is.EqualTo(lower));
     }
 
     [Test]
     public void Page_WithNullHost_UsesInvariantSentinel()
     {
-        var key = LlmsCacheKeys.Page(Node, null, "en-GB");
+        var key = AiVisibilityCacheKeys.Page(Node, null, "en-GB");
         Assert.That(key, Is.EqualTo("llms:page:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:_:en-gb"));
     }
 
@@ -96,8 +96,8 @@ public class LlmsCacheKeysTests
     public void Page_WithEmptyHost_UsesInvariantSentinel()
     {
         Assert.That(
-            LlmsCacheKeys.Page(Node, string.Empty, "en-GB"),
-            Is.EqualTo(LlmsCacheKeys.Page(Node, null, "en-GB")));
+            AiVisibilityCacheKeys.Page(Node, string.Empty, "en-GB"),
+            Is.EqualTo(AiVisibilityCacheKeys.Page(Node, null, "en-GB")));
     }
 
     [Test]
@@ -107,8 +107,8 @@ public class LlmsCacheKeysTests
         // clients. IsNullOrWhiteSpace routes a single-space host to the "_" sentinel
         // rather than allowing " " to become a distinct cache-key segment.
         Assert.That(
-            LlmsCacheKeys.Page(Node, "   ", "en-GB"),
-            Is.EqualTo(LlmsCacheKeys.Page(Node, null, "en-GB")));
+            AiVisibilityCacheKeys.Page(Node, "   ", "en-GB"),
+            Is.EqualTo(AiVisibilityCacheKeys.Page(Node, null, "en-GB")));
     }
 
     [Test]
@@ -118,8 +118,8 @@ public class LlmsCacheKeysTests
         // Epic 2 manifest builders that pull host strings from IDomain entries that
         // include port. The helper must produce the same key regardless of whether
         // the caller passes "sitea.example" or "sitea.example:443".
-        var withoutPort = LlmsCacheKeys.Page(Node, "sitea.example", "en-GB");
-        var withPort = LlmsCacheKeys.Page(Node, "sitea.example:443", "en-GB");
+        var withoutPort = AiVisibilityCacheKeys.Page(Node, "sitea.example", "en-GB");
+        var withPort = AiVisibilityCacheKeys.Page(Node, "sitea.example:443", "en-GB");
         Assert.That(withPort, Is.EqualTo(withoutPort));
     }
 
@@ -130,15 +130,15 @@ public class LlmsCacheKeysTests
         // empty string, which must route to the "_" sentinel rather than colliding
         // with a missing-host entry under an empty segment.
         Assert.That(
-            LlmsCacheKeys.Page(Node, ":443", "en-GB"),
-            Is.EqualTo(LlmsCacheKeys.Page(Node, null, "en-GB")));
+            AiVisibilityCacheKeys.Page(Node, ":443", "en-GB"),
+            Is.EqualTo(AiVisibilityCacheKeys.Page(Node, null, "en-GB")));
     }
 
     [Test]
     public void Page_DifferentCulture_DifferentKey()
     {
-        var en = LlmsCacheKeys.Page(Node, Host, "en-GB");
-        var fr = LlmsCacheKeys.Page(Node, Host, "fr-FR");
+        var en = AiVisibilityCacheKeys.Page(Node, Host, "en-GB");
+        var fr = AiVisibilityCacheKeys.Page(Node, Host, "fr-FR");
         Assert.That(fr, Is.Not.EqualTo(en));
     }
 
@@ -149,50 +149,50 @@ public class LlmsCacheKeysTests
     [Test]
     public void LlmsTxt_DefaultHostAndCulture_FormatsCorrectly()
     {
-        var key = LlmsCacheKeys.LlmsTxt(Host, "en-GB");
+        var key = AiVisibilityCacheKeys.LlmsTxt(Host, "en-GB");
         Assert.That(key, Is.EqualTo("llms:llmstxt:sitea.example:en-gb"));
     }
 
     [Test]
     public void LlmsTxt_HostUppercased_NormalisedToLower()
     {
-        var lower = LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB");
-        var upper = LlmsCacheKeys.LlmsTxt("SiteA.Example", "en-GB");
+        var lower = AiVisibilityCacheKeys.LlmsTxt("sitea.example", "en-GB");
+        var upper = AiVisibilityCacheKeys.LlmsTxt("SiteA.Example", "en-GB");
         Assert.That(upper, Is.EqualTo(lower));
     }
 
     [Test]
     public void LlmsTxt_HostWithPort_PortStripped()
     {
-        var withoutPort = LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB");
-        var withPort = LlmsCacheKeys.LlmsTxt("sitea.example:443", "en-GB");
+        var withoutPort = AiVisibilityCacheKeys.LlmsTxt("sitea.example", "en-GB");
+        var withPort = AiVisibilityCacheKeys.LlmsTxt("sitea.example:443", "en-GB");
         Assert.That(withPort, Is.EqualTo(withoutPort));
     }
 
     [Test]
     public void LlmsTxt_NullHost_UsesUnderscore()
     {
-        var key = LlmsCacheKeys.LlmsTxt(null, "en-GB");
+        var key = AiVisibilityCacheKeys.LlmsTxt(null, "en-GB");
         Assert.That(key, Is.EqualTo("llms:llmstxt:_:en-gb"));
     }
 
     [Test]
     public void LlmsTxt_NullCulture_UsesUnderscore()
     {
-        var key = LlmsCacheKeys.LlmsTxt(Host, null);
+        var key = AiVisibilityCacheKeys.LlmsTxt(Host, null);
         Assert.That(key, Is.EqualTo("llms:llmstxt:sitea.example:_"));
     }
 
     [Test]
     public void LlmsTxt_StartsWithGlobalPrefix()
     {
-        Assert.That(LlmsCacheKeys.LlmsTxt(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.Prefix));
+        Assert.That(AiVisibilityCacheKeys.LlmsTxt(Host, "en-GB"), Does.StartWith(AiVisibilityCacheKeys.Prefix));
     }
 
     [Test]
     public void LlmsTxt_StartsWithLlmsTxtPrefix()
     {
-        Assert.That(LlmsCacheKeys.LlmsTxt(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.LlmsTxtPrefix));
+        Assert.That(AiVisibilityCacheKeys.LlmsTxt(Host, "en-GB"), Does.StartWith(AiVisibilityCacheKeys.LlmsTxtPrefix));
     }
 
     [Test]
@@ -200,21 +200,21 @@ public class LlmsCacheKeysTests
     {
         // Pessimistic invalidation: ClearByKey(LlmsTxtHostPrefix(host)) must drop
         // every culture's manifest entry for that hostname.
-        var prefix = LlmsCacheKeys.LlmsTxtHostPrefix("sitea.example");
+        var prefix = AiVisibilityCacheKeys.LlmsTxtHostPrefix("sitea.example");
         Assert.Multiple(() =>
         {
             Assert.That(prefix, Is.EqualTo("llms:llmstxt:sitea.example:"));
-            Assert.That(LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB"), Does.StartWith(prefix));
-            Assert.That(LlmsCacheKeys.LlmsTxt("sitea.example", "fr-FR"), Does.StartWith(prefix));
-            Assert.That(LlmsCacheKeys.LlmsTxt("siteb.example", "en-GB"), Does.Not.StartWith(prefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsTxt("sitea.example", "en-GB"), Does.StartWith(prefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsTxt("sitea.example", "fr-FR"), Does.StartWith(prefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsTxt("siteb.example", "en-GB"), Does.Not.StartWith(prefix));
         });
     }
 
     [Test]
     public void LlmsTxt_DifferentHost_DifferentKey()
     {
-        var a = LlmsCacheKeys.LlmsTxt("sitea.example", "en-GB");
-        var b = LlmsCacheKeys.LlmsTxt("siteb.example", "en-GB");
+        var a = AiVisibilityCacheKeys.LlmsTxt("sitea.example", "en-GB");
+        var b = AiVisibilityCacheKeys.LlmsTxt("siteb.example", "en-GB");
         Assert.That(b, Is.Not.EqualTo(a));
     }
 
@@ -225,50 +225,50 @@ public class LlmsCacheKeysTests
     [Test]
     public void LlmsFull_DefaultHostAndCulture_FormatsCorrectly()
     {
-        var key = LlmsCacheKeys.LlmsFull(Host, "en-GB");
+        var key = AiVisibilityCacheKeys.LlmsFull(Host, "en-GB");
         Assert.That(key, Is.EqualTo("llms:llmsfull:sitea.example:en-gb"));
     }
 
     [Test]
     public void LlmsFull_HostUppercased_NormalisedToLower()
     {
-        var lower = LlmsCacheKeys.LlmsFull("sitea.example", "en-GB");
-        var upper = LlmsCacheKeys.LlmsFull("SiteA.Example", "en-GB");
+        var lower = AiVisibilityCacheKeys.LlmsFull("sitea.example", "en-GB");
+        var upper = AiVisibilityCacheKeys.LlmsFull("SiteA.Example", "en-GB");
         Assert.That(upper, Is.EqualTo(lower));
     }
 
     [Test]
     public void LlmsFull_HostWithPort_PortStripped()
     {
-        var withoutPort = LlmsCacheKeys.LlmsFull("sitea.example", "en-GB");
-        var withPort = LlmsCacheKeys.LlmsFull("sitea.example:443", "en-GB");
+        var withoutPort = AiVisibilityCacheKeys.LlmsFull("sitea.example", "en-GB");
+        var withPort = AiVisibilityCacheKeys.LlmsFull("sitea.example:443", "en-GB");
         Assert.That(withPort, Is.EqualTo(withoutPort));
     }
 
     [Test]
     public void LlmsFull_NullHost_UsesUnderscore()
     {
-        var key = LlmsCacheKeys.LlmsFull(null, "en-GB");
+        var key = AiVisibilityCacheKeys.LlmsFull(null, "en-GB");
         Assert.That(key, Is.EqualTo("llms:llmsfull:_:en-gb"));
     }
 
     [Test]
     public void LlmsFull_NullCulture_UsesUnderscore()
     {
-        var key = LlmsCacheKeys.LlmsFull(Host, null);
+        var key = AiVisibilityCacheKeys.LlmsFull(Host, null);
         Assert.That(key, Is.EqualTo("llms:llmsfull:sitea.example:_"));
     }
 
     [Test]
     public void LlmsFull_StartsWithGlobalPrefix()
     {
-        Assert.That(LlmsCacheKeys.LlmsFull(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.Prefix));
+        Assert.That(AiVisibilityCacheKeys.LlmsFull(Host, "en-GB"), Does.StartWith(AiVisibilityCacheKeys.Prefix));
     }
 
     [Test]
     public void LlmsFull_StartsWithLlmsFullPrefix()
     {
-        Assert.That(LlmsCacheKeys.LlmsFull(Host, "en-GB"), Does.StartWith(LlmsCacheKeys.LlmsFullPrefix));
+        Assert.That(AiVisibilityCacheKeys.LlmsFull(Host, "en-GB"), Does.StartWith(AiVisibilityCacheKeys.LlmsFullPrefix));
     }
 
     [Test]
@@ -279,30 +279,30 @@ public class LlmsCacheKeysTests
         // `llms:llmstxt:` so a single ClearByKey cannot accidentally drop both.
         Assert.Multiple(() =>
         {
-            Assert.That(LlmsCacheKeys.LlmsFullPrefix, Is.Not.EqualTo(LlmsCacheKeys.LlmsTxtPrefix));
-            Assert.That(LlmsCacheKeys.LlmsFull(Host, "en-GB"), Does.Not.StartWith(LlmsCacheKeys.LlmsTxtPrefix));
-            Assert.That(LlmsCacheKeys.LlmsTxt(Host, "en-GB"), Does.Not.StartWith(LlmsCacheKeys.LlmsFullPrefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsFullPrefix, Is.Not.EqualTo(AiVisibilityCacheKeys.LlmsTxtPrefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsFull(Host, "en-GB"), Does.Not.StartWith(AiVisibilityCacheKeys.LlmsTxtPrefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsTxt(Host, "en-GB"), Does.Not.StartWith(AiVisibilityCacheKeys.LlmsFullPrefix));
         });
     }
 
     [Test]
     public void LlmsFullHostPrefix_BuildsClearByKeyArgument()
     {
-        var prefix = LlmsCacheKeys.LlmsFullHostPrefix("sitea.example");
+        var prefix = AiVisibilityCacheKeys.LlmsFullHostPrefix("sitea.example");
         Assert.Multiple(() =>
         {
             Assert.That(prefix, Is.EqualTo("llms:llmsfull:sitea.example:"));
-            Assert.That(LlmsCacheKeys.LlmsFull("sitea.example", "en-GB"), Does.StartWith(prefix));
-            Assert.That(LlmsCacheKeys.LlmsFull("sitea.example", "fr-FR"), Does.StartWith(prefix));
-            Assert.That(LlmsCacheKeys.LlmsFull("siteb.example", "en-GB"), Does.Not.StartWith(prefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsFull("sitea.example", "en-GB"), Does.StartWith(prefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsFull("sitea.example", "fr-FR"), Does.StartWith(prefix));
+            Assert.That(AiVisibilityCacheKeys.LlmsFull("siteb.example", "en-GB"), Does.Not.StartWith(prefix));
         });
     }
 
     [Test]
     public void LlmsFull_DifferentHost_DifferentKey()
     {
-        var a = LlmsCacheKeys.LlmsFull("sitea.example", "en-GB");
-        var b = LlmsCacheKeys.LlmsFull("siteb.example", "en-GB");
+        var a = AiVisibilityCacheKeys.LlmsFull("sitea.example", "en-GB");
+        var b = AiVisibilityCacheKeys.LlmsFull("siteb.example", "en-GB");
         Assert.That(b, Is.Not.EqualTo(a));
     }
 
@@ -316,14 +316,14 @@ public class LlmsCacheKeysTests
     [Test]
     public void Settings_Culture_FormatsCorrectly()
     {
-        var key = LlmsCacheKeys.Settings("en-GB");
+        var key = AiVisibilityCacheKeys.Settings("en-GB");
         Assert.That(key, Is.EqualTo("llms:settings:en-gb"));
     }
 
     [Test]
     public void Settings_NullCulture_UsesUnderscoreSentinel()
     {
-        var key = LlmsCacheKeys.Settings(null);
+        var key = AiVisibilityCacheKeys.Settings(null);
         Assert.That(key, Is.EqualTo("llms:settings:_"));
     }
 
@@ -335,9 +335,9 @@ public class LlmsCacheKeysTests
         // generated Settings key.
         Assert.Multiple(() =>
         {
-            Assert.That(LlmsCacheKeys.Settings("en-GB"), Does.StartWith(LlmsCacheKeys.SettingsPrefix));
-            Assert.That(LlmsCacheKeys.Settings("fr-FR"), Does.StartWith(LlmsCacheKeys.SettingsPrefix));
-            Assert.That(LlmsCacheKeys.Settings(null), Does.StartWith(LlmsCacheKeys.SettingsPrefix));
+            Assert.That(AiVisibilityCacheKeys.Settings("en-GB"), Does.StartWith(AiVisibilityCacheKeys.SettingsPrefix));
+            Assert.That(AiVisibilityCacheKeys.Settings("fr-FR"), Does.StartWith(AiVisibilityCacheKeys.SettingsPrefix));
+            Assert.That(AiVisibilityCacheKeys.Settings(null), Does.StartWith(AiVisibilityCacheKeys.SettingsPrefix));
         });
     }
 
@@ -349,18 +349,18 @@ public class LlmsCacheKeysTests
         // Same key shape across casings + invariant + missing-host paths.
         Assert.Multiple(() =>
         {
-            Assert.That(LlmsCacheKeys.Robots("Sitea.Example"),
+            Assert.That(AiVisibilityCacheKeys.Robots("Sitea.Example"),
                 Is.EqualTo("llms:robots:sitea.example"));
-            Assert.That(LlmsCacheKeys.Robots("SITEA.EXAMPLE:443"),
+            Assert.That(AiVisibilityCacheKeys.Robots("SITEA.EXAMPLE:443"),
                 Is.EqualTo("llms:robots:sitea.example"),
                 "port stripped");
-            Assert.That(LlmsCacheKeys.Robots(null),
+            Assert.That(AiVisibilityCacheKeys.Robots(null),
                 Is.EqualTo("llms:robots:_"),
                 "null host falls back to '_' sentinel");
-            Assert.That(LlmsCacheKeys.Robots("sitea.example"),
-                Does.StartWith(LlmsCacheKeys.RobotsPrefix));
-            Assert.That(LlmsCacheKeys.Robots("sitea.example"),
-                Does.StartWith(LlmsCacheKeys.Prefix));
+            Assert.That(AiVisibilityCacheKeys.Robots("sitea.example"),
+                Does.StartWith(AiVisibilityCacheKeys.RobotsPrefix));
+            Assert.That(AiVisibilityCacheKeys.Robots("sitea.example"),
+                Does.StartWith(AiVisibilityCacheKeys.Prefix));
         });
     }
 }

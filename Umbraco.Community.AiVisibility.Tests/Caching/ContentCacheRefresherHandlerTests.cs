@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Umbraco.Cms.Core.Cache;
@@ -8,7 +8,7 @@ using Umbraco.Cms.Core.Services.Changes;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Sync;
 
-namespace LlmsTxt.Umbraco.Tests.Caching;
+namespace Umbraco.Community.AiVisibility.Tests.Caching;
 
 [TestFixture]
 public class ContentCacheRefresherHandlerTests
@@ -19,7 +19,7 @@ public class ContentCacheRefresherHandlerTests
     private static readonly Guid Stranger = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
     private const string TestHost = "test.example";
 
-    private LlmsCacheKeyIndex _index = null!;
+    private CacheKeyIndex _index = null!;
     private AppCaches _appCaches = null!;
     private IDocumentNavigationQueryService _navigation = null!;
     private IDomainService _domainService = null!;
@@ -27,7 +27,7 @@ public class ContentCacheRefresherHandlerTests
     [SetUp]
     public void Setup()
     {
-        _index = new LlmsCacheKeyIndex();
+        _index = new CacheKeyIndex();
         _appCaches = new AppCaches(
             new ObjectCacheAppCache(),
             Substitute.For<IRequestCache>(),
@@ -123,7 +123,7 @@ public class ContentCacheRefresherHandlerTests
         // a publish for that node arrives. The handler clears by `llms:page:{nodeKey:N}:`
         // prefix, so an in-flight cache write that hasn't yet reached the index is
         // still cleared.
-        var orphanKey = LlmsCacheKeys.Page(Root, TestHost, "en-GB");
+        var orphanKey = AiVisibilityCacheKeys.Page(Root, TestHost, "en-GB");
         _appCaches.RuntimeCache.Insert(orphanKey, () => "cached", TimeSpan.FromMinutes(5));
         // Note: NOT registered in the index — simulates the race window.
 
@@ -498,61 +498,61 @@ public class ContentCacheRefresherHandlerTests
         // handler's prefix-clear (`llms:page:{nodeKey:N}:`) actually exercises the
         // prefix matcher. nodeKey stays as the second segment so per-host entries
         // for the same node all share the prefix and get cleared together.
-        var key = LlmsCacheKeys.Page(nodeKey, TestHost, "en-GB");
+        var key = AiVisibilityCacheKeys.Page(nodeKey, TestHost, "en-GB");
         _appCaches.RuntimeCache.Insert(key, () => "cached", TimeSpan.FromMinutes(5));
         _index.Register(nodeKey, key);
     }
 
     private void AssertCacheCleared(Guid nodeKey)
     {
-        var key = LlmsCacheKeys.Page(nodeKey, TestHost, "en-GB");
+        var key = AiVisibilityCacheKeys.Page(nodeKey, TestHost, "en-GB");
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Null,
             $"expected cache key '{key}' to have been cleared");
     }
 
     private void AssertCacheStillPresent(Guid nodeKey)
     {
-        var key = LlmsCacheKeys.Page(nodeKey, TestHost, "en-GB");
+        var key = AiVisibilityCacheKeys.Page(nodeKey, TestHost, "en-GB");
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Not.Null,
             $"expected cache key '{key}' to still be present");
     }
 
     private void SeedManifestCache(string host, string culture)
     {
-        var key = LlmsCacheKeys.LlmsTxt(host, culture);
+        var key = AiVisibilityCacheKeys.LlmsTxt(host, culture);
         _appCaches.RuntimeCache.Insert(key, () => $"manifest-{host}-{culture}", TimeSpan.FromMinutes(5));
     }
 
     private void AssertManifestCleared(string host, string culture)
     {
-        var key = LlmsCacheKeys.LlmsTxt(host, culture);
+        var key = AiVisibilityCacheKeys.LlmsTxt(host, culture);
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Null,
             $"expected manifest cache key '{key}' to have been cleared");
     }
 
     private void AssertManifestStillPresent(string host, string culture)
     {
-        var key = LlmsCacheKeys.LlmsTxt(host, culture);
+        var key = AiVisibilityCacheKeys.LlmsTxt(host, culture);
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Not.Null,
             $"expected manifest cache key '{key}' to still be present");
     }
 
     private void SeedFullManifestCache(string host, string culture)
     {
-        var key = LlmsCacheKeys.LlmsFull(host, culture);
+        var key = AiVisibilityCacheKeys.LlmsFull(host, culture);
         _appCaches.RuntimeCache.Insert(key, () => $"full-manifest-{host}-{culture}", TimeSpan.FromMinutes(5));
     }
 
     private void AssertFullManifestCleared(string host, string culture)
     {
-        var key = LlmsCacheKeys.LlmsFull(host, culture);
+        var key = AiVisibilityCacheKeys.LlmsFull(host, culture);
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Null,
             $"expected /llms-full.txt cache key '{key}' to have been cleared");
     }
 
     private void AssertFullManifestStillPresent(string host, string culture)
     {
-        var key = LlmsCacheKeys.LlmsFull(host, culture);
+        var key = AiVisibilityCacheKeys.LlmsFull(host, culture);
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Not.Null,
             $"expected /llms-full.txt cache key '{key}' to still be present");
     }
@@ -588,14 +588,14 @@ public class ContentCacheRefresherHandlerTests
         // helpers for symmetry with SeedManifestCache, but the key it produces
         // depends only on culture. The host argument is unused.
         _ = host;
-        var key = LlmsCacheKeys.Settings(culture);
+        var key = AiVisibilityCacheKeys.Settings(culture);
         _appCaches.RuntimeCache.Insert(key, () => $"settings-{culture}", TimeSpan.FromMinutes(5));
     }
 
     private void AssertSettingsCleared(string host, string culture)
     {
         _ = host;
-        var key = LlmsCacheKeys.Settings(culture);
+        var key = AiVisibilityCacheKeys.Settings(culture);
         Assert.That(_appCaches.RuntimeCache.Get(key), Is.Null,
             $"expected llms:settings cache key '{key}' to have been cleared");
     }

@@ -42,7 +42,7 @@ public static class Constants
 
     public static class Cache
     {
-        // Mirrors LlmsTxt.Umbraco.Caching.LlmsCacheKeys — duplicated here for grep-ability
+        // Mirrors Umbraco.Community.AiVisibility.Caching.AiVisibilityCacheKeys — duplicated here for grep-ability
         // alongside other package-prefixed names. The Caching helper is canonical for
         // composition; these constants are for cross-folder string literals.
         public const string Prefix = "llms:";
@@ -51,13 +51,13 @@ public static class Constants
         public const string LlmsFullPrefix = "llms:llmsfull:";
 
         // Story 3.1 — resolver settings cache namespace. Mirrored from
-        // LlmsTxt.Umbraco.Caching.LlmsCacheKeys.SettingsPrefix for grep-ability.
+        // Umbraco.Community.AiVisibility.Caching.AiVisibilityCacheKeys.SettingsPrefix for grep-ability.
         public const string SettingsPrefix = "llms:settings:";
 
         // Story 4.2 — robots audit cache namespace. Mirrored from
-        // LlmsTxt.Umbraco.Caching.LlmsCacheKeys.RobotsPrefix for grep-ability.
+        // Umbraco.Community.AiVisibility.Caching.AiVisibilityCacheKeys.RobotsPrefix for grep-ability.
         // The robots-audit cache lives under a different invalidation regime
-        // than per-page / manifest caches — see LlmsCacheKeys.Robots for the
+        // than per-page / manifest caches — see AiVisibilityCacheKeys.Robots for the
         // full rationale.
         public const string RobotsPrefix = "llms:robots:";
     }

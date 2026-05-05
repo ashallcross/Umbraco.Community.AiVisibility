@@ -43,13 +43,13 @@ public interface ILlmsSettingsResolver
     /// </summary>
     /// <param name="hostname">
     /// The request hostname (raw <c>HttpContext.Request.Host.Host</c> — the
-    /// resolver normalises via <c>LlmsCacheKeys.NormaliseHost</c>). Null /
+    /// resolver normalises via <c>AiVisibilityCacheKeys.NormaliseHost</c>). Null /
     /// empty / whitespace routes to the <c>"_"</c> sentinel — distinct from
     /// any real hostname.
     /// </param>
     /// <param name="culture">
     /// The resolved culture (BCP-47 — the resolver lowercases via
-    /// <c>LlmsCacheKeys.NormaliseCulture</c>). Null / empty routes to the
+    /// <c>AiVisibilityCacheKeys.NormaliseCulture</c>). Null / empty routes to the
     /// <c>"_"</c> sentinel for invariant-content sites.
     /// </param>
     Task<ResolvedLlmsSettings> ResolveAsync(string? hostname, string? culture, CancellationToken cancellationToken);

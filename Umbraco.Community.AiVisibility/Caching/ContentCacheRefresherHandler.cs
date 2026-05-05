@@ -6,7 +6,7 @@ using Umbraco.Cms.Core.Services.Changes;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Sync;
 
-namespace LlmsTxt.Umbraco.Caching;
+namespace Umbraco.Community.AiVisibility.Caching;
 
 /// <summary>
 /// Drives Story 1.2's per-page cache invalidation off Umbraco's distributed cache
@@ -30,13 +30,13 @@ internal sealed class ContentCacheRefresherHandler
     : INotificationAsyncHandler<ContentCacheRefresherNotification>
 {
     private readonly AppCaches _appCaches;
-    private readonly ILlmsCacheKeyIndex _index;
+    private readonly ICacheKeyIndex _index;
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly ILogger<ContentCacheRefresherHandler> _logger;
 
     public ContentCacheRefresherHandler(
         AppCaches appCaches,
-        ILlmsCacheKeyIndex index,
+        ICacheKeyIndex index,
         IDocumentNavigationQueryService navigation,
         ILogger<ContentCacheRefresherHandler> logger)
     {
@@ -133,7 +133,7 @@ internal sealed class ContentCacheRefresherHandler
 
     private void ClearAll()
     {
-        _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.Prefix);
+        _appCaches.RuntimeCache.ClearByKey(AiVisibilityCacheKeys.Prefix);
         _index.Reset();
     }
 
@@ -143,7 +143,7 @@ internal sealed class ContentCacheRefresherHandler
         // through the decorator's "cache-write → Register" gap are still invalidated —
         // the index is a fast-path hint, not a source of truth for which entries exist.
         // ObjectCacheAppCache.ClearByKey on a missing prefix is a no-op.
-        _appCaches.RuntimeCache.ClearByKey($"{LlmsCacheKeys.PagePrefix}{nodeKey:N}:");
+        _appCaches.RuntimeCache.ClearByKey($"{AiVisibilityCacheKeys.PagePrefix}{nodeKey:N}:");
         if (removeIndexEntry)
         {
             _index.Remove(nodeKey);
@@ -185,9 +185,9 @@ internal sealed class ContentCacheRefresherHandler
         // </para>
         try
         {
-            _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsTxtPrefix);
-            _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.LlmsFullPrefix);
-            _appCaches.RuntimeCache.ClearByKey(LlmsCacheKeys.SettingsPrefix);
+            _appCaches.RuntimeCache.ClearByKey(AiVisibilityCacheKeys.LlmsTxtPrefix);
+            _appCaches.RuntimeCache.ClearByKey(AiVisibilityCacheKeys.LlmsFullPrefix);
+            _appCaches.RuntimeCache.ClearByKey(AiVisibilityCacheKeys.SettingsPrefix);
         }
         catch (Exception ex)
         {

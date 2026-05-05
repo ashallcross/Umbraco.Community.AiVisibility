@@ -1,6 +1,6 @@
 using System.Text;
 using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Notifications;
 using LlmsTxt.Umbraco.Routing;
@@ -137,7 +137,7 @@ public sealed class LlmsTxtController : Controller
         // builder a pure transform (Builders/ folder boundary).
         var pages = FilterExcludedPages(allPages, resolvedSettings, resolution.Culture);
 
-        var cacheKey = LlmsCacheKeys.LlmsTxt(host, resolution.Culture);
+        var cacheKey = AiVisibilityCacheKeys.LlmsTxt(host, resolution.Culture);
 
         // Story 6.0a (Codex finding #3) — CachePolicySeconds policy mirrors
         // LlmsFullTxtController: 0 disables the manifest cache entirely
@@ -165,7 +165,7 @@ public sealed class LlmsTxtController : Controller
         // factory-delegate serialisation per key per instance (Story 1.2 contract).
         var root = resolution.Root;
         var culture = resolution.Culture;
-        var hostForBuild = LlmsCacheKeys.NormaliseHost(host);
+        var hostForBuild = AiVisibilityCacheKeys.NormaliseHost(host);
         var pagesForBuild = pages;
         var resolvedForBuild = resolvedSettings;
 

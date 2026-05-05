@@ -43,7 +43,7 @@ public sealed class LlmsTxtRequestedNotification : INotification
 
     /// <summary>
     /// Request hostname, lowercased + port-stripped (matches the
-    /// <see cref="LlmsTxt.Umbraco.Caching.LlmsCacheKeys.NormaliseHost"/>
+    /// <see cref="Umbraco.Community.AiVisibility.Caching.AiVisibilityCacheKeys.NormaliseHost"/>
     /// shape). Empty when the request had no Host header.
     /// </summary>
     public string Hostname { get; }

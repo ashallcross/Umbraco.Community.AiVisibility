@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
@@ -103,8 +103,8 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
 
     /// <summary>
     /// Stable ETag derived from <c>(host + route + normalised-culture + contentVersion)</c>.
-    /// Reuses <see cref="LlmsCacheKeys.NormaliseHost"/> and
-    /// <see cref="LlmsCacheKeys.NormaliseCulture"/> so the ETag input shares casing with the
+    /// Reuses <see cref="AiVisibilityCacheKeys.NormaliseHost"/> and
+    /// <see cref="AiVisibilityCacheKeys.NormaliseCulture"/> so the ETag input shares casing with the
     /// cache key — without alignment, a follow-up request whose culture or host casing
     /// differs (e.g. <c>en-GB</c> vs <c>en-gb</c>, <c>SiteA.Example</c> vs
     /// <c>sitea.example</c>) would compute a different ETag against the same cached body
@@ -113,11 +113,11 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
     private static string ComputeETag(string? host, string canonicalPath, string? culture, DateTime updatedUtc)
     {
         var input = string.Concat(
-            LlmsCacheKeys.NormaliseHost(host),
+            AiVisibilityCacheKeys.NormaliseHost(host),
             "|",
             canonicalPath,
             "|",
-            LlmsCacheKeys.NormaliseCulture(culture),
+            AiVisibilityCacheKeys.NormaliseCulture(culture),
             "|",
             updatedUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));

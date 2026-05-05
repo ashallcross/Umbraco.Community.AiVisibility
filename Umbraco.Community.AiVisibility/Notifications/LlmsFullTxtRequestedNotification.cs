@@ -54,7 +54,7 @@ public sealed class LlmsFullTxtRequestedNotification : INotification
     }
 
     /// <summary>
-    /// Request hostname, normalised via <c>LlmsCacheKeys.NormaliseHost</c>
+    /// Request hostname, normalised via <c>AiVisibilityCacheKeys.NormaliseHost</c>
     /// (lowercased + port-stripped). Matches the cache-key shape so adopter
     /// analytics group requests under the same key the cache uses.
     /// </summary>

@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Models.PublishedContent;
@@ -288,7 +288,7 @@ public sealed class HreflangVariantsResolver : IHreflangVariantsResolver
                 : trimmed + Constants.Routes.MarkdownSuffix;
 
             variants ??= new List<HreflangVariant>();
-            variants.Add(new HreflangVariant(LlmsCacheKeys.NormaliseCulture(culture), withSuffix));
+            variants.Add(new HreflangVariant(AiVisibilityCacheKeys.NormaliseCulture(culture), withSuffix));
         }
 
         return (IReadOnlyList<HreflangVariant>?)variants ?? Array.Empty<HreflangVariant>();

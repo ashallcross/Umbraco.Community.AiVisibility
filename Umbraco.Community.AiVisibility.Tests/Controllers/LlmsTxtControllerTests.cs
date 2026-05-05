@@ -1,6 +1,6 @@
 using System.Text;
 using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
@@ -180,7 +180,7 @@ public class LlmsTxtControllerTests
 
         var etag = ctrl.Response.Headers["ETag"].ToString();
         Assert.That(etag, Is.Not.Empty, "ETag header is now emitted (Story 2.3 AC1+AC6)");
-        Assert.That(etag, Is.EqualTo(LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body)),
+        Assert.That(etag, Is.EqualTo(ManifestETag.Compute(body)),
             "ETag is the body-derived hash (matches ManifestETag.Compute)");
     }
 
@@ -192,10 +192,10 @@ public class LlmsTxtControllerTests
             .Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# CachedAcme\n> \n";
         _appCaches.RuntimeCache.Insert(
-            LlmsCacheKeys.LlmsTxt(Host, Culture),
-            () => new LlmsTxt.Umbraco.Caching.ManifestCacheEntry(
+            AiVisibilityCacheKeys.LlmsTxt(Host, Culture),
+            () => new ManifestCacheEntry(
                 body,
-                LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body)),
+                ManifestETag.Compute(body)),
             TimeSpan.FromMinutes(5));
         var ctrl = MakeController();
 
@@ -324,7 +324,7 @@ public class LlmsTxtControllerTests
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# Acme\n> \n";
-        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        var etag = ManifestETag.Compute(body);
         _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(body));
         var ctrl = MakeController();
@@ -369,7 +369,7 @@ public class LlmsTxtControllerTests
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# Acme\n> \n";
-        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        var etag = ManifestETag.Compute(body);
         _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(body));
         var ctrl = MakeController();
@@ -387,7 +387,7 @@ public class LlmsTxtControllerTests
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# Acme\n> \n";
-        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        var etag = ManifestETag.Compute(body);
         _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(body));
         var ctrl = MakeController();
@@ -411,8 +411,8 @@ public class LlmsTxtControllerTests
         const string body = "# Acme\n> \n";
         const string sentinelETag = "\"sentinel-not-real\"";
         _appCaches.RuntimeCache.Insert(
-            LlmsCacheKeys.LlmsTxt(Host, Culture),
-            () => new LlmsTxt.Umbraco.Caching.ManifestCacheEntry(body, sentinelETag),
+            AiVisibilityCacheKeys.LlmsTxt(Host, Culture),
+            () => new ManifestCacheEntry(body, sentinelETag),
             TimeSpan.FromMinutes(5));
         var ctrl = MakeController();
 
@@ -816,7 +816,7 @@ public class LlmsTxtControllerTests
 
         await publisher.Received(1).PublishLlmsTxtAsync(
             Arg.Any<HttpContext>(),
-            Arg.Is<string>(h => h == LlmsCacheKeys.NormaliseHost(Host)),
+            Arg.Is<string>(h => h == AiVisibilityCacheKeys.NormaliseHost(Host)),
             Arg.Is<string?>(c => c == Culture),
             Arg.Any<CancellationToken>());
     }
@@ -859,7 +859,7 @@ public class LlmsTxtControllerTests
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
         const string body = "# Acme\n> \n";
-        var etag = LlmsTxt.Umbraco.Caching.ManifestETag.Compute(body);
+        var etag = ManifestETag.Compute(body);
         _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(body));
         var ctrl = MakeController(notificationPublisher: publisher);
@@ -932,7 +932,7 @@ public class LlmsTxtControllerTests
         await ctrl2.Render(CancellationToken.None);
 
         await _builder.Received(2).BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>());
-        Assert.That(_appCaches.RuntimeCache.Get(LlmsCacheKeys.LlmsTxt(Host, Culture)), Is.Null,
+        Assert.That(_appCaches.RuntimeCache.Get(AiVisibilityCacheKeys.LlmsTxt(Host, Culture)), Is.Null,
             "CachePolicySeconds = 0 must not persist anything in the runtime cache");
     }
 

@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Composers;
 using LlmsTxt.Umbraco.Configuration;
 using Microsoft.Extensions.Configuration;

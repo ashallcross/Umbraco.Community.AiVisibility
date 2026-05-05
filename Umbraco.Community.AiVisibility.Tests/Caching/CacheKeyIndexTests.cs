@@ -1,17 +1,17 @@
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 
-namespace LlmsTxt.Umbraco.Tests.Caching;
+namespace Umbraco.Community.AiVisibility.Tests.Caching;
 
 [TestFixture]
-public class LlmsCacheKeyIndexTests
+public class CacheKeyIndexTests
 {
     private static readonly Guid NodeA = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static readonly Guid NodeB = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
-    private LlmsCacheKeyIndex _index = null!;
+    private CacheKeyIndex _index = null!;
 
     [SetUp]
-    public void Setup() => _index = new LlmsCacheKeyIndex();
+    public void Setup() => _index = new CacheKeyIndex();
 
     [Test]
     public void Register_AddsKey()

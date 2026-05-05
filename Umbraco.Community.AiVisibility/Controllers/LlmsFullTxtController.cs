@@ -1,6 +1,6 @@
 using System.Text;
 using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
@@ -137,7 +137,7 @@ public sealed class LlmsFullTxtController : Controller
         }
 
         var culture = resolution.Culture;
-        var cacheKey = LlmsCacheKeys.LlmsFull(host, culture);
+        var cacheKey = AiVisibilityCacheKeys.LlmsFull(host, culture);
 
         // CachePolicySeconds policy: 0 disables the manifest cache entirely (matches
         // LlmsTxtSettings.CachePolicySeconds xmldoc — "0 effectively disables
@@ -157,7 +157,7 @@ public sealed class LlmsFullTxtController : Controller
         // passing CancellationToken.None into the builder via the cache factory
         // (the cached body is shared across requests; one caller's cancellation
         // must not poison parked callers).
-        var hostForBuild = LlmsCacheKeys.NormaliseHost(host);
+        var hostForBuild = AiVisibilityCacheKeys.NormaliseHost(host);
         var rootForBuild = scopeRoot;
         var pagesForBuild = pages;
         var resolvedForBuild = resolvedSettings;

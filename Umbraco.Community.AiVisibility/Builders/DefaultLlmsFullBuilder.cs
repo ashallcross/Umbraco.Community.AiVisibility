@@ -1,5 +1,5 @@
 using System.Text;
-using LlmsTxt.Umbraco.Caching;
+using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.Extensions.Logging;
@@ -255,7 +255,7 @@ internal sealed class DefaultLlmsFullBuilder : ILlmsFullBuilder
         }
 
         var hasHost = !string.IsNullOrWhiteSpace(context.Hostname)
-            && context.Hostname != LlmsCacheKeys.NormaliseHost(null);
+            && context.Hostname != AiVisibilityCacheKeys.NormaliseHost(null);
 
         if (!hasHost)
         {
