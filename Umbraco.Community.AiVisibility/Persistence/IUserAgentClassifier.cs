@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Persistence;
+namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
 /// Story 5.1 — extension point that classifies an HTTP <c>User-Agent</c>

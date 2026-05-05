@@ -1,7 +1,7 @@
 using NPoco;
 using Umbraco.Cms.Infrastructure.Persistence.DatabaseAnnotations;
 
-namespace LlmsTxt.Umbraco.Persistence.Entities;
+namespace Umbraco.Community.AiVisibility.Persistence.Entities;
 
 /// <summary>
 /// Story 5.1 — NPoco entity backing the <c>llmsTxtRequestLog</c> table.
@@ -11,7 +11,7 @@ namespace LlmsTxt.Umbraco.Persistence.Entities;
 /// <remarks>
 /// <para>
 /// <b>Schema-via-annotations:</b> the <see cref="AddRequestLogTable_1_0"/>
-/// migration's <c>Create.Table&lt;LlmsTxtRequestLogEntry&gt;().Do()</c> reads
+/// migration's <c>Create.Table&lt;RequestLogEntry&gt;().Do()</c> reads
 /// the annotations on this class to issue the DDL. Annotation drift between
 /// this class and the migration's expectation re-creates the table on next
 /// migrate. <b>Migrations are immutable once shipped (AR7)</b>; schema
@@ -26,7 +26,7 @@ namespace LlmsTxt.Umbraco.Persistence.Entities;
 [TableName("llmsTxtRequestLog")]
 [PrimaryKey("id", AutoIncrement = true)]
 [ExplicitColumns]
-public sealed class LlmsTxtRequestLogEntry
+public sealed class RequestLogEntry
 {
     [Column("id")]
     [PrimaryKeyColumn(AutoIncrement = true, IdentitySeed = 1)]
@@ -67,7 +67,7 @@ public sealed class LlmsTxtRequestLogEntry
     /// </summary>
     [Column("userAgentClass")]
     [Length(64)]
-    public string UserAgentClass { get; set; } = nameof(LlmsTxt.Umbraco.Persistence.UserAgentClass.Unknown);
+    public string UserAgentClass { get; set; } = nameof(Umbraco.Community.AiVisibility.Persistence.UserAgentClass.Unknown);
 
     [Column("referrerHost")]
     [Length(256)]

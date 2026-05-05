@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Notifications;
-using LlmsTxt.Umbraco.Persistence;
+using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;

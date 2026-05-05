@@ -1,15 +1,15 @@
 using System.Threading.Channels;
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace LlmsTxt.Umbraco.Persistence;
+namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
-/// Story 5.1 — default <see cref="ILlmsRequestLog"/> implementation.
+/// Story 5.1 — default <see cref="IRequestLog"/> implementation.
 /// Owns a process-wide bounded
-/// <see cref="Channel{T}"/> of <see cref="LlmsTxtRequestLogEntry"/>; the
+/// <see cref="Channel{T}"/> of <see cref="RequestLogEntry"/>; the
 /// background <c>LlmsRequestLogDrainHostedService</c> reads from
 /// <see cref="Reader"/> and batch-writes to
 /// <c>llmsTxtRequestLog</c>.
@@ -28,16 +28,16 @@ namespace LlmsTxt.Umbraco.Persistence;
 /// recent traffic see fresh entries even under sustained crawl load.
 /// </para>
 /// </remarks>
-public sealed class DefaultLlmsRequestLog : ILlmsRequestLog
+public sealed class DefaultRequestLog : IRequestLog
 {
     internal const int MinQueueCapacity = 64;
     internal const int MaxQueueCapacity = 65_536;
     internal const int MinOverflowLogInterval = 5;
     internal const int MaxOverflowLogInterval = 3600;
 
-    private readonly Channel<LlmsTxtRequestLogEntry> _channel;
+    private readonly Channel<RequestLogEntry> _channel;
     private readonly int _capacity;
-    private readonly ILogger<DefaultLlmsRequestLog> _logger;
+    private readonly ILogger<DefaultRequestLog> _logger;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _overflowLogInterval;
 
@@ -47,9 +47,9 @@ public sealed class DefaultLlmsRequestLog : ILlmsRequestLog
     private long _lastOverflowLogTicks;
     private long _droppedSinceLastLog;
 
-    public DefaultLlmsRequestLog(
+    public DefaultRequestLog(
         IOptionsMonitor<LlmsTxtSettings> settings,
-        ILogger<DefaultLlmsRequestLog> logger,
+        ILogger<DefaultRequestLog> logger,
         TimeProvider timeProvider)
     {
         var snapshot = settings?.CurrentValue
@@ -64,7 +64,7 @@ public sealed class DefaultLlmsRequestLog : ILlmsRequestLog
             MaxOverflowLogInterval);
         _overflowLogInterval = TimeSpan.FromSeconds(overflowSeconds);
 
-        _channel = Channel.CreateBounded<LlmsTxtRequestLogEntry>(new BoundedChannelOptions(_capacity)
+        _channel = Channel.CreateBounded<RequestLogEntry>(new BoundedChannelOptions(_capacity)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true,
@@ -76,11 +76,11 @@ public sealed class DefaultLlmsRequestLog : ILlmsRequestLog
     /// <summary>
     /// Channel reader exposed for the drainer hosted service. Internal —
     /// adopters never read from this directly; a custom
-    /// <see cref="ILlmsRequestLog"/> impl owns its own write path.
+    /// <see cref="IRequestLog"/> impl owns its own write path.
     /// </summary>
-    internal ChannelReader<LlmsTxtRequestLogEntry> Reader => _channel.Reader;
+    internal ChannelReader<RequestLogEntry> Reader => _channel.Reader;
 
-    public Task EnqueueAsync(LlmsTxtRequestLogEntry entry, CancellationToken cancellationToken)
+    public Task EnqueueAsync(RequestLogEntry entry, CancellationToken cancellationToken)
     {
         if (entry is null)
         {

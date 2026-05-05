@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.Persistence.Migrations;
+using Umbraco.Community.AiVisibility.Persistence.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Umbraco.Cms.Core.Composing;

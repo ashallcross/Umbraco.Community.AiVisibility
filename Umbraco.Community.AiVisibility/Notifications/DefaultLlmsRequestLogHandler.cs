@@ -1,6 +1,6 @@
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.Persistence;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Events;
@@ -10,7 +10,7 @@ namespace LlmsTxt.Umbraco.Notifications;
 /// <summary>
 /// Story 5.1 — the package's default notification handler. Subscribes to
 /// all three Story 5.1 notifications and forwards them to the registered
-/// <see cref="ILlmsRequestLog"/> as <see cref="LlmsTxtRequestLogEntry"/>
+/// <see cref="IRequestLog"/> as <see cref="RequestLogEntry"/>
 /// rows.
 /// </summary>
 /// <remarks>
@@ -25,7 +25,7 @@ namespace LlmsTxt.Umbraco.Notifications;
 /// <c>AddNotificationAsyncHandler&lt;TNotification, THandler&gt;</c>
 /// extension which hands the handler over as Scoped. All transitive deps
 /// here are Singleton (<see cref="IOptionsMonitor{TOptions}"/>,
-/// <see cref="ILlmsRequestLog"/>, <see cref="TimeProvider"/>,
+/// <see cref="IRequestLog"/>, <see cref="TimeProvider"/>,
 /// <see cref="ILogger{TCategoryName}"/>) — Scoped is correct per
 /// Umbraco's notification-dispatch convention rather than driven by our
 /// captive-dep concerns.
@@ -35,7 +35,7 @@ namespace LlmsTxt.Umbraco.Notifications;
 /// <see cref="IEventAggregator"/> dispatcher catches handler exceptions
 /// and logs them — the package never lets adopter (or its own) handler
 /// exceptions bubble back to the route's response. The handler itself
-/// adopts a try/catch around <see cref="ILlmsRequestLog.EnqueueAsync"/>
+/// adopts a try/catch around <see cref="IRequestLog.EnqueueAsync"/>
 /// as defence-in-depth.
 /// </para>
 /// </remarks>
@@ -44,13 +44,13 @@ public sealed class DefaultLlmsRequestLogHandler :
     INotificationAsyncHandler<LlmsTxtRequestedNotification>,
     INotificationAsyncHandler<LlmsFullTxtRequestedNotification>
 {
-    private readonly ILlmsRequestLog _requestLog;
+    private readonly IRequestLog _requestLog;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<DefaultLlmsRequestLogHandler> _logger;
 
     public DefaultLlmsRequestLogHandler(
-        ILlmsRequestLog requestLog,
+        IRequestLog requestLog,
         IOptionsMonitor<LlmsTxtSettings> settings,
         TimeProvider timeProvider,
         ILogger<DefaultLlmsRequestLogHandler> logger)
@@ -68,7 +68,7 @@ public sealed class DefaultLlmsRequestLogHandler :
             return Task.CompletedTask;
         }
 
-        return EnqueueSafely(new LlmsTxtRequestLogEntry
+        return EnqueueSafely(new RequestLogEntry
         {
             CreatedUtc = _timeProvider.GetUtcNow().UtcDateTime,
             Path = notification.Path,
@@ -86,7 +86,7 @@ public sealed class DefaultLlmsRequestLogHandler :
             return Task.CompletedTask;
         }
 
-        return EnqueueSafely(new LlmsTxtRequestLogEntry
+        return EnqueueSafely(new RequestLogEntry
         {
             CreatedUtc = _timeProvider.GetUtcNow().UtcDateTime,
             Path = "/llms.txt",
@@ -108,7 +108,7 @@ public sealed class DefaultLlmsRequestLogHandler :
         // carry it (per AC4 column list). Adopters needing per-byte
         // analytics consume the notification directly via their own
         // handler.
-        return EnqueueSafely(new LlmsTxtRequestLogEntry
+        return EnqueueSafely(new RequestLogEntry
         {
             CreatedUtc = _timeProvider.GetUtcNow().UtcDateTime,
             Path = "/llms-full.txt",
@@ -121,7 +121,7 @@ public sealed class DefaultLlmsRequestLogHandler :
 
     private bool IsEnabled() => _settings.CurrentValue.RequestLog.Enabled;
 
-    private async Task EnqueueSafely(LlmsTxtRequestLogEntry entry, CancellationToken cancellationToken)
+    private async Task EnqueueSafely(RequestLogEntry entry, CancellationToken cancellationToken)
     {
         try
         {
@@ -134,7 +134,7 @@ public sealed class DefaultLlmsRequestLogHandler :
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
-                "DefaultLlmsRequestLogHandler: ILlmsRequestLog.EnqueueAsync threw for {Path}. " +
+                "DefaultLlmsRequestLogHandler: IRequestLog.EnqueueAsync threw for {Path}. " +
                 "Entry dropped; the response is unaffected.",
                 entry.Path);
         }

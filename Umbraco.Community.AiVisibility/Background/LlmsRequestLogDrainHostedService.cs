@@ -1,7 +1,7 @@
 using System.Data;
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.Persistence;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,7 +11,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 namespace LlmsTxt.Umbraco.Background;
 
 /// <summary>
-/// Story 5.1 — drains <see cref="DefaultLlmsRequestLog"/>'s bounded channel
+/// Story 5.1 — drains <see cref="DefaultRequestLog"/>'s bounded channel
 /// to <c>llmsTxtRequestLog</c> in batches. Singleton lifetime via
 /// <c>services.AddHostedService&lt;T&gt;()</c>.
 /// </summary>
@@ -23,7 +23,7 @@ namespace LlmsTxt.Umbraco.Background;
 /// </para>
 /// <para>
 /// <b>Per-instance drain (Story 6.0a, Codex finding #1).</b> Every
-/// instance using the default <see cref="DefaultLlmsRequestLog"/> drains
+/// instance using the default <see cref="DefaultRequestLog"/> drains
 /// its own per-process channel to the host DB regardless of
 /// <see cref="IServerRoleAccessor.CurrentServerRole"/>. The previous
 /// "Subscriber-suppress" gate caused subscriber/front-end nodes to silently
@@ -40,12 +40,12 @@ namespace LlmsTxt.Umbraco.Background;
 /// </para>
 /// <para>
 /// <b>Adopter override:</b> when an adopter registers a custom
-/// <see cref="ILlmsRequestLog"/> (e.g. App Insights writer), the runtime
-/// resolves their type, NOT <see cref="DefaultLlmsRequestLog"/>. The
+/// <see cref="IRequestLog"/> (e.g. App Insights writer), the runtime
+/// resolves their type, NOT <see cref="DefaultRequestLog"/>. The
 /// drainer's cast at <see cref="StartAsync"/> sees a non-default writer,
 /// logs Information, and exits — the adopter's writer owns its own
 /// persistence path. No drain runs against an unknown channel. Adopter
-/// overrides MUST register <see cref="ILlmsRequestLog"/> as Singleton;
+/// overrides MUST register <see cref="IRequestLog"/> as Singleton;
 /// <c>NotificationsComposer</c> throws
 /// <see cref="InvalidOperationException"/> at composer-time on
 /// Scoped/Transient overrides.
@@ -70,7 +70,7 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
     internal const int MaxMaxBatchIntervalSeconds = 60;
     internal static readonly TimeSpan StopGraceWindow = TimeSpan.FromSeconds(5);
 
-    private readonly ILlmsRequestLog _requestLog;
+    private readonly IRequestLog _requestLog;
     private readonly IScopeProvider _scopeProvider;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
     private readonly IServerRoleAccessor _serverRoleAccessor;
@@ -80,7 +80,7 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
     private Task? _drainLoop;
 
     public LlmsRequestLogDrainHostedService(
-        ILlmsRequestLog requestLog,
+        IRequestLog requestLog,
         IScopeProvider scopeProvider,
         IOptionsMonitor<LlmsTxtSettings> settings,
         IServerRoleAccessor serverRoleAccessor,
@@ -105,19 +105,19 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
         }
 
         // Story 6.0a (Codex finding #1) — no role gate. Every instance
-        // running the default DefaultLlmsRequestLog drains its own
+        // running the default DefaultRequestLog drains its own
         // per-process channel; the previous Subscriber-suppress branch
         // caused front-end nodes to silently shed traffic via DropOldest.
         // The role is read for the started-log line below as observational
         // context only; it does not gate the start decision.
         var role = _serverRoleAccessor.CurrentServerRole;
 
-        // Adopter override path: a custom ILlmsRequestLog owns its own
+        // Adopter override path: a custom IRequestLog owns its own
         // persistence — there's no channel for us to drain.
-        if (_requestLog is not DefaultLlmsRequestLog defaultLog)
+        if (_requestLog is not DefaultRequestLog defaultLog)
         {
             _logger.LogInformation(
-                "LlmsTxt request log drainer not started: a custom ILlmsRequestLog ({TypeName}) is registered; " +
+                "LlmsTxt request log drainer not started: a custom IRequestLog ({TypeName}) is registered; " +
                 "the adopter's writer owns its own persistence path.",
                 _requestLog.GetType().FullName);
             return Task.CompletedTask;
@@ -161,7 +161,7 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
         }
     }
 
-    private async Task DrainLoopAsync(DefaultLlmsRequestLog log, CancellationToken cancellationToken)
+    private async Task DrainLoopAsync(DefaultRequestLog log, CancellationToken cancellationToken)
     {
         var settings = _settings.CurrentValue.RequestLog;
         var batchSize = Math.Clamp(settings.BatchSize, MinBatchSize, MaxBatchSize);
@@ -170,7 +170,7 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
             MinMaxBatchIntervalSeconds,
             MaxMaxBatchIntervalSeconds));
 
-        var batch = new List<LlmsTxtRequestLogEntry>(batchSize);
+        var batch = new List<RequestLogEntry>(batchSize);
         var channelCompleted = false;
 
         while (!cancellationToken.IsCancellationRequested && !channelCompleted)
@@ -256,7 +256,7 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
         }
     }
 
-    private void FlushBatch(IReadOnlyList<LlmsTxtRequestLogEntry> batch)
+    private void FlushBatch(IReadOnlyList<RequestLogEntry> batch)
     {
         try
         {

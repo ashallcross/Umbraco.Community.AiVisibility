@@ -8,7 +8,7 @@ namespace LlmsTxt.Umbraco.Notifications;
 /// <list type="bullet">
 /// <item>Reading <c>User-Agent</c> + <c>Referer</c> from the request
 /// headers.</item>
-/// <item>Classifying the UA via <see cref="LlmsTxt.Umbraco.Persistence.IUserAgentClassifier"/>.</item>
+/// <item>Classifying the UA via <see cref="Umbraco.Community.AiVisibility.Persistence.IUserAgentClassifier"/>.</item>
 /// <item>Parsing the referrer host segment (with malformed-URL tolerance).</item>
 /// <item>Publishing through Umbraco's
 /// <see cref="Umbraco.Cms.Core.Events.IEventAggregator"/> with try/catch

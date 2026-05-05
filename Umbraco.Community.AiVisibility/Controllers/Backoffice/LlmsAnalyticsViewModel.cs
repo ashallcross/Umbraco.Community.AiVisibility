@@ -3,7 +3,7 @@ namespace LlmsTxt.Umbraco.Controllers.Backoffice;
 /// <summary>
 /// Story 5.2 — one row in the AI Traffic dashboard's table
 /// (<c>GET /umbraco/management/api/v1/llmstxt/analytics/requests</c>).
-/// Mirrors the columns of Story 5.1's <see cref="Persistence.Entities.LlmsTxtRequestLogEntry"/>
+/// Mirrors the columns of Story 5.1's <see cref="Persistence.Entities.RequestLogEntry"/>
 /// — projection only, no schema annotations.
 /// </summary>
 /// <param name="Id">Auto-increment PK; deterministic tiebreaker for rows sharing <see cref="CreatedUtc"/>.</param>

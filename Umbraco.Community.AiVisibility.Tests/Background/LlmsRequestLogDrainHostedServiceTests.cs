@@ -1,7 +1,7 @@
 using LlmsTxt.Umbraco.Background;
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.Persistence;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -28,8 +28,8 @@ public class LlmsRequestLogDrainHostedServiceTests
         return accessor;
     }
 
-    private static DefaultLlmsRequestLog NewDefaultLog(LlmsTxtSettings? settings = null) =>
-        new(SettingsMonitor(settings), NullLogger<DefaultLlmsRequestLog>.Instance, TimeProvider.System);
+    private static DefaultRequestLog NewDefaultLog(LlmsTxtSettings? settings = null) =>
+        new(SettingsMonitor(settings), NullLogger<DefaultRequestLog>.Instance, TimeProvider.System);
 
     [Test]
     public async Task StartAsync_DisabledViaSettings_ShortCircuits()
@@ -55,7 +55,7 @@ public class LlmsRequestLogDrainHostedServiceTests
     public async Task StartAsync_ServerRoleSubscriber_StartsDrainLoop()
     {
         // Story 6.0a AC1 (Codex finding #1) — Subscriber instances using
-        // the default DefaultLlmsRequestLog MUST drain their own
+        // the default DefaultRequestLog MUST drain their own
         // per-process channel. The pre-6.0a Subscriber-suppress branch
         // caused front-end nodes to silently shed traffic via DropOldest
         // on a channel the SchedulingPublisher could not reach. The pin
@@ -85,11 +85,11 @@ public class LlmsRequestLogDrainHostedServiceTests
     [Test]
     public async Task StartAsync_ServerRoleSubscriber_CustomWriterRegistered_SuppressesDrainLoop()
     {
-        // Story 6.0a AC1 — adopter-registered custom ILlmsRequestLog
+        // Story 6.0a AC1 — adopter-registered custom IRequestLog
         // (e.g. App Insights) still suppresses the built-in drainer
         // regardless of role. The custom writer owns its own persistence;
         // the built-in drainer has no channel to read from.
-        var customLog = Substitute.For<ILlmsRequestLog>();
+        var customLog = Substitute.For<IRequestLog>();
         var scopeProvider = Substitute.For<IScopeProvider>();
         var drainer = new LlmsRequestLogDrainHostedService(
             customLog,
@@ -138,10 +138,10 @@ public class LlmsRequestLogDrainHostedServiceTests
     [Test]
     public async Task StartAsync_AdopterOverrideRequestLog_DrainerNoOps()
     {
-        // When a custom ILlmsRequestLog is registered (not the default
+        // When a custom IRequestLog is registered (not the default
         // channel-backed shape), the drainer can't read from it — exit
         // cleanly per the documented contract.
-        var customLog = Substitute.For<ILlmsRequestLog>();
+        var customLog = Substitute.For<IRequestLog>();
         var scopeProvider = Substitute.For<IScopeProvider>();
         var drainer = new LlmsRequestLogDrainHostedService(
             customLog,
@@ -168,10 +168,10 @@ public class LlmsRequestLogDrainHostedServiceTests
         // first failure) and StopAsync must complete without throwing.
         var log = NewDefaultLog();
         await log.EnqueueAsync(
-            new LlmsTxtRequestLogEntry { Path = "/a", Culture = "en-GB" },
+            new RequestLogEntry { Path = "/a", Culture = "en-GB" },
             CancellationToken.None);
         await log.EnqueueAsync(
-            new LlmsTxtRequestLogEntry { Path = "/b", Culture = "en-GB" },
+            new RequestLogEntry { Path = "/b", Culture = "en-GB" },
             CancellationToken.None);
 
         var scopeProvider = Substitute.For<IScopeProvider>();
@@ -219,7 +219,7 @@ public class LlmsRequestLogDrainHostedServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(ctorParams[0].ParameterType, Is.EqualTo(typeof(ILlmsRequestLog)));
+            Assert.That(ctorParams[0].ParameterType, Is.EqualTo(typeof(IRequestLog)));
             Assert.That(ctorParams[1].ParameterType, Is.EqualTo(typeof(IScopeProvider)),
                 "Infrastructure-flavour IScopeProvider per architecture.md line 350");
             Assert.That(ctorParams[2].ParameterType, Is.EqualTo(typeof(IOptionsMonitor<LlmsTxtSettings>)));

@@ -1,6 +1,6 @@
 using LlmsTxt.Umbraco.HealthChecks;
 
-namespace LlmsTxt.Umbraco.Persistence;
+namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
 /// Story 5.1 — default <see cref="IUserAgentClassifier"/> implementation.

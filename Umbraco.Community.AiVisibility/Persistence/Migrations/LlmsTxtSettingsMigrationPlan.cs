@@ -1,6 +1,6 @@
 using Umbraco.Cms.Core.Packaging;
 
-namespace LlmsTxt.Umbraco.Persistence.Migrations;
+namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 
 /// <summary>
 /// Story 3.1 — package-migration plan that ships the Settings doctype +
@@ -45,6 +45,6 @@ public sealed class LlmsTxtSettingsMigrationPlan : PackageMigrationPlan
         => From(string.Empty)
             .To<CreateLlmsSettingsDoctype>("A4F2C1E7-8B5D-4A3E-9F1C-2D8E5B7C0A6F")
             // Story 5.1 — adds the llmsTxtRequestLog table backing the
-            // default ILlmsRequestLog writer + LogRetentionJob.
+            // default IRequestLog writer + LogRetentionJob.
             .To<AddRequestLogTable_1_0>("9B3D7E4A-2C8F-4F1B-A5E0-7D9B2A6F1C8E");
 }

@@ -1,6 +1,6 @@
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 
-namespace LlmsTxt.Umbraco.Persistence;
+namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
 /// Story 5.1 — extension point for the package's request log writer.
@@ -12,11 +12,11 @@ namespace LlmsTxt.Umbraco.Persistence;
 /// <remarks>
 /// <para>
 /// <b>Lifetime: Singleton.</b> The default implementation
-/// (<see cref="DefaultLlmsRequestLog"/>) owns a process-wide bounded
-/// <c>System.Threading.Channels.Channel&lt;LlmsTxtRequestLogEntry&gt;</c>;
+/// (<see cref="DefaultRequestLog"/>) owns a process-wide bounded
+/// <c>System.Threading.Channels.Channel&lt;RequestLogEntry&gt;</c>;
 /// the drainer reads from it. <see cref="LlmsTxt.Umbraco.Composers.NotificationsComposer"/>
 /// throws <see cref="InvalidOperationException"/> at composition time if
-/// any registered <c>ILlmsRequestLog</c> has a non-Singleton lifetime
+/// any registered <c>IRequestLog</c> has a non-Singleton lifetime
 /// (Story 4.2 chunk-3 D2 ratification — same shape as the
 /// <c>IRobotsAuditor</c> Singleton requirement).
 /// </para>
@@ -25,7 +25,7 @@ namespace LlmsTxt.Umbraco.Persistence;
 /// facade (documented in <c>docs/extension-points.md</c>).
 /// </para>
 /// </remarks>
-public interface ILlmsRequestLog
+public interface IRequestLog
 {
     /// <summary>
     /// Enqueue a request-log entry for asynchronous batch persistence.
@@ -37,5 +37,5 @@ public interface ILlmsRequestLog
     /// <param name="cancellationToken">Honoured at queue-time. The drainer
     /// uses its own lifetime CTS for the actual DB write — caller cancellation
     /// stops only the enqueue.</param>
-    Task EnqueueAsync(LlmsTxtRequestLogEntry entry, CancellationToken cancellationToken);
+    Task EnqueueAsync(RequestLogEntry entry, CancellationToken cancellationToken);
 }

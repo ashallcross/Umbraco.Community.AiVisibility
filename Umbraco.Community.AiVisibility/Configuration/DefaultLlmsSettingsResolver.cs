@@ -22,7 +22,7 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// <remarks>
 /// <para>
 /// <b>Lifetime: Scoped.</b> Architecture line 377 lists the resolver alongside
-/// <see cref="Persistence.ILlmsRequestLog"/> as a scoped/transient seam (depends
+/// <see cref="Persistence.IRequestLog"/> as a scoped/transient seam (depends
 /// on request-scoped <see cref="IUmbracoContextAccessor"/>). Singleton would
 /// form a captive dependency at the root provider — pinned by
 /// <c>SettingsComposerTests.Compose_StartupValidation_LlmsSettingsResolver_NoCaptiveDependency</c>.

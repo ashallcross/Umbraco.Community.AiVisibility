@@ -1,7 +1,7 @@
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Notifications;
-using LlmsTxt.Umbraco.Persistence;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -11,7 +11,7 @@ namespace LlmsTxt.Umbraco.Tests.Notifications;
 [TestFixture]
 public class DefaultLlmsRequestLogHandlerTests
 {
-    private ILlmsRequestLog _requestLog = null!;
+    private IRequestLog _requestLog = null!;
     private IOptionsMonitor<LlmsTxtSettings> _settings = null!;
     private TimeProvider _timeProvider = null!;
     private DefaultLlmsRequestLogHandler _handler = null!;
@@ -19,7 +19,7 @@ public class DefaultLlmsRequestLogHandlerTests
     [SetUp]
     public void Setup()
     {
-        _requestLog = Substitute.For<ILlmsRequestLog>();
+        _requestLog = Substitute.For<IRequestLog>();
         _settings = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
         _settings.CurrentValue.Returns(new LlmsTxtSettings());
         _timeProvider = TimeProvider.System;
@@ -44,7 +44,7 @@ public class DefaultLlmsRequestLogHandlerTests
         await _handler.HandleAsync(n, CancellationToken.None);
 
         await _requestLog.Received(1).EnqueueAsync(
-            Arg.Is<LlmsTxtRequestLogEntry>(e =>
+            Arg.Is<RequestLogEntry>(e =>
                 e.Path == "/about"
                 && e.ContentKey == contentKey
                 && e.Culture == "en-US"
@@ -65,7 +65,7 @@ public class DefaultLlmsRequestLogHandlerTests
         await _handler.HandleAsync(n, CancellationToken.None);
 
         await _requestLog.Received(1).EnqueueAsync(
-            Arg.Is<LlmsTxtRequestLogEntry>(e =>
+            Arg.Is<RequestLogEntry>(e =>
                 e.Path == "/llms.txt"
                 && e.ContentKey == null
                 && e.UserAgentClass == nameof(UserAgentClass.AiTraining)
@@ -86,7 +86,7 @@ public class DefaultLlmsRequestLogHandlerTests
         await _handler.HandleAsync(n, CancellationToken.None);
 
         await _requestLog.Received(1).EnqueueAsync(
-            Arg.Is<LlmsTxtRequestLogEntry>(e =>
+            Arg.Is<RequestLogEntry>(e =>
                 e.Path == "/llms-full.txt"
                 && e.ContentKey == null
                 && e.UserAgentClass == nameof(UserAgentClass.AiSearchRetrieval)),
@@ -98,7 +98,7 @@ public class DefaultLlmsRequestLogHandlerTests
     {
         // AC3 — kill switch decouples the writer; notifications still
         // reach OUR handler (Umbraco dispatched), but our handler
-        // short-circuits before calling ILlmsRequestLog.
+        // short-circuits before calling IRequestLog.
         var settings = new LlmsTxtSettings
         {
             RequestLog = new RequestLogSettings { Enabled = false },
@@ -111,7 +111,7 @@ public class DefaultLlmsRequestLogHandlerTests
             CancellationToken.None);
 
         await _requestLog.DidNotReceive().EnqueueAsync(
-            Arg.Any<LlmsTxtRequestLogEntry>(),
+            Arg.Any<RequestLogEntry>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -122,7 +122,7 @@ public class DefaultLlmsRequestLogHandlerTests
         // exceptions so adopters publishing notifications can't be
         // surprised by writer failures.
         _requestLog
-            .EnqueueAsync(Arg.Any<LlmsTxtRequestLogEntry>(), Arg.Any<CancellationToken>())
+            .EnqueueAsync(Arg.Any<RequestLogEntry>(), Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new InvalidOperationException("simulated DB write failure"));
 
         Assert.DoesNotThrowAsync(async () => await _handler.HandleAsync(

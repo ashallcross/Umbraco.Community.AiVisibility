@@ -3,8 +3,8 @@ using Asp.Versioning;
 using LlmsTxt.Umbraco;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Controllers.Backoffice;
-using LlmsTxt.Umbraco.Persistence;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -53,11 +53,11 @@ public class LlmsAnalyticsManagementApiControllerTests
     private static FixedTimeProvider FixedClock() =>
         new(new DateTimeOffset(FixedNowUtc, TimeSpan.Zero));
 
-    private static (LlmsAnalyticsManagementApiController controller, ILlmsAnalyticsReader reader, FixedTimeProvider clock) NewController(
+    private static (LlmsAnalyticsManagementApiController controller, IAnalyticsReader reader, FixedTimeProvider clock) NewController(
         LlmsTxtSettings? settings = null,
-        ILlmsAnalyticsReader? reader = null)
+        IAnalyticsReader? reader = null)
     {
-        var readerSub = reader ?? Substitute.For<ILlmsAnalyticsReader>();
+        var readerSub = reader ?? Substitute.For<IAnalyticsReader>();
         var clock = FixedClock();
         var controller = new LlmsAnalyticsManagementApiController(
             NullLogger<LlmsAnalyticsManagementApiController>.Instance,
@@ -73,14 +73,14 @@ public class LlmsAnalyticsManagementApiControllerTests
         return (controller, readerSub, clock);
     }
 
-    private static Page<LlmsTxtRequestLogEntry> BuildPage(
-        IReadOnlyList<LlmsTxtRequestLogEntry> items,
+    private static Page<RequestLogEntry> BuildPage(
+        IReadOnlyList<RequestLogEntry> items,
         long totalItems,
         int pageSize,
         int currentPage = 1)
     {
         var totalPages = totalItems == 0 ? 0 : (long)Math.Ceiling((double)totalItems / pageSize);
-        return new Page<LlmsTxtRequestLogEntry>
+        return new Page<RequestLogEntry>
         {
             CurrentPage = currentPage,
             ItemsPerPage = pageSize,
@@ -90,7 +90,7 @@ public class LlmsAnalyticsManagementApiControllerTests
         };
     }
 
-    private static LlmsTxtRequestLogEntry BuildRow(long id, DateTime createdUtc, string userAgentClass, string path = "/home")
+    private static RequestLogEntry BuildRow(long id, DateTime createdUtc, string userAgentClass, string path = "/home")
         => new()
         {
             Id = (int)id,
@@ -165,7 +165,7 @@ public class LlmsAnalyticsManagementApiControllerTests
             BuildRow(2, FixedNowUtc.AddHours(-2), nameof(UserAgentClass.HumanBrowser)),
             BuildRow(1, FixedNowUtc.AddHours(-3), nameof(UserAgentClass.CrawlerOther)),
         };
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(
             Arg.Any<DateTime>(),
             Arg.Any<DateTime>(),
@@ -197,9 +197,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_DefaultRange_LastSevenDays()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(default, default, default!, default, default)
-            .ReturnsForAnyArgs(BuildPage(Array.Empty<LlmsTxtRequestLogEntry>(), 0, 50));
+            .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 50));
 
         var (controller, capturedReader, _) = NewController(reader: reader);
         controller.GetRequests(null, null, null, null, null, CancellationToken.None);
@@ -215,9 +215,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_RangeWithinBounds_NoClamping()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(default, default, default!, default, default)
-            .ReturnsForAnyArgs(BuildPage(Array.Empty<LlmsTxtRequestLogEntry>(), 0, 50));
+            .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 50));
 
         var (controller, _, _) = NewController(reader: reader);
         var from = FixedNowUtc.AddDays(-30).ToString("O");
@@ -233,9 +233,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_RangeExceedsMaxRangeDays_ClampsAndSetsHeader()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(default, default, default!, default, default)
-            .ReturnsForAnyArgs(BuildPage(Array.Empty<LlmsTxtRequestLogEntry>(), 0, 50));
+            .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 50));
 
         var (controller, capturedReader, _) = NewController(reader: reader);
         var from = FixedNowUtc.AddDays(-400).ToString("O");
@@ -315,9 +315,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_PageSizeAboveMax_ClampsToMax()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(default, default, default!, default, default)
-            .ReturnsForAnyArgs(BuildPage(Array.Empty<LlmsTxtRequestLogEntry>(), 0, 200));
+            .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 200));
 
         var settings = new LlmsTxtSettings { Analytics = new AnalyticsSettings { MaxPageSize = 200 } };
         var (controller, capturedReader, _) = NewController(settings, reader);
@@ -336,9 +336,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_PageBelowOne_ClampsToOne()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(default, default, default!, default, default)
-            .ReturnsForAnyArgs(BuildPage(Array.Empty<LlmsTxtRequestLogEntry>(), 0, 50));
+            .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 50));
 
         var (controller, capturedReader, _) = NewController(reader: reader);
         controller.GetRequests(null, null, null, 0, null, CancellationToken.None);
@@ -357,9 +357,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_SingleClassFilter_PassesThroughToReader()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(default, default, default!, default, default)
-            .ReturnsForAnyArgs(BuildPage(Array.Empty<LlmsTxtRequestLogEntry>(), 0, 50));
+            .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 50));
 
         var (controller, capturedReader, _) = NewController(reader: reader);
         controller.GetRequests(null, null, new[] { "aitraining" }, null, null, CancellationToken.None);
@@ -375,9 +375,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_MultipleClassFilter_PassesUnionToReader_Deduped()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadRequestsPage(default, default, default!, default, default)
-            .ReturnsForAnyArgs(BuildPage(Array.Empty<LlmsTxtRequestLogEntry>(), 0, 50));
+            .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 50));
 
         var (controller, capturedReader, _) = NewController(reader: reader);
         // Mixed case + duplicate — controller normalises to canonical PascalCase + dedupes.
@@ -397,7 +397,7 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRequests_TotalAboveMaxResultRows_ReturnsTotalCappedAt()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         // total 11000 > MaxResultRows default 10000 ⇒ totalCappedAt populated.
         var rows = Enumerable.Range(1, 50)
             .Select(i => BuildRow(i, FixedNowUtc.AddSeconds(-i), nameof(UserAgentClass.AiTraining)))
@@ -421,9 +421,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetClassifications_HappyPath_ReturnsCountsDescending()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadClassifications(Arg.Any<DateTime>(), Arg.Any<DateTime>())
-            .Returns(new List<LlmsAnalyticsClassificationRow>
+            .Returns(new List<AnalyticsClassificationRow>
             {
                 new() { UserAgentClass = nameof(UserAgentClass.AiTraining), Count = 4 },
                 new() { UserAgentClass = nameof(UserAgentClass.HumanBrowser), Count = 2 },
@@ -448,9 +448,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetClassifications_NoRowsInRange_ReturnsEmptyArray()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadClassifications(Arg.Any<DateTime>(), Arg.Any<DateTime>())
-            .Returns(Array.Empty<LlmsAnalyticsClassificationRow>());
+            .Returns(Array.Empty<AnalyticsClassificationRow>());
 
         var (controller, _, _) = NewController(reader: reader);
         var result = controller.GetClassifications(null, null, CancellationToken.None);
@@ -464,7 +464,7 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetClassifications_ReaderThrows_Returns503ProblemDetails()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadClassifications(Arg.Any<DateTime>(), Arg.Any<DateTime>())
             .Returns(_ => throw new InvalidOperationException("simulated DB failure"));
 
@@ -484,9 +484,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetSummary_HappyPath_ReturnsAggregates()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadSummary(Arg.Any<DateTime>(), Arg.Any<DateTime>())
-            .Returns(new LlmsAnalyticsSummaryRow
+            .Returns(new AnalyticsSummaryRow
             {
                 TotalRequests = 47,
                 FirstSeenUtc = FixedNowUtc.AddHours(-12),
@@ -508,9 +508,9 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetSummary_EmptyRange_ReturnsZeroAndNullTimestamps()
     {
-        var reader = Substitute.For<ILlmsAnalyticsReader>();
+        var reader = Substitute.For<IAnalyticsReader>();
         reader.ReadSummary(Arg.Any<DateTime>(), Arg.Any<DateTime>())
-            .Returns(new LlmsAnalyticsSummaryRow
+            .Returns(new AnalyticsSummaryRow
             {
                 TotalRequests = 0,
                 FirstSeenUtc = null,

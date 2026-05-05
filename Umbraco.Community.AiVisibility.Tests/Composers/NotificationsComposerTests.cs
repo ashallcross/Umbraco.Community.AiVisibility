@@ -3,8 +3,8 @@ using LlmsTxt.Umbraco.Composers;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.HealthChecks;
 using LlmsTxt.Umbraco.Notifications;
-using LlmsTxt.Umbraco.Persistence;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,16 +22,16 @@ namespace LlmsTxt.Umbraco.Tests.Composers;
 public class NotificationsComposerTests
 {
     [Test]
-    public void Compose_RegistersILlmsRequestLog_AsSingleton()
+    public void Compose_RegistersIRequestLog_AsSingleton()
     {
         var (composer, builder, services) = BuildComposer();
         composer.Compose(builder);
 
-        var descriptor = services.Single(d => d.ServiceType == typeof(ILlmsRequestLog));
+        var descriptor = services.Single(d => d.ServiceType == typeof(IRequestLog));
         Assert.Multiple(() =>
         {
             Assert.That(descriptor.Lifetime, Is.EqualTo(ServiceLifetime.Singleton));
-            Assert.That(descriptor.ImplementationType, Is.EqualTo(typeof(DefaultLlmsRequestLog)));
+            Assert.That(descriptor.ImplementationType, Is.EqualTo(typeof(DefaultRequestLog)));
         });
     }
 
@@ -87,12 +87,12 @@ public class NotificationsComposerTests
     {
         // AC6 happy path — adopter's Singleton override wins; TryAddSingleton no-ops.
         var (composer, builder, services) = BuildComposer();
-        services.AddSingleton<ILlmsRequestLog, NoOpAdopterLog>();
+        services.AddSingleton<IRequestLog, NoOpAdopterLog>();
 
         composer.Compose(builder);
 
         var registrations = services
-            .Where(d => d.ServiceType == typeof(ILlmsRequestLog))
+            .Where(d => d.ServiceType == typeof(IRequestLog))
             .ToArray();
         Assert.Multiple(() =>
         {
@@ -107,7 +107,7 @@ public class NotificationsComposerTests
         // AC6 — composer-time hard-validation. Adopter Scoped registration
         // forms captive dep in the Singleton drainer chain.
         var (composer, builder, services) = BuildComposer();
-        services.AddScoped<ILlmsRequestLog, NoOpAdopterLog>();
+        services.AddScoped<IRequestLog, NoOpAdopterLog>();
 
         var ex = Assert.Throws<InvalidOperationException>(() => composer.Compose(builder));
         Assert.That(ex!.Message, Does.Contain("must be registered as Singleton"));
@@ -117,7 +117,7 @@ public class NotificationsComposerTests
     public void Compose_AdopterTransientOverride_ThrowsAtComposerTime()
     {
         var (composer, builder, services) = BuildComposer();
-        services.AddTransient<ILlmsRequestLog, NoOpAdopterLog>();
+        services.AddTransient<IRequestLog, NoOpAdopterLog>();
 
         var ex = Assert.Throws<InvalidOperationException>(() => composer.Compose(builder));
         Assert.That(ex!.Message, Does.Contain("must be registered as Singleton"));
@@ -142,8 +142,8 @@ public class NotificationsComposerTests
                 ValidateOnBuild = true,
             });
 
-            // ILlmsRequestLog is Singleton — resolve from root.
-            var log = provider.GetRequiredService<ILlmsRequestLog>();
+            // IRequestLog is Singleton — resolve from root.
+            var log = provider.GetRequiredService<IRequestLog>();
             Assert.That(log, Is.Not.Null);
 
             // IUserAgentClassifier is Singleton — same.
@@ -181,9 +181,9 @@ public class NotificationsComposerTests
         services.AddLogging();
     }
 
-    private sealed class NoOpAdopterLog : ILlmsRequestLog
+    private sealed class NoOpAdopterLog : IRequestLog
     {
-        public Task EnqueueAsync(LlmsTxtRequestLogEntry entry, CancellationToken cancellationToken)
+        public Task EnqueueAsync(RequestLogEntry entry, CancellationToken cancellationToken)
             => Task.CompletedTask;
     }
 }

@@ -1,13 +1,13 @@
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Infrastructure.Migrations;
 using Umbraco.Cms.Infrastructure.Migrations.Install;
 
-namespace LlmsTxt.Umbraco.Persistence.Migrations;
+namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 
 /// <summary>
 /// Story 5.1 — creates the <c>llmsTxtRequestLog</c> table for the package's
-/// default <see cref="ILlmsRequestLog"/> writer.
+/// default <see cref="IRequestLog"/> writer.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,7 +26,7 @@ namespace LlmsTxt.Umbraco.Persistence.Migrations;
 /// per reflection probe.
 /// </para>
 /// <para>
-/// <b>Schema source of truth:</b> <see cref="LlmsTxtRequestLogEntry"/>'s
+/// <b>Schema source of truth:</b> <see cref="RequestLogEntry"/>'s
 /// NPoco annotations
 /// (<see cref="Umbraco.Cms.Infrastructure.Persistence.DatabaseAnnotations"/>).
 /// </para>
@@ -64,7 +64,7 @@ public sealed class AddRequestLogTable_1_0 : AsyncMigrationBase
             return Task.CompletedTask;
         }
 
-        Create.Table<LlmsTxtRequestLogEntry>().Do();
+        Create.Table<RequestLogEntry>().Do();
 
         _logger.LogInformation(
             "LlmsTxt: AddRequestLogTable_1_0 — created table {TableName}.",

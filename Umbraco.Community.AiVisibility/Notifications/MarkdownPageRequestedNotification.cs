@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Persistence;
+using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Cms.Core.Notifications;
 
 namespace LlmsTxt.Umbraco.Notifications;

@@ -229,7 +229,7 @@ public sealed class LlmsTxtSettings
 
     /// <summary>
     /// Story 5.1 — request log configuration. Controls the kill switch
-    /// for the package's default <c>ILlmsRequestLog</c> writer + the
+    /// for the package's default <c>IRequestLog</c> writer + the
     /// bounded queue / batch drainer parameters.
     /// </summary>
     public RequestLogSettings RequestLog { get; init; } = new();

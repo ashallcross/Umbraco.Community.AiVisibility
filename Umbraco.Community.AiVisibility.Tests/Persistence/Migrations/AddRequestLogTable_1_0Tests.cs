@@ -1,8 +1,8 @@
-using LlmsTxt.Umbraco.Persistence.Migrations;
+using Umbraco.Community.AiVisibility.Persistence.Migrations;
 using Umbraco.Cms.Infrastructure.Migrations;
 using Umbraco.Cms.Infrastructure.Migrations.Install;
 
-namespace LlmsTxt.Umbraco.Tests.Persistence.Migrations;
+namespace Umbraco.Community.AiVisibility.Tests.Persistence.Migrations;
 
 [TestFixture]
 public class AddRequestLogTable_1_0Tests

@@ -1,6 +1,6 @@
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.Controllers.Backoffice;
-using LlmsTxt.Umbraco.Persistence;
+using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -21,7 +21,7 @@ public class LlmsAnalyticsApiControllerCompositionTests
     public void Compose_StartupValidation_LlmsAnalyticsApiController_NoCaptiveDependency()
     {
         // Build the dep graph the controller actually consumes:
-        //   - ILlmsAnalyticsReader (Singleton — internal default impl wraps
+        //   - IAnalyticsReader (Singleton — internal default impl wraps
         //     IScopeProvider + NPoco; Story 5.2 testability seam)
         //   - IOptionsMonitor<LlmsTxtSettings> (Singleton)
         //   - TimeProvider (Singleton — TimeProvider.System per Story 5.1
@@ -32,7 +32,7 @@ public class LlmsAnalyticsApiControllerCompositionTests
         // so we register explicitly to force the dep-graph walk).
         var services = new ServiceCollection();
 
-        services.AddSingleton(_ => Substitute.For<ILlmsAnalyticsReader>());
+        services.AddSingleton(_ => Substitute.For<IAnalyticsReader>());
         services.AddSingleton(_ => Substitute.For<IOptionsMonitor<LlmsTxtSettings>>());
         services.AddSingleton(TimeProvider.System);
         services.AddLogging();

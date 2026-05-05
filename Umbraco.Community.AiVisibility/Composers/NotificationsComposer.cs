@@ -2,7 +2,7 @@ using LlmsTxt.Umbraco.Background;
 using LlmsTxt.Umbraco.Configuration;
 using LlmsTxt.Umbraco.HealthChecks;
 using LlmsTxt.Umbraco.Notifications;
-using LlmsTxt.Umbraco.Persistence;
+using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -19,8 +19,8 @@ namespace LlmsTxt.Umbraco.Composers;
 /// <see cref="HealthChecksComposer"/>; we <c>TryAdd*</c> to coexist).</item>
 /// <item><see cref="IUserAgentClassifier"/> →
 /// <see cref="DefaultUserAgentClassifier"/> Singleton.</item>
-/// <item><see cref="ILlmsRequestLog"/> →
-/// <see cref="DefaultLlmsRequestLog"/> Singleton (process-wide bounded
+/// <item><see cref="IRequestLog"/> →
+/// <see cref="DefaultRequestLog"/> Singleton (process-wide bounded
 /// channel).</item>
 /// <item><see cref="LlmsRequestLogDrainHostedService"/> as
 /// <see cref="Microsoft.Extensions.Hosting.IHostedService"/>.</item>
@@ -34,7 +34,7 @@ namespace LlmsTxt.Umbraco.Composers;
 /// </summary>
 /// <remarks>
 /// <b>Composer-time hard-validation (AC6):</b> if an adopter pre-registers
-/// <see cref="ILlmsRequestLog"/> with a non-Singleton lifetime, this
+/// <see cref="IRequestLog"/> with a non-Singleton lifetime, this
 /// composer throws <see cref="InvalidOperationException"/> at composition
 /// time. Mirrors Story 4.2 <see cref="HealthChecksComposer"/>'s
 /// <see cref="HealthChecks.IRobotsAuditor"/> Singleton-only validation
@@ -54,14 +54,14 @@ public sealed class NotificationsComposer : IComposer
 
         builder.Services.TryAddSingleton<IUserAgentClassifier, DefaultUserAgentClassifier>();
         builder.Services.TryAddSingleton<ILlmsNotificationPublisher, DefaultLlmsNotificationPublisher>();
-        builder.Services.TryAddSingleton<ILlmsRequestLog, DefaultLlmsRequestLog>();
+        builder.Services.TryAddSingleton<IRequestLog, DefaultRequestLog>();
 
         // Story 5.2 — analytics read path. Singleton because
-        // DefaultLlmsAnalyticsReader is stateless (constructs scopes on
+        // DefaultAnalyticsReader is stateless (constructs scopes on
         // demand) and the controller it serves is Transient. TryAdd* honours
         // adopter-provided substitutes (testability seam — not a documented
         // public extension point per Story 5.2 § What NOT to Build).
-        builder.Services.TryAddSingleton<ILlmsAnalyticsReader, DefaultLlmsAnalyticsReader>();
+        builder.Services.TryAddSingleton<IAnalyticsReader, DefaultAnalyticsReader>();
 
         // Story 5.2 code-review P11 — startup validation for the Analytics
         // settings sub-block. Surfaces operator typos at first config read
@@ -89,13 +89,13 @@ public sealed class NotificationsComposer : IComposer
         // the Singleton DefaultLlmsRequestLogHandler chain (and hence
         // the Singleton drainer's static reference to the channel).
         var requestLogRegistration = builder.Services
-            .FirstOrDefault(d => d.ServiceType == typeof(ILlmsRequestLog));
+            .FirstOrDefault(d => d.ServiceType == typeof(IRequestLog));
         if (requestLogRegistration is not null
             && requestLogRegistration.Lifetime != ServiceLifetime.Singleton)
         {
             throw new InvalidOperationException(
-                $"LlmsTxt: ILlmsRequestLog must be registered as Singleton; found {requestLogRegistration.Lifetime}. " +
-                "Adopter overrides via services.AddSingleton<ILlmsRequestLog, ...>() are honoured (see Persistence/ILlmsRequestLog.cs); " +
+                $"LlmsTxt: IRequestLog must be registered as Singleton; found {requestLogRegistration.Lifetime}. " +
+                "Adopter overrides via services.AddSingleton<IRequestLog, ...>() are honoured (see Persistence/IRequestLog.cs); " +
                 "Scoped or Transient overrides would form a captive dependency in the request-log drainer.");
         }
     }

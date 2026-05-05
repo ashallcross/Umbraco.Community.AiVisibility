@@ -1,35 +1,35 @@
 using System.Data;
 using System.Text;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using NPoco;
 using Umbraco.Cms.Infrastructure.Scoping;
 
-namespace LlmsTxt.Umbraco.Persistence;
+namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
-/// Story 5.2 — default <see cref="ILlmsAnalyticsReader"/> implementation
+/// Story 5.2 — default <see cref="IAnalyticsReader"/> implementation
 /// reading directly from the host DB's <c>llmsTxtRequestLog</c> table
 /// via Infrastructure-flavour <see cref="IScopeProvider"/> + NPoco.
 /// </summary>
 /// <remarks>
-/// Internal — see <see cref="ILlmsAnalyticsReader"/> for the
+/// Internal — see <see cref="IAnalyticsReader"/> for the
 /// "no public substitution" rationale. Each query opens a fresh scope at
 /// <see cref="IsolationLevel.ReadCommitted"/>, runs the SQL, and calls
 /// <c>scope.Complete()</c>. Read-only by design — no <c>INSERT</c> /
 /// <c>UPDATE</c> / <c>DELETE</c> SQL leaves this class.
 /// </remarks>
-internal sealed class DefaultLlmsAnalyticsReader : ILlmsAnalyticsReader
+internal sealed class DefaultAnalyticsReader : IAnalyticsReader
 {
     internal const string TableName = "llmsTxtRequestLog";
 
     private readonly IScopeProvider _scopeProvider;
 
-    public DefaultLlmsAnalyticsReader(IScopeProvider scopeProvider)
+    public DefaultAnalyticsReader(IScopeProvider scopeProvider)
     {
         _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
     }
 
-    public Page<LlmsTxtRequestLogEntry> ReadRequestsPage(
+    public Page<RequestLogEntry> ReadRequestsPage(
         DateTime from,
         DateTime to,
         IReadOnlyList<string> filterClasses,
@@ -59,7 +59,7 @@ internal sealed class DefaultLlmsAnalyticsReader : ILlmsAnalyticsReader
         sqlBuilder.Append(" ORDER BY createdUtc DESC, id DESC");
 
         using var scope = _scopeProvider.CreateScope(IsolationLevel.ReadCommitted);
-        var result = scope.Database.Page<LlmsTxtRequestLogEntry>(
+        var result = scope.Database.Page<RequestLogEntry>(
             page,
             pageSize,
             sqlBuilder.ToString(),
@@ -68,7 +68,7 @@ internal sealed class DefaultLlmsAnalyticsReader : ILlmsAnalyticsReader
         return result;
     }
 
-    public IReadOnlyList<LlmsAnalyticsClassificationRow> ReadClassifications(DateTime from, DateTime to)
+    public IReadOnlyList<AnalyticsClassificationRow> ReadClassifications(DateTime from, DateTime to)
     {
         const string sql =
             "SELECT userAgentClass AS userAgentClass, COUNT(*) AS count " +
@@ -78,12 +78,12 @@ internal sealed class DefaultLlmsAnalyticsReader : ILlmsAnalyticsReader
             "ORDER BY COUNT(*) DESC, userAgentClass ASC";
 
         using var scope = _scopeProvider.CreateScope(IsolationLevel.ReadCommitted);
-        var rows = scope.Database.Fetch<LlmsAnalyticsClassificationRow>(sql, from, to);
+        var rows = scope.Database.Fetch<AnalyticsClassificationRow>(sql, from, to);
         scope.Complete();
         return rows;
     }
 
-    public LlmsAnalyticsSummaryRow ReadSummary(DateTime from, DateTime to)
+    public AnalyticsSummaryRow ReadSummary(DateTime from, DateTime to)
     {
         const string sql =
             "SELECT COUNT(*) AS totalRequests, " +
@@ -94,9 +94,9 @@ internal sealed class DefaultLlmsAnalyticsReader : ILlmsAnalyticsReader
 
         using var scope = _scopeProvider.CreateScope(IsolationLevel.ReadCommitted);
         var row = scope.Database
-            .Fetch<LlmsAnalyticsSummaryRow>(sql, from, to)
+            .Fetch<AnalyticsSummaryRow>(sql, from, to)
             .FirstOrDefault()
-            ?? new LlmsAnalyticsSummaryRow();
+            ?? new AnalyticsSummaryRow();
         scope.Complete();
         return row;
     }

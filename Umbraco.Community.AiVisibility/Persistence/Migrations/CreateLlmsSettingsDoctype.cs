@@ -5,7 +5,7 @@ using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Strings;
 using Umbraco.Cms.Infrastructure.Migrations;
 
-namespace LlmsTxt.Umbraco.Persistence.Migrations;
+namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 
 /// <summary>
 /// Story 3.1 — creates the <c>llmsSettings</c> doctype + the

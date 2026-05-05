@@ -1,8 +1,8 @@
 using LlmsTxt.Umbraco.HealthChecks;
-using LlmsTxt.Umbraco.Persistence;
+using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace LlmsTxt.Umbraco.Tests.Persistence;
+namespace Umbraco.Community.AiVisibility.Tests.Persistence;
 
 [TestFixture]
 public class DefaultUserAgentClassifierTests

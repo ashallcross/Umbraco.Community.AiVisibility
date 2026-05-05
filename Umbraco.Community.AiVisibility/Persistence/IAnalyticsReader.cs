@@ -1,7 +1,7 @@
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using NPoco;
 
-namespace LlmsTxt.Umbraco.Persistence;
+namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
 /// Story 5.2 — testability seam for the AI Traffic dashboard's read path.
@@ -17,12 +17,12 @@ namespace LlmsTxt.Umbraco.Persistence;
 /// <b>NOT a documented extension point in v1.</b> Story 5.2's "What NOT to
 /// Build" section defers the pluggable read seam to v1.1+ pending
 /// real-adopter demand; this interface exists for testability, not as an
-/// advertised seam. Adopters who replace <c>ILlmsRequestLog</c> with a
+/// advertised seam. Adopters who replace <c>IRequestLog</c> with a
 /// non-DB sink (App Insights, Serilog, etc.) ship their own dashboards
 /// against their own sinks rather than substituting this reader.
 /// </para>
 /// <para>
-/// The default implementation (<see cref="DefaultLlmsAnalyticsReader"/>) is
+/// The default implementation (<see cref="DefaultAnalyticsReader"/>) is
 /// <see langword="internal"/> — adopter substitutions cannot delegate to it.
 /// </para>
 /// <para>
@@ -32,16 +32,16 @@ namespace LlmsTxt.Umbraco.Persistence;
 /// reads against concurrent inserts from Story 5.1's drainer.
 /// </para>
 /// </remarks>
-public interface ILlmsAnalyticsReader
+public interface IAnalyticsReader
 {
     /// <summary>
-    /// Returns one page of <see cref="LlmsTxtRequestLogEntry"/> rows
+    /// Returns one page of <see cref="RequestLogEntry"/> rows
     /// matching <paramref name="from"/> ≤ createdUtc &lt; <paramref name="to"/>
     /// and (when non-empty) restricted to the supplied
     /// <paramref name="filterClasses"/>. Ordering is
     /// <c>createdUtc DESC, id DESC</c> for stable pagination.
     /// </summary>
-    Page<LlmsTxtRequestLogEntry> ReadRequestsPage(
+    Page<RequestLogEntry> ReadRequestsPage(
         DateTime from,
         DateTime to,
         IReadOnlyList<string> filterClasses,
@@ -53,7 +53,7 @@ public interface ILlmsAnalyticsReader
     /// <paramref name="from"/> ≤ createdUtc &lt; <paramref name="to"/>
     /// with the row count, ordered by descending count then ascending name.
     /// </summary>
-    IReadOnlyList<LlmsAnalyticsClassificationRow> ReadClassifications(DateTime from, DateTime to);
+    IReadOnlyList<AnalyticsClassificationRow> ReadClassifications(DateTime from, DateTime to);
 
     /// <summary>
     /// Returns the single-row aggregate (count + first-seen + last-seen)
@@ -61,15 +61,15 @@ public interface ILlmsAnalyticsReader
     /// On an empty result set the row's count is zero and timestamps are
     /// <c>null</c>.
     /// </summary>
-    LlmsAnalyticsSummaryRow ReadSummary(DateTime from, DateTime to);
+    AnalyticsSummaryRow ReadSummary(DateTime from, DateTime to);
 }
 
-// Note: LlmsAnalyticsClassificationRow + LlmsAnalyticsSummaryRow live in
-// LlmsTxt.Umbraco.Persistence/LlmsAnalyticsRows.cs (Story 5.2 Spec Drift Note
+// Note: AnalyticsClassificationRow + AnalyticsSummaryRow live in
+// Umbraco.Community.AiVisibility.Persistence/LlmsAnalyticsRows.cs (Story 5.2 Spec Drift Note
 // #3 — moved out of Controllers/Backoffice to honour the Persistence ←
 // Controllers folder dependency boundary once they became reader return
 // types). They're public projection POCOs (NPoco's reflection-driven
 // materialiser needs public access). The interface above is also `public`
 // (Spec Drift Note #6 — required by C# inconsistent-accessibility with the
-// public controller ctor); DefaultLlmsAnalyticsReader stays `internal sealed`
+// public controller ctor); DefaultAnalyticsReader stays `internal sealed`
 // so adopter substitutions cannot delegate to the default impl.

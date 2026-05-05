@@ -1,7 +1,7 @@
 using System.Globalization;
 using Asp.Versioning;
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.Persistence;
+using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +27,7 @@ namespace LlmsTxt.Umbraco.Controllers.Backoffice;
 /// <para>
 /// <b>Read-only contract:</b> the controller ships zero <c>INSERT</c> /
 /// <c>UPDATE</c> / <c>DELETE</c> SQL — only <c>SELECT</c> via
-/// <see cref="ILlmsAnalyticsReader"/>. Story 5.1 owns the write path
+/// <see cref="IAnalyticsReader"/>. Story 5.1 owns the write path
 /// (via the bounded-channel drainer); Story 5.2 owns the read pass-through.
 /// PII discipline (architect-A4 / project-context.md § Critical Don't-Miss
 /// line 224) is preserved by NEVER widening the projection beyond the seven
@@ -76,13 +76,13 @@ public sealed class LlmsAnalyticsManagementApiController : ManagementApiControll
 
     private readonly ILogger<LlmsAnalyticsManagementApiController> _logger;
     private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
-    private readonly ILlmsAnalyticsReader _reader;
+    private readonly IAnalyticsReader _reader;
     private readonly TimeProvider _timeProvider;
 
     public LlmsAnalyticsManagementApiController(
         ILogger<LlmsAnalyticsManagementApiController> logger,
         IOptionsMonitor<LlmsTxtSettings> settings,
-        ILlmsAnalyticsReader reader,
+        IAnalyticsReader reader,
         TimeProvider? timeProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

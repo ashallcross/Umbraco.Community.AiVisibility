@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Persistence;
+namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
 /// Story 5.1 — coarse classification of an HTTP <c>User-Agent</c> header,

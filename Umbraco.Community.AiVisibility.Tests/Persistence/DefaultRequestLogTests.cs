@@ -1,12 +1,12 @@
 using LlmsTxt.Umbraco.Configuration;
-using LlmsTxt.Umbraco.Persistence;
-using LlmsTxt.Umbraco.Persistence.Entities;
+using Umbraco.Community.AiVisibility.Persistence;
+using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace LlmsTxt.Umbraco.Tests.Persistence;
+namespace Umbraco.Community.AiVisibility.Tests.Persistence;
 
 [TestFixture]
 public class DefaultLlmsRequestLogTests
@@ -18,22 +18,22 @@ public class DefaultLlmsRequestLogTests
         return monitor;
     }
 
-    private static LlmsTxtRequestLogEntry SampleEntry() => new()
+    private static RequestLogEntry SampleEntry() => new()
     {
         CreatedUtc = DateTime.UtcNow,
         Path = "/about",
         ContentKey = Guid.NewGuid(),
         Culture = "en-US",
-        UserAgentClass = nameof(LlmsTxt.Umbraco.Persistence.UserAgentClass.HumanBrowser),
+        UserAgentClass = nameof(Umbraco.Community.AiVisibility.Persistence.UserAgentClass.HumanBrowser),
         ReferrerHost = "google.com",
     };
 
     [Test]
     public async Task EnqueueAsync_HappyPath_WritesToChannel()
     {
-        var log = new DefaultLlmsRequestLog(
+        var log = new DefaultRequestLog(
             SettingsMonitor(),
-            NullLogger<DefaultLlmsRequestLog>.Instance,
+            NullLogger<DefaultRequestLog>.Instance,
             TimeProvider.System);
 
         await log.EnqueueAsync(SampleEntry(), CancellationToken.None);
@@ -50,9 +50,9 @@ public class DefaultLlmsRequestLogTests
         {
             RequestLog = new RequestLogSettings { QueueCapacity = 64 },
         };
-        var log = new DefaultLlmsRequestLog(
+        var log = new DefaultRequestLog(
             SettingsMonitor(settings),
-            NullLogger<DefaultLlmsRequestLog>.Instance,
+            NullLogger<DefaultRequestLog>.Instance,
             TimeProvider.System);
 
         for (var i = 0; i < 200; i++)
@@ -74,9 +74,9 @@ public class DefaultLlmsRequestLogTests
         {
             RequestLog = new RequestLogSettings { QueueCapacity = 1 },
         };
-        var log = new DefaultLlmsRequestLog(
+        var log = new DefaultRequestLog(
             SettingsMonitor(settings),
-            NullLogger<DefaultLlmsRequestLog>.Instance,
+            NullLogger<DefaultRequestLog>.Instance,
             TimeProvider.System);
 
         for (var i = 0; i < 64; i++)
@@ -90,9 +90,9 @@ public class DefaultLlmsRequestLogTests
     [Test]
     public async Task EnqueueAsync_NullEntry_NoOp()
     {
-        var log = new DefaultLlmsRequestLog(
+        var log = new DefaultRequestLog(
             SettingsMonitor(),
-            NullLogger<DefaultLlmsRequestLog>.Instance,
+            NullLogger<DefaultRequestLog>.Instance,
             TimeProvider.System);
 
         await log.EnqueueAsync(null!, CancellationToken.None);
@@ -103,9 +103,9 @@ public class DefaultLlmsRequestLogTests
     [Test]
     public void EnqueueAsync_CancellationRequested_ReturnsCancelledTask()
     {
-        var log = new DefaultLlmsRequestLog(
+        var log = new DefaultRequestLog(
             SettingsMonitor(),
-            NullLogger<DefaultLlmsRequestLog>.Instance,
+            NullLogger<DefaultRequestLog>.Instance,
             TimeProvider.System);
 
         using var cts = new CancellationTokenSource();

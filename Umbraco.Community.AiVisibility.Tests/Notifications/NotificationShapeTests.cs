@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Notifications;
-using LlmsTxt.Umbraco.Persistence;
+using Umbraco.Community.AiVisibility.Persistence;
 
 namespace LlmsTxt.Umbraco.Tests.Notifications;
 
