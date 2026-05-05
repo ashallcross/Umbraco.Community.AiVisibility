@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LlmsTxt.Umbraco\LlmsTxt.Umbraco.csproj" />
+    <ProjectReference Include="..\Umbraco.Community.AiVisibility\Umbraco.Community.AiVisibility.csproj" />
   </ItemGroup>
 
 

@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="LlmsTxt.Umbraco.Tests/LlmsTxt.Umbraco.Tests.csproj" />
-  <Project Path="LlmsTxt.Umbraco.TestSite/LlmsTxt.Umbraco.TestSite.csproj" />
-  <Project Path="LlmsTxt.Umbraco/LlmsTxt.Umbraco.csproj" />
+  <Project Path="Umbraco.Community.AiVisibility.Tests/Umbraco.Community.AiVisibility.Tests.csproj" />
+  <Project Path="Umbraco.Community.AiVisibility.TestSite/Umbraco.Community.AiVisibility.TestSite.csproj" />
+  <Project Path="Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj" />
 </Solution>

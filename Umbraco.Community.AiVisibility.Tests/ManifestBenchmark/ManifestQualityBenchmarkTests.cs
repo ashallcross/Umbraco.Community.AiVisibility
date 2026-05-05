@@ -140,7 +140,7 @@ public class ManifestQualityBenchmarkTests
 
     /// <summary>
     /// Walk up from the running test assembly's directory looking for the
-    /// <c>LlmsTxt.Umbraco.Tests</c> project marker, then descend into
+    /// <c>Umbraco.Community.AiVisibility.Tests</c> project marker, then descend into
     /// <c>Fixtures/Manifests/</c>. Avoids the brittle <c>bin/&lt;config&gt;/&lt;tfm&gt;</c>
     /// arithmetic Story 1.4 deferred-work flagged for the extraction fixture
     /// helper.
@@ -150,8 +150,8 @@ public class ManifestQualityBenchmarkTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            // The csproj sits in LlmsTxt.Umbraco.Tests/; bin output is below it.
-            var projectFile = Path.Combine(dir.FullName, "LlmsTxt.Umbraco.Tests.csproj");
+            // The csproj sits in Umbraco.Community.AiVisibility.Tests/; bin output is below it.
+            var projectFile = Path.Combine(dir.FullName, "Umbraco.Community.AiVisibility.Tests.csproj");
             if (File.Exists(projectFile))
             {
                 var manifestDir = Path.Combine(dir.FullName, "Fixtures", "Manifests");

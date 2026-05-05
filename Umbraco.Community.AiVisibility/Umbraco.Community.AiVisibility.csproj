@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>LlmsTxt.Umbraco</PackageId>
-    <Product>LlmsTxt.Umbraco</Product>
-    <Title>LlmsTxt.Umbraco</Title>
+    <PackageId>Umbraco.Community.AiVisibility</PackageId>
+    <Product>Umbraco.Community.AiVisibility</Product>
+    <Title>Umbraco.Community.AiVisibility</Title>
     <Version>0.1.0-alpha</Version>
     <Description>Expose Umbraco published content to LLMs and AI search engines. Auto-generates per-page Markdown at {url}.md, /llms.txt, and /llms-full.txt — plus Accept: text/markdown content negotiation, Link: rel=alternate headers, and a robots.txt audit. Built for Umbraco v17+.</Description>
     <Authors>Adam Shallcross</Authors>
@@ -148,7 +148,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="LlmsTxt.Umbraco.Tests" />
+    <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
