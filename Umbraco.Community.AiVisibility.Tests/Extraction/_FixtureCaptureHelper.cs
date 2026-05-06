@@ -13,11 +13,11 @@
 //      curate as documented in `Fixtures/Extraction/README.md`.
 
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace LlmsTxt.Umbraco.Tests.Extraction;
+namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 
 [TestFixture, Explicit("Capture helper — run manually to regenerate expected.md")]
 [Category("ExtractionFixtureCapture")]

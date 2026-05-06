@@ -1,7 +1,7 @@
 using LlmsTxt.Umbraco.Builders;
 using Umbraco.Community.AiVisibility.Caching;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

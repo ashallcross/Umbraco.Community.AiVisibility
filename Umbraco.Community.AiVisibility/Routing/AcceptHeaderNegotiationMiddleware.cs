@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using LlmsTxt.Umbraco.Notifications;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;

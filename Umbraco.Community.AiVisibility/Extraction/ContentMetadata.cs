@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// Metadata needed by the extraction pipeline's HTML-only seam — populated by the

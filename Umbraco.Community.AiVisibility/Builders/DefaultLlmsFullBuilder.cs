@@ -1,7 +1,7 @@
 using System.Text;
 using Umbraco.Community.AiVisibility.Caching;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;

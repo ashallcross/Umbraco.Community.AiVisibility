@@ -1,12 +1,12 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
 
-namespace LlmsTxt.Umbraco.Tests.Extraction;
+namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 
 [TestFixture]
 public class DefaultMarkdownContentExtractorTests

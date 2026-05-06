@@ -1,6 +1,6 @@
 using AngleSharp.Dom;
 
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// Public extension point — selects the &quot;main content&quot; region from a parsed HTML

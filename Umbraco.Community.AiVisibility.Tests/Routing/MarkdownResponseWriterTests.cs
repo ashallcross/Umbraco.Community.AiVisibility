@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;

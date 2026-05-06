@@ -9,7 +9,7 @@ using SmartReader;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
 
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// Built-in <see cref="IMarkdownContentExtractor"/> orchestrating the full pipeline:

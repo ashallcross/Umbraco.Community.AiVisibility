@@ -1,10 +1,10 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace LlmsTxt.Umbraco.Tests.Extraction;
+namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 
 /// <summary>
 /// Parameterised quality gate — for each <c>Fixtures/Extraction/&lt;scenario&gt;/</c>

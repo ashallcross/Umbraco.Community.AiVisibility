@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Tests.Extraction;
+namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 
 /// <summary>
 /// Single source of truth for per-scenario fixture metadata used by both

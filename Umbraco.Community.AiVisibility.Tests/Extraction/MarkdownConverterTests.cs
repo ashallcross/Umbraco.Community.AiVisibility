@@ -1,6 +1,6 @@
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 
-namespace LlmsTxt.Umbraco.Tests.Extraction;
+namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 
 [TestFixture]
 public class MarkdownConverterTests

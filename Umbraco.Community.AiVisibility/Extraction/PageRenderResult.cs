@@ -1,6 +1,6 @@
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// Internal outcome of <see cref="PageRenderer.RenderAsync"/>. Promoted to

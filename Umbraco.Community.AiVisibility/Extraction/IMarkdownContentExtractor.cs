@@ -1,6 +1,6 @@
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// Public extension point — full Markdown extraction pipeline (in-process Razor render +

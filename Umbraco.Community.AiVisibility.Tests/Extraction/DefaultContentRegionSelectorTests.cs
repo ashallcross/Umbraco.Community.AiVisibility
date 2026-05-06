@@ -1,8 +1,8 @@
 using AngleSharp;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace LlmsTxt.Umbraco.Tests.Extraction;
+namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 
 [TestFixture]
 public class DefaultContentRegionSelectorTests

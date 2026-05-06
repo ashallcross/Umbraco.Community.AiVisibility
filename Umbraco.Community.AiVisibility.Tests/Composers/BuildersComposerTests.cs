@@ -1,7 +1,7 @@
 using LlmsTxt.Umbraco.Builders;
 using LlmsTxt.Umbraco.Composers;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;

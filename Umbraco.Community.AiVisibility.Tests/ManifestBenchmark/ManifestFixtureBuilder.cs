@@ -1,6 +1,6 @@
 using LlmsTxt.Umbraco.Builders;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using NSubstitute;
 using Umbraco.Cms.Core.Models.PublishedContent;

@@ -1,7 +1,7 @@
 using AngleSharp.Dom;
 using Microsoft.Extensions.Logging;
 
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// Built-in selector chain (in priority order):

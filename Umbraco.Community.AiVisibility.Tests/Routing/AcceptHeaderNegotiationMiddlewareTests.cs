@@ -1,7 +1,7 @@
 using System.Text;
 using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using LlmsTxt.Umbraco.Routing;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;

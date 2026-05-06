@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.AspNetCore.Http;
 
 namespace LlmsTxt.Umbraco.Routing;

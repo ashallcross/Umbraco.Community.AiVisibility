@@ -1,6 +1,6 @@
 using ReverseMarkdown;
 
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// HTML → Markdown wrapper around <see cref="Converter"/> with the package's

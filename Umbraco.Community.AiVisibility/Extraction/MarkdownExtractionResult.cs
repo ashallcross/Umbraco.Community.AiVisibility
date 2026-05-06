@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Extraction;
+namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
 /// Discriminated outcome of <see cref="IMarkdownContentExtractor.ExtractAsync"/>.

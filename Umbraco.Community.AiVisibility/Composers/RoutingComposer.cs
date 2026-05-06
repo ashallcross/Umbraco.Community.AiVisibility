@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -77,7 +77,7 @@ public sealed class RoutingComposer : IComposer
         // composer runs by registering their own implementation first.
         builder.Services.TryAddTransient<PageRenderer>();
         builder.Services.TryAddSingleton<MarkdownConverter>();
-        builder.Services.TryAddTransient<IContentRegionSelector, Extraction.DefaultContentRegionSelector>();
-        builder.Services.TryAddTransient<IMarkdownContentExtractor, Extraction.DefaultMarkdownContentExtractor>();
+        builder.Services.TryAddTransient<IContentRegionSelector, DefaultContentRegionSelector>();
+        builder.Services.TryAddTransient<IMarkdownContentExtractor, DefaultMarkdownContentExtractor>();
     }
 }

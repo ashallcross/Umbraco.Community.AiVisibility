@@ -1,7 +1,7 @@
 using System.Linq;
 using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Composers;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
