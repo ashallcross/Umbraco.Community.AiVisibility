@@ -1,4 +1,4 @@
-/* LlmsTxt.Umbraco — Story 4.1 visually-hidden hint styles. Class hook only;
+/* Umbraco.Community.AiVisibility — Story 4.1 visually-hidden hint styles. Class hook only;
    no inline styles so adopters with strict CSP (style-src 'self') aren't
    affected. Standard Bootstrap-style .visually-hidden ruleset. */
 .llms-hint {
