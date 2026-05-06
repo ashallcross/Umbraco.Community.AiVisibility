@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Composers;
+using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +9,7 @@ using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 [TestFixture]
 public class BuildersComposerTests

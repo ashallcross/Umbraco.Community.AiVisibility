@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 /// <summary>
 /// Story 5.2 AC12 — DI lifetime correctness gate for

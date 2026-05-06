@@ -43,7 +43,7 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
 {
     /// <summary>
     /// Named <see cref="HttpClient"/> registration used by the auditor. The
-    /// composer (<c>HealthChecksComposer</c>) registers this name with
+    /// composer (<c>RobotsComposer</c>) registers this name with
     /// <see cref="System.Net.Http.HttpClientHandler.AllowAutoRedirect"/> set
     /// to <c>false</c> so a hostile <c>/robots.txt</c> redirect cannot pull
     /// the auditor onto an unintended origin (e.g. cloud metadata endpoints).

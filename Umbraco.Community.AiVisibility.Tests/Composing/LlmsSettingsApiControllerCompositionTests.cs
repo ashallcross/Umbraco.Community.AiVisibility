@@ -9,7 +9,7 @@ using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Web;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 /// <summary>
 /// Story 3.2 AC10 — DI lifetime correctness gate for

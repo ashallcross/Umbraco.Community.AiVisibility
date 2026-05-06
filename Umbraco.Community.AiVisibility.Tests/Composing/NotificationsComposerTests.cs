@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Telemetry;
-using LlmsTxt.Umbraco.Composers;
+using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using LlmsTxt.Umbraco.Notifications;
@@ -16,7 +16,7 @@ using Umbraco.Cms.Core.Sync;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 using Umbraco.Cms.Infrastructure.Scoping;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 [TestFixture]
 public class NotificationsComposerTests

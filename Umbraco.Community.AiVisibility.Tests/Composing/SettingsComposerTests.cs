@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Composers;
+using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +12,7 @@ using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Web;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 [TestFixture]
 public class SettingsComposerTests

@@ -6,7 +6,7 @@ using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Extensions;
 
-namespace LlmsTxt.Umbraco.Composers;
+namespace Umbraco.Community.AiVisibility.Composing;
 
 /// <summary>
 /// Story 3.1 — registers <see cref="ISettingsResolver"/> + the

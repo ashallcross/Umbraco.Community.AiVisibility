@@ -10,7 +10,7 @@ using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Web.Common.ApplicationBuilder;
 using Umbraco.Cms.Web.Common.Routing;
 
-namespace LlmsTxt.Umbraco.Composers;
+namespace Umbraco.Community.AiVisibility.Composing;
 
 /// <summary>
 /// Registers the <c>{**path:nonfile}.md</c> route, the

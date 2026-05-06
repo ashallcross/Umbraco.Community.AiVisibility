@@ -8,7 +8,7 @@ using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
-namespace LlmsTxt.Umbraco.Composers;
+namespace Umbraco.Community.AiVisibility.Composing;
 
 /// <summary>
 /// Story 4.2 — wires the robots audit pipeline:
@@ -32,7 +32,7 @@ namespace LlmsTxt.Umbraco.Composers;
 /// list at startup).</item>
 /// </list>
 /// </summary>
-public sealed class HealthChecksComposer : IComposer
+public sealed class RobotsComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {

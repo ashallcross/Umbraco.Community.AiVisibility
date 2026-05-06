@@ -1,13 +1,13 @@
 using System.Linq;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Composers;
+using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 [TestFixture]
 public class CachingComposerTests

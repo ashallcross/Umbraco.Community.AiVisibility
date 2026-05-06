@@ -1,8 +1,9 @@
 using System.Reflection;
+using LlmsTxt.Umbraco;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 /// <summary>
 /// Story 6.0a AC2 (Codex finding #2) — release-guard reflection tests
@@ -22,7 +23,7 @@ public class ReleaseGuardTests
     /// Currently empty — the spike controller's <c>Ping</c> was the only one,
     /// and Story 6.0a deletes it. Future stories adding a legitimate <c>Ping</c>
     /// MUST update this allow-list AND the matching production allow-list in
-    /// <c>LlmsTxtUmbracoApiComposer.CustomOperationHandler.AllowedControllers</c>.
+    /// <c>BackofficeApiComposer.CustomOperationHandler.AllowedControllers</c>.
     /// </summary>
     private static readonly (Type ControllerType, string ActionName)[] AllowedPingActions = Array.Empty<(Type, string)>();
 

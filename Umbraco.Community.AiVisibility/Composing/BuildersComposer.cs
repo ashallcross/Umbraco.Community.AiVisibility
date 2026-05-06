@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 
-namespace LlmsTxt.Umbraco.Composers;
+namespace Umbraco.Community.AiVisibility.Composing;
 
 /// <summary>
 /// Story 2.1 — registers the <c>/llms.txt</c> builder seam:

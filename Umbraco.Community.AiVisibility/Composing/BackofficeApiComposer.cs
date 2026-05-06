@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using LlmsTxt.Umbraco;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Options;
@@ -10,9 +11,9 @@ using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Api.Management.OpenApi;
 using Umbraco.Cms.Api.Common.OpenApi;
 
-namespace LlmsTxt.Umbraco.Composers
+namespace Umbraco.Community.AiVisibility.Composing
 {
-    public class LlmsTxtUmbracoApiComposer : IComposer
+    public class BackofficeApiComposer : IComposer
     {
         public void Compose(IUmbracoBuilder builder)
         {

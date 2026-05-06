@@ -13,7 +13,7 @@ using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Notifications;
 using Umbraco.Extensions;
 
-namespace LlmsTxt.Umbraco.Composers;
+namespace Umbraco.Community.AiVisibility.Composing;
 
 /// <summary>
 /// Wires Story 1.2's caching layer:

@@ -11,7 +11,7 @@ namespace Umbraco.Community.AiVisibility.Robots;
 /// <remarks>
 /// <para>
 /// <b>Lifetime:</b> Singleton (registered via
-/// <c>HealthChecksComposer.TryAddSingleton&lt;IRobotsAuditor, DefaultRobotsAuditor&gt;()</c>).
+/// <c>RobotsComposer.TryAddSingleton&lt;IRobotsAuditor, DefaultRobotsAuditor&gt;()</c>).
 /// The default implementation is stateless + thread-safe; results are
 /// cached in <see cref="Umbraco.Cms.Core.Cache.AppCaches.RuntimeCache"/>
 /// per hostname.

@@ -96,7 +96,7 @@ public sealed class AiBotList
 
     /// <summary>
     /// Public constructor used by DI (auto-discovered via
-    /// <c>HealthChecksComposer.TryAddSingleton</c>). Loads the embedded
+    /// <c>RobotsComposer.TryAddSingleton</c>). Loads the embedded
     /// resource via <see cref="Assembly.GetManifestResourceStream"/>.
     /// </summary>
     public AiBotList(ILogger<AiBotList> logger)

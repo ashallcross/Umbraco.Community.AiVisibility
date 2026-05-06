@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Telemetry;
-using LlmsTxt.Umbraco.Composers;
+using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.AspNetCore.Http;
@@ -14,7 +14,7 @@ using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Sync;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
-namespace LlmsTxt.Umbraco.Tests.Composers;
+namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 [TestFixture]
 public class HealthChecksComposerTests
@@ -163,7 +163,7 @@ public class HealthChecksComposerTests
         }, "ValidateScopes + ValidateOnBuild must succeed — Singleton auditor + Singleton job + Scoped IDomainService dep flow are captive-free");
     }
 
-    private static (HealthChecksComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)
+    private static (RobotsComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)
         BuildComposer()
     {
         var services = new ServiceCollection();
@@ -171,7 +171,7 @@ public class HealthChecksComposerTests
         var builder = Substitute.For<IUmbracoBuilder>();
         builder.Services.Returns(services);
         builder.Config.Returns(configuration);
-        return (new HealthChecksComposer(), builder, services);
+        return (new RobotsComposer(), builder, services);
     }
 
     private static void StubAuditorDependencies(IServiceCollection services)

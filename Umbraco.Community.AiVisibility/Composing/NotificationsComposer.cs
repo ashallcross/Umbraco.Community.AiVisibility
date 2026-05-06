@@ -10,13 +10,13 @@ using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
-namespace LlmsTxt.Umbraco.Composers;
+namespace Umbraco.Community.AiVisibility.Composing;
 
 /// <summary>
 /// Story 5.1 — wires the notifications + request-log + retention pipeline:
 /// <list type="bullet">
 /// <item><see cref="AiBotList"/> Singleton (already registered by Story 4.2's
-/// <see cref="HealthChecksComposer"/>; we <c>TryAdd*</c> to coexist).</item>
+/// <see cref="RobotsComposer"/>; we <c>TryAdd*</c> to coexist).</item>
 /// <item><see cref="IUserAgentClassifier"/> →
 /// <see cref="DefaultUserAgentClassifier"/> Singleton.</item>
 /// <item><see cref="IRequestLog"/> →
@@ -36,7 +36,7 @@ namespace LlmsTxt.Umbraco.Composers;
 /// <b>Composer-time hard-validation (AC6):</b> if an adopter pre-registers
 /// <see cref="IRequestLog"/> with a non-Singleton lifetime, this
 /// composer throws <see cref="InvalidOperationException"/> at composition
-/// time. Mirrors Story 4.2 <see cref="HealthChecksComposer"/>'s
+/// time. Mirrors Story 4.2 <see cref="RobotsComposer"/>'s
 /// <see cref="HealthChecks.IRobotsAuditor"/> Singleton-only validation
 /// (chunk-3 D2 ratification).
 /// </remarks>
@@ -45,10 +45,10 @@ public sealed class NotificationsComposer : IComposer
     public void Compose(IUmbracoBuilder builder)
     {
         // TimeProvider.System — .NET 8+ doesn't auto-register; mirror
-        // HealthChecksComposer's pattern (Story 4.2 chunk-1 P3).
+        // RobotsComposer's pattern (Story 4.2 chunk-1 P3).
         builder.Services.TryAddSingleton(TimeProvider.System);
 
-        // AiBotList may already be registered by HealthChecksComposer —
+        // AiBotList may already be registered by RobotsComposer —
         // TryAdd*'s no-op-on-existing semantics make us order-tolerant.
         builder.Services.TryAddSingleton<AiBotList>();
 
@@ -83,7 +83,7 @@ public sealed class NotificationsComposer : IComposer
             DefaultLlmsRequestLogHandler>();
 
         // Composer-time hard-validation (AC6) — Story 4.2
-        // HealthChecksComposer line 69 precedent. TryAddSingleton above
+        // RobotsComposer line 69 precedent. TryAddSingleton above
         // no-ops if an adopter pre-registered the service as Scoped or
         // Transient — left unchecked, that captures a Scoped dep into
         // the Singleton DefaultLlmsRequestLogHandler chain (and hence

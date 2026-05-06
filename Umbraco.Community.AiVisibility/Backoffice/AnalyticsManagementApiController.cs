@@ -54,7 +54,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// <para>
 /// <b>Swagger doc co-location:</b> <see cref="MapToApiAttribute"/> binds the
 /// four operations to the existing <c>llmstxtumbraco</c> Swagger doc (registered
-/// by <c>LlmsTxtUmbracoApiComposer</c>). The framework filter
+/// by <c>BackofficeApiComposer</c>). The framework filter
 /// <c>BackOfficeSecurityRequirementsOperationFilterBase</c> auto-adds the 401 +
 /// 403 response schemas — Story 3.2 Spec Drift Note #6 documents the
 /// Swagger-500 collision when explicit
