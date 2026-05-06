@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Controllers.Backoffice;
+namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
 /// Story 3.2 — view model returned by <c>GET /umbraco/management/api/v1/llmstxt/settings/</c>
@@ -29,7 +29,7 @@ namespace LlmsTxt.Umbraco.Controllers.Backoffice;
 /// The <c>llmsSettings</c> root content node's <see cref="System.Guid"/>, or <c>null</c>
 /// when no Settings node exists yet (uSync-coexistence path / pre-creation state).
 /// </param>
-public sealed record LlmsSettingsViewModel(
+public sealed record SettingsViewModel(
     string? SiteName,
     string? SiteSummary,
     IReadOnlyList<string> ExcludedDoctypeAliases,
@@ -48,7 +48,7 @@ public sealed record LlmsSettingsViewModel(
 /// </param>
 /// <param name="SiteSummary">
 /// New site-summary value. Null/empty/whitespace clears the field. Length validated
-/// against <see cref="LlmsSettingsViewModel.SummaryMaxChars"/> server-side; longer
+/// against <see cref="SettingsViewModel.SummaryMaxChars"/> server-side; longer
 /// payloads return <see cref="Microsoft.AspNetCore.Mvc.ProblemDetails"/> 400.
 /// </param>
 /// <param name="ExcludedDoctypeAliases">

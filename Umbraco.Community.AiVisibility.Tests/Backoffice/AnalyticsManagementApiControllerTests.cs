@@ -2,7 +2,7 @@ using System.Reflection;
 using Asp.Versioning;
 using LlmsTxt.Umbraco;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Controllers.Backoffice;
+using Umbraco.Community.AiVisibility.Backoffice;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +16,7 @@ using Umbraco.Cms.Api.Common.Attributes;
 using Umbraco.Cms.Api.Management.Routing;
 using Umbraco.Cms.Web.Common.Authorization;
 
-namespace LlmsTxt.Umbraco.Tests.Controllers.Backoffice;
+namespace Umbraco.Community.AiVisibility.Tests.Backoffice;
 
 /// <summary>
 /// Story 5.2 — Management API controller tests for the AI Traffic dashboard.
@@ -53,14 +53,14 @@ public class LlmsAnalyticsManagementApiControllerTests
     private static FixedTimeProvider FixedClock() =>
         new(new DateTimeOffset(FixedNowUtc, TimeSpan.Zero));
 
-    private static (LlmsAnalyticsManagementApiController controller, IAnalyticsReader reader, FixedTimeProvider clock) NewController(
+    private static (AnalyticsManagementApiController controller, IAnalyticsReader reader, FixedTimeProvider clock) NewController(
         AiVisibilitySettings? settings = null,
         IAnalyticsReader? reader = null)
     {
         var readerSub = reader ?? Substitute.For<IAnalyticsReader>();
         var clock = FixedClock();
-        var controller = new LlmsAnalyticsManagementApiController(
-            NullLogger<LlmsAnalyticsManagementApiController>.Instance,
+        var controller = new AnalyticsManagementApiController(
+            NullLogger<AnalyticsManagementApiController>.Instance,
             SettingsMonitor(settings),
             readerSub,
             clock)
@@ -108,7 +108,7 @@ public class LlmsAnalyticsManagementApiControllerTests
     public void Controller_HasSectionAccessSettingsAuthorizePolicy()
     {
         // Story 3.2 SDN #2 precedent — inherit:false to assert OWN-declared.
-        var attrs = typeof(LlmsAnalyticsManagementApiController)
+        var attrs = typeof(AnalyticsManagementApiController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Cast<AuthorizeAttribute>()
             .ToArray();
@@ -125,7 +125,7 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void Controller_HasMapToApiAttributeMatchingApiName()
     {
-        var attr = typeof(LlmsAnalyticsManagementApiController)
+        var attr = typeof(AnalyticsManagementApiController)
             .GetCustomAttribute<MapToApiAttribute>(inherit: false);
 
         Assert.Multiple(() =>
@@ -141,14 +141,14 @@ public class LlmsAnalyticsManagementApiControllerTests
     {
         // Story 3.2 SDN #3 precedent — Does.EndWith because the framework
         // wraps the prefix at runtime (/umbraco/management/api/v1/...).
-        var attr = typeof(LlmsAnalyticsManagementApiController)
+        var attr = typeof(AnalyticsManagementApiController)
             .GetCustomAttribute<VersionedApiBackOfficeRouteAttribute>(inherit: false);
         Assert.That(attr, Is.Not.Null);
 
         var template = attr!.Template;
         Assert.That(template, Does.EndWith("llmstxt/analytics"));
 
-        var version = typeof(LlmsAnalyticsManagementApiController)
+        var version = typeof(AnalyticsManagementApiController)
             .GetCustomAttribute<ApiVersionAttribute>(inherit: false);
         Assert.That(version, Is.Not.Null, "ApiVersion attribute must be present");
         Assert.That(version!.Versions.Single().ToString(), Is.EqualTo("1.0"));
@@ -557,7 +557,7 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void Controller_IsSealed_PreventsAdopterAuthSurfaceSubclassing()
     {
-        Assert.That(typeof(LlmsAnalyticsManagementApiController).IsSealed, Is.True,
+        Assert.That(typeof(AnalyticsManagementApiController).IsSealed, Is.True,
             "AC1 + AC11 — sealed prevents adopter subclasses bypassing the [Authorize(SectionAccessSettings)] gate via covariant return / hidden methods");
     }
 
@@ -567,7 +567,7 @@ public class LlmsAnalyticsManagementApiControllerTests
         // AC1 — every action is GET (read-only contract). Surface check;
         // changing this in a future story (e.g. POST /export) requires a
         // deliberate test update + spec amendment.
-        var actionMethods = typeof(LlmsAnalyticsManagementApiController)
+        var actionMethods = typeof(AnalyticsManagementApiController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => !m.IsSpecialName && m.ReturnType == typeof(IActionResult))
             .ToArray();
@@ -603,15 +603,15 @@ public class LlmsAnalyticsManagementApiControllerTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(LlmsAnalyticsManagementApiController.TryParseUtc("2026-05-04T00:00:00Z", out var z), Is.True);
+            Assert.That(AnalyticsManagementApiController.TryParseUtc("2026-05-04T00:00:00Z", out var z), Is.True);
             Assert.That(z.Kind, Is.EqualTo(DateTimeKind.Utc));
-            Assert.That(LlmsAnalyticsManagementApiController.TryParseUtc("2026-05-04T00:00:00+00:00", out _), Is.True);
-            Assert.That(LlmsAnalyticsManagementApiController.TryParseUtc("2026-05-04T03:00:00+03:00", out var offset), Is.True);
+            Assert.That(AnalyticsManagementApiController.TryParseUtc("2026-05-04T00:00:00+00:00", out _), Is.True);
+            Assert.That(AnalyticsManagementApiController.TryParseUtc("2026-05-04T03:00:00+03:00", out var offset), Is.True);
             Assert.That(offset.Kind, Is.EqualTo(DateTimeKind.Utc), "offset-bearing input adjusted to UTC");
-            Assert.That(LlmsAnalyticsManagementApiController.TryParseUtc("2026-05-04T00:00:00", out _), Is.False,
+            Assert.That(AnalyticsManagementApiController.TryParseUtc("2026-05-04T00:00:00", out _), Is.False,
                 "bare ISO without timezone designator rejected");
-            Assert.That(LlmsAnalyticsManagementApiController.TryParseUtc("not-a-date", out _), Is.False);
-            Assert.That(LlmsAnalyticsManagementApiController.TryParseUtc("", out _), Is.False);
+            Assert.That(AnalyticsManagementApiController.TryParseUtc("not-a-date", out _), Is.False);
+            Assert.That(AnalyticsManagementApiController.TryParseUtc("", out _), Is.False);
         });
     }
 }

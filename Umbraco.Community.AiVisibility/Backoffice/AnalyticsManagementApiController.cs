@@ -12,7 +12,9 @@ using Umbraco.Cms.Api.Management.Controllers;
 using Umbraco.Cms.Api.Management.Routing;
 using Umbraco.Cms.Web.Common.Authorization;
 
-namespace LlmsTxt.Umbraco.Controllers.Backoffice;
+using LlmsTxt.Umbraco;
+
+namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
 /// Story 5.2 — read-only Backoffice Management API for the AI Traffic
@@ -64,7 +66,7 @@ namespace LlmsTxt.Umbraco.Controllers.Backoffice;
 [VersionedApiBackOfficeRoute("llmstxt/analytics")]
 [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
 [MapToApi(Constants.ApiName)]
-public sealed class LlmsAnalyticsManagementApiController : ManagementApiControllerBase
+public sealed class AnalyticsManagementApiController : ManagementApiControllerBase
 {
     /// <summary>
     /// Per-request cap on the number of repeated <c>?class=</c> parameters
@@ -74,13 +76,13 @@ public sealed class LlmsAnalyticsManagementApiController : ManagementApiControll
     /// </summary>
     private static readonly int UserAgentClassNamesCount = Enum.GetNames<UserAgentClass>().Length;
 
-    private readonly ILogger<LlmsAnalyticsManagementApiController> _logger;
+    private readonly ILogger<AnalyticsManagementApiController> _logger;
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IAnalyticsReader _reader;
     private readonly TimeProvider _timeProvider;
 
-    public LlmsAnalyticsManagementApiController(
-        ILogger<LlmsAnalyticsManagementApiController> logger,
+    public AnalyticsManagementApiController(
+        ILogger<AnalyticsManagementApiController> logger,
         IOptionsMonitor<AiVisibilitySettings> settings,
         IAnalyticsReader reader,
         TimeProvider? timeProvider = null)

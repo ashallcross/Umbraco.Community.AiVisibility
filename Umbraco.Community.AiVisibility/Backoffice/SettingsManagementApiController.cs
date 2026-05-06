@@ -17,7 +17,9 @@ using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Web;
 using Umbraco.Cms.Web.Common.Authorization;
 
-namespace LlmsTxt.Umbraco.Controllers.Backoffice;
+using LlmsTxt.Umbraco;
+
+namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
 /// Story 3.2 — Backoffice Settings dashboard's Management API surface.
@@ -65,11 +67,11 @@ namespace LlmsTxt.Umbraco.Controllers.Backoffice;
 [VersionedApiBackOfficeRoute("llmstxt/settings")]
 [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
 [MapToApi(Constants.ApiName)]
-public sealed class LlmsSettingsManagementApiController : ManagementApiControllerBase
+public sealed class SettingsManagementApiController : ManagementApiControllerBase
 {
     /// <summary>
     /// Server-side cap on <see cref="LlmsSettingsUpdateRequest.SiteSummary"/>.
-    /// Surfaced to the client via <see cref="LlmsSettingsViewModel.SummaryMaxChars"/>
+    /// Surfaced to the client via <see cref="SettingsViewModel.SummaryMaxChars"/>
     /// so the form counter reads from one source of truth (no client/server drift).
     /// Matches the resolver's <c>SiteSummaryMaxChars</c> truncation cap at
     /// <see cref="DefaultSettingsResolver"/>.
@@ -121,16 +123,16 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
     private readonly IUmbracoContextAccessor _umbracoContextAccessor;
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly IPublishedUrlProvider _publishedUrlProvider;
-    private readonly ILogger<LlmsSettingsManagementApiController> _logger;
+    private readonly ILogger<SettingsManagementApiController> _logger;
 
-    public LlmsSettingsManagementApiController(
+    public SettingsManagementApiController(
         ISettingsResolver resolver,
         IContentService contentService,
         IContentTypeService contentTypeService,
         IUmbracoContextAccessor umbracoContextAccessor,
         IDocumentNavigationQueryService navigation,
         IPublishedUrlProvider publishedUrlProvider,
-        ILogger<LlmsSettingsManagementApiController> logger)
+        ILogger<SettingsManagementApiController> logger)
     {
         _resolver = resolver;
         _contentService = contentService;
@@ -148,7 +150,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
     /// appsettings-only fallback (see <see cref="ResolveSafelyAsync"/>).
     /// </summary>
     [HttpGet("")]
-    [ProducesResponseType<LlmsSettingsViewModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SettingsViewModel>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAsync(CancellationToken cancellationToken)
     {
         var (host, culture) = ReadHostAndCulture();
@@ -166,7 +168,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
     /// </summary>
     [HttpPut("")]
     [Consumes("application/json")]
-    [ProducesResponseType<LlmsSettingsViewModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SettingsViewModel>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public Task<IActionResult> PutAsync(
         [FromBody] LlmsSettingsUpdateRequest? request,
@@ -224,7 +226,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
         // ContentCacheRefresherNotification, so the resolver may still see
         // pre-edit values on this thread. Building from the just-saved values
         // avoids a stale-cache flicker in the dashboard's _initialFormState.
-        return Task.FromResult<IActionResult>(Ok(new LlmsSettingsViewModel(
+        return Task.FromResult<IActionResult>(Ok(new SettingsViewModel(
             SiteName: sanitised.SiteName,
             SiteSummary: sanitised.SiteSummary,
             ExcludedDoctypeAliases: sanitised.ExcludedDoctypeAliases
@@ -428,7 +430,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
         }
     }
 
-    private LlmsSettingsViewModel BuildViewModel(ResolvedLlmsSettings resolved, Guid? settingsNodeKey)
+    private SettingsViewModel BuildViewModel(ResolvedLlmsSettings resolved, Guid? settingsNodeKey)
     {
         var aliases = (resolved.ExcludedDoctypeAliases ?? Array.Empty<string>())
             .Where(a => !string.IsNullOrWhiteSpace(a))
@@ -436,7 +438,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
             .OrderBy(a => a, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new LlmsSettingsViewModel(
+        return new SettingsViewModel(
             SiteName: resolved.SiteName,
             SiteSummary: resolved.SiteSummary,
             ExcludedDoctypeAliases: aliases,

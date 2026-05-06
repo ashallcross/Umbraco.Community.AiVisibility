@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Controllers.Backoffice;
+using Umbraco.Community.AiVisibility.Backoffice;
 using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -9,7 +9,7 @@ namespace LlmsTxt.Umbraco.Tests.Composers;
 
 /// <summary>
 /// Story 5.2 AC12 — DI lifetime correctness gate for
-/// <see cref="LlmsAnalyticsManagementApiController"/>. Mirrors Story 3.2's
+/// <see cref="AnalyticsManagementApiController"/>. Mirrors Story 3.2's
 /// <c>LlmsSettingsApiControllerCompositionTests</c> stub-driven shape per
 /// project-context.md § Testing Rules — the canonical gate ratified at the
 /// Epic 4 → 5 reconciliation gate (architecture.md:393).
@@ -37,7 +37,7 @@ public class LlmsAnalyticsApiControllerCompositionTests
         services.AddSingleton(TimeProvider.System);
         services.AddLogging();
 
-        services.AddTransient<LlmsAnalyticsManagementApiController>();
+        services.AddTransient<AnalyticsManagementApiController>();
 
         Assert.DoesNotThrow(() =>
         {
@@ -47,7 +47,7 @@ public class LlmsAnalyticsApiControllerCompositionTests
                 ValidateOnBuild = true,
             });
             using var scope = provider.CreateScope();
-            var controller = scope.ServiceProvider.GetRequiredService<LlmsAnalyticsManagementApiController>();
+            var controller = scope.ServiceProvider.GetRequiredService<AnalyticsManagementApiController>();
             Assert.That(controller, Is.Not.Null);
         }, "ValidateOnBuild + ValidateScopes must succeed — Transient controller with all-Singleton deps is captive-free");
     }

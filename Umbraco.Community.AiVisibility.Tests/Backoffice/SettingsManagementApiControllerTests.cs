@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Controllers.Backoffice;
+using Umbraco.Community.AiVisibility.Backoffice;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,7 +14,7 @@ using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Services.OperationStatus;
 using Umbraco.Cms.Core.Web;
 
-namespace LlmsTxt.Umbraco.Tests.Controllers.Backoffice;
+namespace Umbraco.Community.AiVisibility.Tests.Backoffice;
 
 [TestFixture]
 public class LlmsSettingsManagementApiControllerTests
@@ -46,7 +46,7 @@ public class LlmsSettingsManagementApiControllerTests
 
         var ok = result as OkObjectResult;
         Assert.That(ok, Is.Not.Null, "expected 200 OkObjectResult");
-        var view = ok!.Value as LlmsSettingsViewModel;
+        var view = ok!.Value as SettingsViewModel;
         Assert.That(view, Is.Not.Null);
         Assert.Multiple(() =>
         {
@@ -74,7 +74,7 @@ public class LlmsSettingsManagementApiControllerTests
 
         var result = await fixture.Controller.GetAsync(CancellationToken.None);
 
-        var view = ((OkObjectResult)result).Value as LlmsSettingsViewModel;
+        var view = ((OkObjectResult)result).Value as SettingsViewModel;
         Assert.That(view, Is.Not.Null);
         Assert.Multiple(() =>
         {
@@ -99,7 +99,7 @@ public class LlmsSettingsManagementApiControllerTests
         var result = await fixture.Controller.GetAsync(CancellationToken.None);
 
         Assert.That(result, Is.InstanceOf<OkObjectResult>(), "throw must NOT 500");
-        var view = ((OkObjectResult)result).Value as LlmsSettingsViewModel;
+        var view = ((OkObjectResult)result).Value as SettingsViewModel;
         Assert.Multiple(() =>
         {
             Assert.That(view!.SiteName, Is.Null);
@@ -587,7 +587,7 @@ public class LlmsSettingsManagementApiControllerTests
         // Relaxed from "exactly one" to "at least one with the right policy"
         // so a future framework upgrade adding a parallel attribute (e.g. via
         // source generators) doesn't fail this test for benign reasons.
-        var attrs = typeof(LlmsSettingsManagementApiController)
+        var attrs = typeof(SettingsManagementApiController)
             .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), inherit: false)
             .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()
             .ToArray();
@@ -608,7 +608,7 @@ public class LlmsSettingsManagementApiControllerTests
         // controller carries the SectionAccessSettings policy — Umbraco's
         // Management API auth pipeline maps that policy's challenge semantics
         // to an HTTP 401 when no bearer token is presented.
-        var attrs = typeof(LlmsSettingsManagementApiController)
+        var attrs = typeof(SettingsManagementApiController)
             .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), inherit: false)
             .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>();
 
@@ -627,7 +627,7 @@ public class LlmsSettingsManagementApiControllerTests
         // guarantee is the same SectionAccessSettings policy attribute —
         // Umbraco's auth pipeline maps a policy-fail-after-auth-success to
         // HTTP 403 (forbid semantics), distinct from the 401 challenge path.
-        var attrs = typeof(LlmsSettingsManagementApiController)
+        var attrs = typeof(SettingsManagementApiController)
             .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), inherit: false)
             .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>();
 
@@ -642,7 +642,7 @@ public class LlmsSettingsManagementApiControllerTests
         // Spike 0.B locked decision #5 — route prefix MUST be "llmstxt/settings".
         // VersionedApiBackOfficeRoute may also be inherited; assert the OWN-declared
         // attribute matches the expected template.
-        var routeAttr = typeof(LlmsSettingsManagementApiController)
+        var routeAttr = typeof(SettingsManagementApiController)
             .GetCustomAttributes(typeof(global::Umbraco.Cms.Api.Management.Routing.VersionedApiBackOfficeRouteAttribute), inherit: false)
             .Cast<global::Umbraco.Cms.Api.Management.Routing.VersionedApiBackOfficeRouteAttribute>()
             .Single();
@@ -656,7 +656,7 @@ public class LlmsSettingsManagementApiControllerTests
     [Test]
     public void Controller_HasMapToApiAttribute_PointingAtConstantsApiName()
     {
-        var attr = typeof(LlmsSettingsManagementApiController)
+        var attr = typeof(SettingsManagementApiController)
             .GetCustomAttributes(typeof(global::Umbraco.Cms.Api.Common.Attributes.MapToApiAttribute), inherit: true)
             .Cast<global::Umbraco.Cms.Api.Common.Attributes.MapToApiAttribute>()
             .Single();
@@ -744,7 +744,7 @@ public class LlmsSettingsManagementApiControllerTests
         public IPublishedContentCache PublishedCache { get; } = Substitute.For<IPublishedContentCache>();
         public IUmbracoContext UmbracoContext { get; } = Substitute.For<IUmbracoContext>();
 
-        public LlmsSettingsManagementApiController Controller { get; }
+        public SettingsManagementApiController Controller { get; }
 
         public ControllerFixture()
         {
@@ -770,14 +770,14 @@ public class LlmsSettingsManagementApiControllerTests
                 });
             ContentTypeService.GetAll().Returns(Array.Empty<IContentType>());
 
-            Controller = new LlmsSettingsManagementApiController(
+            Controller = new SettingsManagementApiController(
                 Resolver,
                 ContentService,
                 ContentTypeService,
                 UmbracoContextAccessor,
                 Navigation,
                 PublishedUrlProvider,
-                NullLogger<LlmsSettingsManagementApiController>.Instance);
+                NullLogger<SettingsManagementApiController>.Instance);
             Controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext(),

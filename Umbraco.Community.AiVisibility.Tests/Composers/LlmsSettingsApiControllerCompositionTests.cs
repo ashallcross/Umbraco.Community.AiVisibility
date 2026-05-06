@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Controllers.Backoffice;
+using Umbraco.Community.AiVisibility.Backoffice;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -13,7 +13,7 @@ namespace LlmsTxt.Umbraco.Tests.Composers;
 
 /// <summary>
 /// Story 3.2 AC10 — DI lifetime correctness gate for
-/// <see cref="LlmsSettingsManagementApiController"/>. Mirrors Story 2.2's
+/// <see cref="SettingsManagementApiController"/>. Mirrors Story 2.2's
 /// <c>Compose_StartupValidation_LlmsFullBuilder_NoCaptiveDependency</c> +
 /// Story 3.1's <c>Compose_StartupValidation_LlmsSettingsResolver_NoCaptiveDependency</c>
 /// — the canonical DI gate per project-context.md § Testing Rules.
@@ -49,7 +49,7 @@ public class LlmsSettingsApiControllerCompositionTests
 
         // The controller is the unit under validation — Transient (ASP.NET
         // Core's default for controllers).
-        services.AddTransient<LlmsSettingsManagementApiController>();
+        services.AddTransient<SettingsManagementApiController>();
 
         Assert.DoesNotThrow(() =>
         {
@@ -59,7 +59,7 @@ public class LlmsSettingsApiControllerCompositionTests
                 ValidateOnBuild = true,
             });
             using var scope = provider.CreateScope();
-            var controller = scope.ServiceProvider.GetRequiredService<LlmsSettingsManagementApiController>();
+            var controller = scope.ServiceProvider.GetRequiredService<SettingsManagementApiController>();
             Assert.That(controller, Is.Not.Null);
         }, "ValidateOnBuild + ValidateScopes must succeed — Transient controller with Scoped/Singleton deps is captive-free");
     }

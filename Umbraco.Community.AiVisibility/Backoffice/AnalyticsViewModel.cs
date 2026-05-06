@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Controllers.Backoffice;
+namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
 /// Story 5.2 — one row in the AI Traffic dashboard's table

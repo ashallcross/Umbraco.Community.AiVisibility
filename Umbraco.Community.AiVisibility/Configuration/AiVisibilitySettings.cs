@@ -243,7 +243,7 @@ public sealed class AiVisibilitySettings
 
     /// <summary>
     /// Story 5.2 — server-side caps + defaults for the AI Traffic Backoffice
-    /// dashboard's <c>LlmsAnalyticsManagementApiController</c> query surface.
+    /// dashboard's <c>AnalyticsManagementApiController</c> query surface.
     /// </summary>
     public AnalyticsSettings Analytics { get; init; } = new();
 }
@@ -341,7 +341,7 @@ public sealed class LogRetentionSettings
 
 /// <summary>
 /// Story 5.2 — configuration block for the AI Traffic Backoffice dashboard's
-/// Management API (<c>LlmsAnalyticsManagementApiController</c>). Bound from
+/// Management API (<c>AnalyticsManagementApiController</c>). Bound from
 /// <c>LlmsTxt:Analytics</c>. All values are CEILINGS not floors per
 /// project-context.md § Testing Rules — adopters narrow them to suit their
 /// host DB sizing.

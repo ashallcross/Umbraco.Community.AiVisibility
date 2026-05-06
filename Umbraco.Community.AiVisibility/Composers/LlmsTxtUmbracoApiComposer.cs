@@ -68,8 +68,8 @@ namespace LlmsTxt.Umbraco.Composers
         {
             private static readonly Type[] AllowedControllers = new[]
             {
-                typeof(LlmsTxt.Umbraco.Controllers.Backoffice.LlmsSettingsManagementApiController),
-                typeof(LlmsTxt.Umbraco.Controllers.Backoffice.LlmsAnalyticsManagementApiController),
+                typeof(global::Umbraco.Community.AiVisibility.Backoffice.SettingsManagementApiController),
+                typeof(global::Umbraco.Community.AiVisibility.Backoffice.AnalyticsManagementApiController),
             };
 
             public CustomOperationHandler(IOptions<ApiVersioningOptions> apiVersioningOptions) : base(apiVersioningOptions)
