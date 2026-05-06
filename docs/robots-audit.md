@@ -16,8 +16,8 @@ LlmsTxt.Umbraco includes a Backoffice Health Check that audits your site's `/rob
 
 | Trigger | Source |
 |---|---|
-| Host startup | `StartupRobotsAuditRunner : IHostedService` — gated by `LlmsTxt:RobotsAuditOnStartup` (default `true`) and `IServerRoleAccessor.CurrentServerRole ∈ { SchedulingPublisher, Single }` (so multi-instance front-end servers don't all hammer their own origin at boot). |
-| Recurring refresh | `RobotsAuditRefreshJob : IDistributedBackgroundJob` — period is `LlmsTxt:RobotsAuditor:RefreshIntervalHours` (default 24h). Umbraco coordinates exactly-once execution across a load-balanced deployment via the host-DB lock. Set the period to `0` to disable. |
+| Host startup | `StartupRobotsAuditRunner : IHostedService` — gated by `AiVisibility:RobotsAuditOnStartup` (default `true`) and `IServerRoleAccessor.CurrentServerRole ∈ { SchedulingPublisher, Single }` (so multi-instance front-end servers don't all hammer their own origin at boot). |
+| Recurring refresh | `RobotsAuditRefreshJob : IDistributedBackgroundJob` — period is `AiVisibility:RobotsAuditor:RefreshIntervalHours` (default 24h). Umbraco coordinates exactly-once execution across a load-balanced deployment via the host-DB lock. Set the period to `0` to disable. |
 | On-demand | Open the Backoffice Health Check view; the cache miss path triggers a fresh audit if no cached result is available. |
 
 ## Bot categories
@@ -91,11 +91,11 @@ public interface IRobotsAuditor
 
 | Key | Default | Effect |
 |---|---|---|
-| `LlmsTxt:RobotsAuditOnStartup` | `true` | One-shot audit at host startup. Set `false` to skip; on-demand + recurring paths still work. |
-| `LlmsTxt:RobotsAuditor:RefreshIntervalHours` | `24` | Recurring refresh cadence via `IDistributedBackgroundJob`. Set `0` (or negative) to disable. |
-| `LlmsTxt:RobotsAuditor:FetchTimeoutSeconds` | `5` | Per-host `/robots.txt` fetch timeout. Distinct from the build-time MSBuild fetch timeout (also 5s, but configured separately in the csproj target). |
-| `LlmsTxt:RobotsAuditor:DevFetchPort` | `null` | **Dev/test only — DO NOT set in production.** When set, the auditor composes the audit URI with the supplied port instead of the scheme default (443/80). Useful when running the TestSite on Kestrel's dev port (e.g. `44314`) so the live audit can round-trip against the running site. Convention: live in `appsettings.Development.json` only. `null` (default) → use scheme default port — the production-correct behaviour. |
-| `LlmsTxt:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev/test only — DO NOT set in production.** When set, the recurring refresh job's `Period` uses this value (in seconds) instead of `RefreshIntervalHours`. Used by the architect-A5 two-instance shared-SQL-Server exactly-once gate (where 1-hour cycles would make the test prohibitively long). `null` (default) → use the hours knob. Values `<= 0` are treated as unset. |
+| `AiVisibility:RobotsAuditOnStartup` | `true` | One-shot audit at host startup. Set `false` to skip; on-demand + recurring paths still work. |
+| `AiVisibility:RobotsAuditor:RefreshIntervalHours` | `24` | Recurring refresh cadence via `IDistributedBackgroundJob`. Set `0` (or negative) to disable. |
+| `AiVisibility:RobotsAuditor:FetchTimeoutSeconds` | `5` | Per-host `/robots.txt` fetch timeout. Distinct from the build-time MSBuild fetch timeout (also 5s, but configured separately in the csproj target). |
+| `AiVisibility:RobotsAuditor:DevFetchPort` | `null` | **Dev/test only — DO NOT set in production.** When set, the auditor composes the audit URI with the supplied port instead of the scheme default (443/80). Useful when running the TestSite on Kestrel's dev port (e.g. `44314`) so the live audit can round-trip against the running site. Convention: live in `appsettings.Development.json` only. `null` (default) → use scheme default port — the production-correct behaviour. |
+| `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev/test only — DO NOT set in production.** When set, the recurring refresh job's `Period` uses this value (in seconds) instead of `RefreshIntervalHours`. Used by the architect-A5 two-instance shared-SQL-Server exactly-once gate (where 1-hour cycles would make the test prohibitively long). `null` (default) → use the hours knob. Values `<= 0` are treated as unset. |
 
 ## Caveats
 

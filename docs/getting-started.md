@@ -1,6 +1,6 @@
-# Getting started with LlmsTxt.Umbraco
+# Getting started with Umbraco.Community.AiVisibility
 
-LlmsTxt.Umbraco exposes Umbraco published content to AI crawlers and large-language-model search engines via per-page Markdown rendering, a `/llms.txt` index, and a `/llms-full.txt` bulk export.
+Umbraco.Community.AiVisibility exposes Umbraco published content to AI crawlers and large-language-model search engines via per-page Markdown rendering, a `/llms.txt` index, a `/llms-full.txt` bulk export, content negotiation, robots.txt audit, and an AI traffic Backoffice dashboard.
 
 This document covers what ships up to **v0.5 (Story 3.2)** — the per-page Markdown route, per-page caching with publish-driven invalidation, `Accept: text/markdown` content negotiation, the `/llms.txt` and `/llms-full.txt` manifests with hot-path protection (`If-None-Match` / 304 / single-flight) and optional hreflang variants, the Settings doctype + `ILlmsSettingsResolver` overlay + per-doctype/per-page exclusion, **and the Backoffice Settings dashboard with its Management API for editor-driven configuration**. The robots audit and AI traffic dashboard land in later stories.
 
@@ -37,8 +37,8 @@ Story 1.2 adds an in-memory cache layer over the per-page Markdown extraction.
 | What | Detail |
 |---|---|
 | **Where** | `IAppPolicyCache` via `AppCaches.RuntimeCache` — Umbraco's standard runtime cache. No bespoke layer, no Redis. |
-| **Cache key** | `llms:page:{nodeKey:N}:{host}:{culture}` — `nodeKey` is `IPublishedContent.Key` (Guid), host is the request host lowercased (or `_` if no ambient `HttpContext`), culture is BCP-47 lowercased (or `_` for invariant content). Host segment ensures multi-domain bindings on the same node never collide on a CDN fronting both hosts. |
-| **TTL** | Configured by `LlmsTxt:CachePolicySeconds`; default `60` seconds. Set to `0` to disable caching. |
+| **Cache key** | `aiv:page:{nodeKey:N}:{host}:{culture}` — `nodeKey` is `IPublishedContent.Key` (Guid), host is the request host lowercased (or `_` if no ambient `HttpContext`), culture is BCP-47 lowercased (or `_` for invariant content). Host segment ensures multi-domain bindings on the same node never collide on a CDN fronting both hosts. |
+| **TTL** | Configured by `AiVisibility:CachePolicySeconds`; default `60` seconds. Set to `0` to disable caching. |
 | **Invalidation** | `INotificationAsyncHandler<ContentCacheRefresherNotification>` keyed off Umbraco's distributed cache refresher — fires on every load-balanced instance independently when content publishes, moves, or unpublishes. The handler walks branch descendants via `IDocumentNavigationQueryService` for branch-publish events. |
 | **Per-instance** | The cache and its node-to-key index are per-process in-memory. Cross-instance invalidation works via the broadcast notification — no Redis or shared state required. |
 
@@ -105,7 +105,7 @@ Story 1.4 documents the two layered DI seams adopters can override. Pick the **l
 
 ### `IContentRegionSelector` — region-only override
 
-Use this when your templates have a non-standard "main content" boundary that the package's default chain — `[data-llms-content]` → `<main>` → `<article>` → `LlmsTxt:MainContentSelectors` (configurable list) — does not catch. The default extractor still runs AngleSharp parse, strip-inside-region, URL absolutification, ReverseMarkdown convert, and YAML frontmatter prepend; only the region selection is yours.
+Use this when your templates have a non-standard "main content" boundary that the package's default chain — `[data-llms-content]` → `<main>` → `<article>` → `AiVisibility:MainContentSelectors` (configurable list) — does not catch. The default extractor still runs AngleSharp parse, strip-inside-region, URL absolutification, ReverseMarkdown convert, and YAML frontmatter prepend; only the region selection is yours.
 
 ```csharp
 using Umbraco.Cms.Core.Composing;
@@ -207,7 +207,7 @@ Per RFC 7232 § 6, `If-None-Match` wins over `If-Modified-Since` — the `/llms.
 
 ## Hreflang variant suffixes (Story 2.3)
 
-Set `LlmsTxt:Hreflang:Enabled: true` in `appsettings.json` to add sibling-culture variant suffixes to `/llms.txt` links:
+Set `AiVisibility:Hreflang:Enabled: true` in `appsettings.json` to add sibling-culture variant suffixes to `/llms.txt` links:
 
 ```jsonc
 {
@@ -250,19 +250,19 @@ The package resolves effective settings in this order:
 | Layer | Source | Wins over |
 |---|---|---|
 | Settings doctype | `LlmsTxt Settings` content node properties | appsettings + in-code defaults |
-| `appsettings.json` | `LlmsTxt:` section | in-code defaults |
+| `appsettings.json` | `AiVisibility:` section | in-code defaults |
 | In-code defaults | `LlmsTxtSettings` initialiser | — |
 
-**Per-field**, not all-or-nothing — an empty `siteName` in the doctype falls back to `appsettings.json`'s `LlmsTxt:SiteName` (and then the in-code default). Same for `siteSummary`.
+**Per-field**, not all-or-nothing — an empty `siteName` in the doctype falls back to `appsettings.json`'s `AiVisibility:SiteName` (and then the in-code default). Same for `siteSummary`.
 
-The `excludedDoctypeAliases` field is the **union** of `appsettings.json`'s `LlmsTxt:ExcludedDoctypeAliases` and the doctype's value — adopters' appsettings entries are never discarded by an editor edit.
+The `excludedDoctypeAliases` field is the **union** of `appsettings.json`'s `AiVisibility:ExcludedDoctypeAliases` and the doctype's value — adopters' appsettings entries are never discarded by an editor edit.
 
 ### Two-list distinction (don't confuse)
 
 | Field | Scope | Default |
 |---|---|---|
-| `LlmsTxt:ExcludedDoctypeAliases` (top-level) | All routes (`/llms.txt`, `/llms-full.txt`, `.md`) | `[]` |
-| `LlmsTxt:LlmsFullScope:ExcludedDocTypeAliases` (Story 2.2) | `/llms-full.txt` only — further narrowing | `["errorPage", "redirectPage"]` |
+| `AiVisibility:ExcludedDoctypeAliases` (top-level) | All routes (`/llms.txt`, `/llms-full.txt`, `.md`) | `[]` |
+| `AiVisibility:LlmsFullScope:ExcludedDocTypeAliases` (Story 2.2) | `/llms-full.txt` only — further narrowing | `["errorPage", "redirectPage"]` |
 
 The `/llms-full.txt` route applies BOTH filters cumulatively (logical AND-NOT). The `/llms.txt` and `.md` routes only apply the top-level list.
 
@@ -286,7 +286,7 @@ This stops the package from registering `LlmsTxtSettingsMigrationPlan` with Umbr
 
 ### Resolver behaviour at request time
 
-The resolver caches its overlay record at `llms:settings:{host}:{culture}` with TTL `LlmsTxt:SettingsResolverCachePolicySeconds` (default `300s`). Cache invalidation is broadcast-driven via Umbraco's distributed cache refresher — every bound hostname's settings entry is dropped on any `ContentCacheRefresherNotification`, just like the manifest caches. If the resolver throws (e.g. an adopter override misbehaves), the controllers fail-open: log a `Warning` and fall back to the `appsettings.json` snapshot (no doctype overlay, no exclusion list from the doctype). Same shape as Story 2.3's hreflang resolver-throw graceful degradation.
+The resolver caches its overlay record at `aiv:settings:{host}:{culture}` with TTL `AiVisibility:SettingsResolverCachePolicySeconds` (default `300s`). Cache invalidation is broadcast-driven via Umbraco's distributed cache refresher — every bound hostname's settings entry is dropped on any `ContentCacheRefresherNotification`, just like the manifest caches. If the resolver throws (e.g. an adopter override misbehaves), the controllers fail-open: log a `Warning` and fall back to the `appsettings.json` snapshot (no doctype overlay, no exclusion list from the doctype). Same shape as Story 2.3's hreflang resolver-throw graceful degradation.
 
 ### Public extension point
 
@@ -308,7 +308,7 @@ public sealed class MyComposer : IComposer
 
 ## Zero-config defaults (Story 3.3)
 
-From v0.6, every route the package ships works zero-config — no `LlmsTxt:` section in `appsettings.json`, no Settings doctype edits required. The in-code defaults in [`LlmsTxtSettings`](../LlmsTxt.Umbraco/Configuration/LlmsTxtSettings.cs) produce useful output on a typical Umbraco site as soon as `dotnet add package LlmsTxt.Umbraco` finishes. The package never ships an `appsettings.json` snippet — adopters who want to override the defaults add a `LlmsTxt:` section to their host's own `appsettings.json` (or its environment-specific overlay).
+From v0.6, every route the package ships works zero-config — no `AiVisibility:` section in `appsettings.json`, no Settings doctype edits required. The in-code defaults in [`LlmsTxtSettings`](../LlmsTxt.Umbraco/Configuration/LlmsTxtSettings.cs) produce useful output on a typical Umbraco site as soon as `dotnet add package Umbraco.Community.AiVisibility` finishes. The package never ships an `appsettings.json` snippet — adopters who want to override the defaults add a `AiVisibility:` section to their host's own `appsettings.json` (or its environment-specific overlay).
 
 | Route | Zero-config behaviour |
 |---|---|
@@ -320,19 +320,19 @@ From v0.6, every route the package ships works zero-config — no `LlmsTxt:` sec
 
 | Setting | Default | Source |
 |---|---|---|
-| `LlmsTxt:MaxLlmsFullSizeKb` | `5120` | [`LlmsTxtSettings.cs`](../LlmsTxt.Umbraco/Configuration/LlmsTxtSettings.cs) |
-| `LlmsTxt:CachePolicySeconds` (per-page) | `60` | same |
-| `LlmsTxt:LlmsTxtBuilder:CachePolicySeconds` | `300` | same |
-| `LlmsTxt:LlmsTxtBuilder:PageSummaryPropertyAlias` | `"metaDescription"` | same |
-| `LlmsTxt:LlmsFullBuilder:Order` | `TreeOrder` | same |
-| `LlmsTxt:LlmsFullBuilder:CachePolicySeconds` | `300` | same |
-| `LlmsTxt:LlmsFullScope:RootContentTypeAlias` | `null` (whole site) | same |
-| `LlmsTxt:LlmsFullScope:IncludedDocTypeAliases` | `[]` | same |
-| `LlmsTxt:LlmsFullScope:ExcludedDocTypeAliases` | `["errorPage", "redirectPage"]` | same |
-| `LlmsTxt:ExcludedDoctypeAliases` (top-level) | `[]` | same |
-| `LlmsTxt:Hreflang:Enabled` | `false` | same |
-| `LlmsTxt:SettingsResolverCachePolicySeconds` | `300` | same |
-| `LlmsTxt:Migrations:SkipSettingsDoctype` | `false` | same |
+| `AiVisibility:MaxLlmsFullSizeKb` | `5120` | [`LlmsTxtSettings.cs`](../LlmsTxt.Umbraco/Configuration/LlmsTxtSettings.cs) |
+| `AiVisibility:CachePolicySeconds` (per-page) | `60` | same |
+| `AiVisibility:LlmsTxtBuilder:CachePolicySeconds` | `300` | same |
+| `AiVisibility:LlmsTxtBuilder:PageSummaryPropertyAlias` | `"metaDescription"` | same |
+| `AiVisibility:LlmsFullBuilder:Order` | `TreeOrder` | same |
+| `AiVisibility:LlmsFullBuilder:CachePolicySeconds` | `300` | same |
+| `AiVisibility:LlmsFullScope:RootContentTypeAlias` | `null` (whole site) | same |
+| `AiVisibility:LlmsFullScope:IncludedDocTypeAliases` | `[]` | same |
+| `AiVisibility:LlmsFullScope:ExcludedDocTypeAliases` | `["errorPage", "redirectPage"]` | same |
+| `AiVisibility:ExcludedDoctypeAliases` (top-level) | `[]` | same |
+| `AiVisibility:Hreflang:Enabled` | `false` | same |
+| `AiVisibility:SettingsResolverCachePolicySeconds` | `300` | same |
+| `AiVisibility:Migrations:SkipSettingsDoctype` | `false` | same |
 
 A drift-detection fixture ([`LlmsTxtSettingsDefaultsTests`](../LlmsTxt.Umbraco.Tests/Configuration/LlmsTxtSettingsDefaultsTests.cs)) pins every value above; bumping a default in source without updating the fixture fails CI.
 
@@ -341,7 +341,7 @@ A drift-detection fixture ([`LlmsTxtSettingsDefaultsTests`](../LlmsTxt.Umbraco.T
 The H1 emitted on `/llms.txt` resolves through the following layers, returning the first non-whitespace value found:
 
 1. Settings doctype `siteName` field (editor-set, via the standard Umbraco content tree or the Backoffice Settings dashboard below)
-2. `appsettings.json` `LlmsTxt:SiteName` value (developer-set)
+2. `appsettings.json` `AiVisibility:SiteName` value (developer-set)
 3. The matched root `IPublishedContent.Name` (e.g. `"Home"` on a Clean.Core install)
 4. The literal sentinel `"Site"` (used only when no root content node resolves at all — greenfield install before any content is created)
 
@@ -357,7 +357,7 @@ The dashboard surfaces exactly the same overlay rules `ILlmsSettingsResolver` en
 
 **Bearer-token auth.** The dashboard's Management API calls use `UMB_AUTH_CONTEXT.getOpenApiConfiguration()` to obtain a bearer token per call (cookie-only fetches against `/umbraco/management/api/...` return HTTP 401 — the Management API enforces OpenIddict bearer auth, not cookies). Adopters scripting the Management API for CI-driven config (e.g. setting site name from a deploy pipeline) must follow the same pattern.
 
-**Save flow.** Save writes through `IContentService.Save` + `IContentService.Publish`. Umbraco's standard `ContentCacheRefresherNotification` fires; Story 3.1's handler clears `llms:settings:` so the next `/llms.txt` request sees the new values without manual cache-bust. The dashboard round-trips the published values back into the form.
+**Save flow.** Save writes through `IContentService.Save` + `IContentService.Publish`. Umbraco's standard `ContentCacheRefresherNotification` fires; Story 3.1's handler clears `aiv:settings:` so the next `/llms.txt` request sees the new values without manual cache-bust. The dashboard round-trips the published values back into the form.
 
 **Validation.** `siteSummary` is capped at 500 characters (counter shown beneath the textarea); `excludedDoctypeAliases` cannot contain whitespace-only entries or case-insensitive duplicates. The dashboard validates client-side; the server re-validates as defence-in-depth and returns `400 ProblemDetails` for direct API callers that bypass the form.
 
@@ -370,13 +370,13 @@ The dashboard surfaces exactly the same overlay rules `ILlmsSettingsResolver` en
 | `GET` | `/umbraco/management/api/v1/llmstxt/settings/doctypes` | Lists publish-eligible doctypes for the multi-select source |
 | `GET` | `/umbraco/management/api/v1/llmstxt/settings/excluded-pages?skip=0&take=100` | Read-only page list (clamped to take ≤ 200) |
 
-Operations land in the existing `/umbraco/swagger/llmstxtumbraco/swagger.json` Swagger doc.
+Operations land in the existing `/umbraco/swagger/umbracocommunityaivisibility/swagger.json` Swagger doc.
 
 ### First-run onboarding hint (Story 3.3)
 
 On first visit to the LlmsTxt Settings dashboard, an info-level notice appears at the top reminding adopters that the package is already producing default output ("LlmsTxt is now active and producing default output…"). Click `Dismiss` to hide it for your user account; the notice is **per-user**, keyed by your Backoffice user `unique` GUID, and survives browser refreshes and re-logins.
 
-Storage backing: `localStorage` keyed by `llms.onboarding.dismissed.v1.{userUnique}`. The `v1.` segment lets a future onboarding scheme (Story 5.2's auto-hide tying into AI traffic logs) ship a parallel key without ambiguity over which version dismissed a given user. Adopters running storage-disabled browser modes (incognito with site-data blocking) will see the notice each session — the dismiss handler degrades gracefully (no exception, no broken UI) but the flag does not persist across sessions in that mode.
+Storage backing: `localStorage` keyed by `aivisibility.onboarding.dismissed.v1.{userUnique}`. The `v1.` segment lets a future onboarding scheme (Story 5.2's auto-hide tying into AI traffic logs) ship a parallel key without ambiguity over which version dismissed a given user. Adopters running storage-disabled browser modes (incognito with site-data blocking) will see the notice each session — the dismiss handler degrades gracefully (no exception, no broken UI) but the flag does not persist across sessions in that mode.
 
 The notice does **not** auto-hide after the first AI-traffic-dashboard request — that auto-hide is deferred to Story 5.2 (AI traffic Backoffice dashboard, Epic 5). Until that lands, the dismiss button is the only signal.
 
@@ -399,11 +399,11 @@ From v0.8, the Backoffice **Settings → Health Check → LLMs** group surfaces 
 
 | Setting | Default | Effect |
 |---|---|---|
-| `LlmsTxt:RobotsAuditOnStartup` | `true` | Run a one-shot audit at host startup (per scheduling-publisher / single-instance role only — multi-front-end installs don't all hammer their own origin). |
-| `LlmsTxt:RobotsAuditor:RefreshIntervalHours` | `24` | Recurring refresh cadence via Umbraco's `IDistributedBackgroundJob` (exactly-once across a load-balanced deployment). Set to `0` to disable the recurring refresh; the on-demand Health Check view still works. |
-| `LlmsTxt:RobotsAuditor:FetchTimeoutSeconds` | `5` | Per-host `/robots.txt` fetch timeout (seconds). Clamped to `[1, 60]` at consumption. |
-| `LlmsTxt:RobotsAuditor:DevFetchPort` | `null` | **Dev-only escape hatch.** Overrides the scheme default port for the audit fetch (e.g. `44314` for a TestSite on Kestrel). **DO NOT set in production** — production deploys serve `/robots.txt` on 443/80. Live in `appsettings.Development.json` only. |
-| `LlmsTxt:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev-only escape hatch.** Forces seconds-precision refresh cycles instead of `RefreshIntervalHours`. Used by the architect-A5 two-instance shared-SQL-Server exactly-once gate. **DO NOT set in production** — would hammer adopter origins. Live in `appsettings.Development.json` only. |
+| `AiVisibility:RobotsAuditOnStartup` | `true` | Run a one-shot audit at host startup (per scheduling-publisher / single-instance role only — multi-front-end installs don't all hammer their own origin). |
+| `AiVisibility:RobotsAuditor:RefreshIntervalHours` | `24` | Recurring refresh cadence via Umbraco's `IDistributedBackgroundJob` (exactly-once across a load-balanced deployment). Set to `0` to disable the recurring refresh; the on-demand Health Check view still works. |
+| `AiVisibility:RobotsAuditor:FetchTimeoutSeconds` | `5` | Per-host `/robots.txt` fetch timeout (seconds). Clamped to `[1, 60]` at consumption. |
+| `AiVisibility:RobotsAuditor:DevFetchPort` | `null` | **Dev-only escape hatch.** Overrides the scheme default port for the audit fetch (e.g. `44314` for a TestSite on Kestrel). **DO NOT set in production** — production deploys serve `/robots.txt` on 443/80. Live in `appsettings.Development.json` only. |
+| `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev-only escape hatch.** Forces seconds-precision refresh cycles instead of `RefreshIntervalHours`. Used by the architect-A5 two-instance shared-SQL-Server exactly-once gate. **DO NOT set in production** — would hammer adopter origins. Live in `appsettings.Development.json` only. |
 
 The AI-bot list is **synced from upstream at build time** with SHA pinning — the build hard-fails on a SHA mismatch (deliberate; protects against silent feed tampering). Offline / disconnected builds fall back to the committed snapshot at `LlmsTxt.Umbraco/HealthChecks/AiBotList.fallback.txt` with a warning. See [`docs/maintenance.md`](maintenance.md) for the SHA-refresh process.
 
@@ -416,7 +416,7 @@ Story 4.2 is **non-breaking** for adopters. The robots audit ships as net-new su
 - New `LlmsTxt.Umbraco/HealthChecks/` and `LlmsTxt.Umbraco/Background/` namespaces.
 - New build-time MSBuild target `SyncAiBotList` — embeds an AI-bot list resource into the assembly. Online + offline build paths both work; see `docs/maintenance.md`.
 - New `IRobotsAuditor` extension point. Adopters wanting custom audit semantics override via `services.AddSingleton<IRobotsAuditor, MyImpl>()`.
-- New `LlmsTxt:RobotsAuditOnStartup` + `LlmsTxt:RobotsAuditor:*` configuration keys.
+- New `AiVisibility:RobotsAuditOnStartup` + `AiVisibility:RobotsAuditor:*` configuration keys.
 
 ## Upgrading from v0.6 to v0.7
 
@@ -424,9 +424,9 @@ Story 4.1 is a **breaking** v0.7 release for adopters who have customised the Ma
 
 - **`MarkdownController` constructor signature changed.** Two new dependencies (`ILlmsExclusionEvaluator`, `IOptionsMonitor<LlmsTxtSettings>`) and the private `IsExcludedAsync`/`TryReadExcludeBool` helpers were removed in favour of the shared `ILlmsExclusionEvaluator` seam. Adopters who subclass or service-locate `MarkdownController` directly will fail to compile until they update; the controller is intended as the package's own surface, not an extension seam, so the breaking change is loud-by-design.
 - **`IMarkdownResponseWriter.WriteAsync` gained a 4th parameter `string? contentSignal`.** A 3-arg overload remains available as `[Obsolete]` (it forwards to the 4-arg version with `contentSignal: null`) so adopters who *call* the interface keep working with a deprecation warning. Adopters who *implement* the interface must add the 4-arg overload and will lose Content-Signal emission until they wire it through.
-- **New `Link: rel="alternate"` HTTP header on every opted-in HTML response.** Add `LlmsTxt:DiscoverabilityHeader:Enabled: false` to suppress globally. See [`data-attributes.md`](data-attributes.md#http-link-discoverability-header) for the full gating contract.
+- **New `Link: rel="alternate"` HTTP header on every opted-in HTML response.** Add `AiVisibility:DiscoverabilityHeader:Enabled: false` to suppress globally. See [`data-attributes.md`](data-attributes.md#http-link-discoverability-header) for the full gating contract.
 - **New `<llms-link />` and `<llms-hint />` Razor TagHelpers.** Opt-in via `_ViewImports.cshtml` — see [`data-attributes.md`](data-attributes.md#razor-taghelpers--llms-link--and-llms-hint-).
-- **New `Content-Signal` configurable Markdown response header.** Off by default; configure under `LlmsTxt:ContentSignal:*`.
+- **New `Content-Signal` configurable Markdown response header.** Off by default; configure under `AiVisibility:ContentSignal:*`.
 - **New `ILlmsExclusionEvaluator` public seam.** The default `DefaultLlmsExclusionEvaluator` is `public sealed` — adopters can wrap-and-delegate via the DI Decorator pattern. See [`data-attributes.md` § Customising the exclusion contract](data-attributes.md#customising-the-exclusion-contract).
 - **New RCL static asset at `/llms-txt-umbraco.css`.** Optional; needed only if you use `<llms-hint />` and don't already ship a `.visually-hidden` (or equivalent) class.
 
@@ -434,24 +434,24 @@ Single-route adopters (only consuming `/llms.txt`, `/llms-full.txt`, or `.md` UR
 
 ## Notifications + request log + UA classification (Story 5.1)
 
-From v0.9, every successful Markdown / `/llms.txt` / `/llms-full.txt` response publishes a sealed Umbraco notification (fire-and-forget) and the package's default writer persists a non-PII row to `llmsTxtRequestLog` in your host DB. **Subscribe in your composer to consume the events; override `ILlmsRequestLog` to redirect to App Insights / Serilog / a custom sink.** See [`docs/extension-points.md`](extension-points.md) for the full contract.
+From v0.9, every successful Markdown / `/llms.txt` / `/llms-full.txt` response publishes a sealed Umbraco notification (fire-and-forget) and the package's default writer persists a non-PII row to `aiVisibilityRequestLog` in your host DB. **Subscribe in your composer to consume the events; override `ILlmsRequestLog` to redirect to App Insights / Serilog / a custom sink.** See [`docs/extension-points.md`](extension-points.md) for the full contract.
 
 ### Configuration keys reference (Story 5.1 additions)
 
 | Key | Default | Effect |
 |---|---|---|
-| `LlmsTxt:RequestLog:Enabled` | `true` | Kill switch for the package's default writer. When `false`, notifications STILL fire (they're public events decoupled from the writer) — only the default DB write short-circuits. |
-| `LlmsTxt:RequestLog:QueueCapacity` | `1024` | Bounded channel capacity. Clamped at runtime to `[64, 65536]`. `DropOldest` semantics shed oldest entries on overflow. |
-| `LlmsTxt:RequestLog:BatchSize` | `50` | Drainer batch size. Clamped to `[1, 1000]`. |
-| `LlmsTxt:RequestLog:MaxBatchIntervalSeconds` | `1` | Maximum interval between batch flushes when the queue isn't yet full. Clamped to `[1, 60]`. |
-| `LlmsTxt:RequestLog:OverflowLogIntervalSeconds` | `60` | How often the writer logs an overflow Warning under sustained crawl. Clamped to `[5, 3600]`. |
-| `LlmsTxt:LogRetention:DurationDays` | `90` | Days to retain rows in `llmsTxtRequestLog`. Set to `0` (or any value `≤ 0`) to disable retention — rows persist indefinitely. Otherwise clamped to `[1, 3650]` (10 years). The disable check happens BEFORE clamping. |
-| `LlmsTxt:LogRetention:RunIntervalHours` | `24` | Retention job cadence. Set to `0` (or any value `≤ 0`) to disable the recurring DELETE — `Period` returns `Timeout.InfiniteTimeSpan`. Otherwise clamped to `[1, 8760]`. The disable check happens BEFORE clamping. |
-| `LlmsTxt:LogRetention:RunIntervalSecondsOverride` | `null` | Dev-only escape hatch — seconds-precision cycles for the architect-A5 two-instance shared-SQL-Server gate. **Do not set in production.** Clamped to `[1, 86400]`. |
+| `AiVisibility:RequestLog:Enabled` | `true` | Kill switch for the package's default writer. When `false`, notifications STILL fire (they're public events decoupled from the writer) — only the default DB write short-circuits. |
+| `AiVisibility:RequestLog:QueueCapacity` | `1024` | Bounded channel capacity. Clamped at runtime to `[64, 65536]`. `DropOldest` semantics shed oldest entries on overflow. |
+| `AiVisibility:RequestLog:BatchSize` | `50` | Drainer batch size. Clamped to `[1, 1000]`. |
+| `AiVisibility:RequestLog:MaxBatchIntervalSeconds` | `1` | Maximum interval between batch flushes when the queue isn't yet full. Clamped to `[1, 60]`. |
+| `AiVisibility:RequestLog:OverflowLogIntervalSeconds` | `60` | How often the writer logs an overflow Warning under sustained crawl. Clamped to `[5, 3600]`. |
+| `AiVisibility:LogRetention:DurationDays` | `90` | Days to retain rows in `aiVisibilityRequestLog`. Set to `0` (or any value `≤ 0`) to disable retention — rows persist indefinitely. Otherwise clamped to `[1, 3650]` (10 years). The disable check happens BEFORE clamping. |
+| `AiVisibility:LogRetention:RunIntervalHours` | `24` | Retention job cadence. Set to `0` (or any value `≤ 0`) to disable the recurring DELETE — `Period` returns `Timeout.InfiniteTimeSpan`. Otherwise clamped to `[1, 8760]`. The disable check happens BEFORE clamping. |
+| `AiVisibility:LogRetention:RunIntervalSecondsOverride` | `null` | Dev-only escape hatch — seconds-precision cycles for the architect-A5 two-instance shared-SQL-Server gate. **Do not set in production.** Clamped to `[1, 86400]`. |
 
 ### PII discipline
 
-The notification payloads + the `llmsTxtRequestLog` columns capture **path, content key, culture, UA classification, referrer host** ONLY. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers MUST honour the same discipline if they forward data to external sinks.
+The notification payloads + the `aiVisibilityRequestLog` columns capture **path, content key, culture, UA classification, referrer host** ONLY. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers MUST honour the same discipline if they forward data to external sinks.
 
 ## Upgrading from v0.8 to v0.9
 
@@ -459,13 +459,13 @@ Story 5.1 is a **breaking** v0.9 release for adopters who construct `MarkdownCon
 
 ## AI Traffic Backoffice dashboard (Story 5.2)
 
-From v0.10, the Backoffice **Settings** section adds a second tile: **AI Traffic**. The dashboard is a read-only mini-analytics surface backed by the `llmsTxtRequestLog` table that Story 5.1 populates.
+From v0.10, the Backoffice **Settings** section adds a second tile: **AI Traffic**. The dashboard is a read-only mini-analytics surface backed by the `aiVisibilityRequestLog` table that Story 5.1 populates.
 
-- **Default range** is the last 7 UTC days. Use the date-range pickers (top of the dashboard) to widen up to 365 days; wider ranges clamp server-side and surface the `X-Llms-Range-Clamped: true` response header (the dashboard updates the `From` field to the effective post-clamp value).
+- **Default range** is the last 7 UTC days. Use the date-range pickers (top of the dashboard) to widen up to 365 days; wider ranges clamp server-side and surface the `X-AiVisibility-Range-Clamped: true` response header (the dashboard updates the `From` field to the effective post-clamp value).
 - **Classification chips** — one per UA class with at least one row in the current range, sorted by descending count. Click to filter (multi-select); click again to deselect; deselect all to see every class. Chip colours: AI classes (training / search / user-triggered) render primary; deprecated AI tokens render warning; human browsers render positive; non-AI crawlers + unknown render neutral.
-- **Pagination** — `<uui-pagination>` appears when results span more than one page (default page size 50; clamped at 200 per request via `LlmsTxt:Analytics:MaxPageSize`). Ordering is `createdUtc DESC, id DESC` for stable round-trips across page changes.
-- **Soft cap** — when total in-range rows exceed `LlmsTxt:Analytics:MaxResultRows` (default 10000), the dashboard surfaces a "Showing first N results" footer prompting you to narrow the range or filter by class.
-- **Empty state** — when zero rows match the current filter, the dashboard surfaces "No AI traffic recorded yet for this filter. The package is logging — check back later." plus an additional retention-aware hint when the range is older than `LlmsTxt:LogRetention:DurationDays`.
+- **Pagination** — `<uui-pagination>` appears when results span more than one page (default page size 50; clamped at 200 per request via `AiVisibility:Analytics:MaxPageSize`). Ordering is `createdUtc DESC, id DESC` for stable round-trips across page changes.
+- **Soft cap** — when total in-range rows exceed `AiVisibility:Analytics:MaxResultRows` (default 10000), the dashboard surfaces a "Showing first N results" footer prompting you to narrow the range or filter by class.
+- **Empty state** — when zero rows match the current filter, the dashboard surfaces "No AI traffic recorded yet for this filter. The package is logging — check back later." plus an additional retention-aware hint when the range is older than `AiVisibility:LogRetention:DurationDays`.
 - **Permissions** — the dashboard mounts under `Umb.Section.Settings`. Editors without Settings-section access do not see the tile; direct API calls return HTTP 403.
 
 The dashboard reads via four `Management API` operations under `/umbraco/management/api/v1/llmstxt/analytics/`: `requests` (paginated rows), `classifications` (chip source), `summary` (header total + first/last seen), `retention` (one-shot `DurationDays` lookup). All require bearer-token auth via the standard `UMB_AUTH_CONTEXT.getOpenApiConfiguration()` pattern.
@@ -474,15 +474,15 @@ The dashboard reads via four `Management API` operations under `/umbraco/managem
 
 | Key | Default | Notes |
 |---|---|---|
-| `LlmsTxt:Analytics:DefaultPageSize` | `50` | Default page size when the request omits `?pageSize=`. Clamped at runtime to `[1, MaxPageSize]`. |
-| `LlmsTxt:Analytics:MaxPageSize` | `200` | Maximum allowed page size; requests above this clamp DOWN. Defends against unbounded JSON response sizes. |
-| `LlmsTxt:Analytics:DefaultRangeDays` | `7` | Default range span when the request omits `?from=`. |
-| `LlmsTxt:Analytics:MaxRangeDays` | `365` | Maximum allowed range span. Wider requests clamp `from = to - MaxRangeDays.Days` AND surface the `X-Llms-Range-Clamped: true` response header. |
-| `LlmsTxt:Analytics:MaxResultRows` | `10000` | Soft cap on total in-range matching rows. When exceeded, the response body carries `totalCappedAt`; the dashboard shows the "Showing first N results — narrow your date range" footer. Set to `0` (or any value `≤ 0`) to disable the cap surface entirely. |
+| `AiVisibility:Analytics:DefaultPageSize` | `50` | Default page size when the request omits `?pageSize=`. Clamped at runtime to `[1, MaxPageSize]`. |
+| `AiVisibility:Analytics:MaxPageSize` | `200` | Maximum allowed page size; requests above this clamp DOWN. Defends against unbounded JSON response sizes. |
+| `AiVisibility:Analytics:DefaultRangeDays` | `7` | Default range span when the request omits `?from=`. |
+| `AiVisibility:Analytics:MaxRangeDays` | `365` | Maximum allowed range span. Wider requests clamp `from = to - MaxRangeDays.Days` AND surface the `X-AiVisibility-Range-Clamped: true` response header. |
+| `AiVisibility:Analytics:MaxResultRows` | `10000` | Soft cap on total in-range matching rows. When exceeded, the response body carries `totalCappedAt`; the dashboard shows the "Showing first N results — narrow your date range" footer. Set to `0` (or any value `≤ 0`) to disable the cap surface entirely. |
 
 ### Read-side caveat (adopter `ILlmsRequestLog` overrides)
 
-The dashboard reads DIRECTLY from the host DB's `llmsTxtRequestLog` table via NPoco. Adopters who replace the default `ILlmsRequestLog` with a non-DB sink (App Insights, Serilog, custom queue) will see an **empty dashboard** — the table is the empty-by-design state when no writes land in it. v1 does not ship a pluggable read seam; ship your own dashboard against your own analytics sink. See [`docs/extension-points.md`](extension-points.md) for the full discussion.
+The dashboard reads DIRECTLY from the host DB's `aiVisibilityRequestLog` table via NPoco. Adopters who replace the default `ILlmsRequestLog` with a non-DB sink (App Insights, Serilog, custom queue) will see an **empty dashboard** — the table is the empty-by-design state when no writes land in it. v1 does not ship a pluggable read seam; ship your own dashboard against your own analytics sink. See [`docs/extension-points.md`](extension-points.md) for the full discussion.
 
 ## Upgrading from v0.9 to v0.10
 

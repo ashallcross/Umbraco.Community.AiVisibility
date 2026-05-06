@@ -11,7 +11,7 @@ This page documents the adopter-facing markup hooks that LlmsTxt.Umbraco ships:
 
 ## `data-llms-content` and `data-llms-ignore`
 
-The default Markdown extractor walks an opt-in chain when picking the page's main content region: `[data-llms-content]` → `<main>` → `<article>` → `LlmsTxt:MainContentSelectors` (configured) → SmartReader fallback.
+The default Markdown extractor walks an opt-in chain when picking the page's main content region: `[data-llms-content]` → `<main>` → `<article>` → `AiVisibility:MainContentSelectors` (configured) → SmartReader fallback.
 
 Add `data-llms-content` to the element you want extracted, in any view or partial:
 
@@ -49,8 +49,8 @@ The `href` is computed by a single rule: trailing-slash URLs (`/blog/`) get `/in
 
 - Non-content responses (404 / 5xx, static assets, Backoffice URLs, surface controllers, MVC routes that don't resolve to `IPublishedContent`).
 - `.md` and `/index.html.md` self-requests (the response IS the Markdown body).
-- Pages excluded via the per-page `excludeFromLlmExports` toggle (Story 3.1) OR pages whose doctype alias is in the resolved `LlmsTxt:ExcludedDoctypeAliases` list. The exclusion list is configurable in `appsettings.json` (see [Getting Started § Settings doctype + Backoffice](getting-started.md) for the resolution overlay) — top-level scope applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
-- When `LlmsTxt:DiscoverabilityHeader:Enabled` is set to `false` (kill switch — see below).
+- Pages excluded via the per-page `excludeFromLlmExports` toggle (Story 3.1) OR pages whose doctype alias is in the resolved `AiVisibility:ExcludedDoctypeAliases` list. The exclusion list is configurable in `appsettings.json` (see [Getting Started § Settings doctype + Backoffice](getting-started.md) for the resolution overlay) — top-level scope applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
+- When `AiVisibility:DiscoverabilityHeader:Enabled` is set to `false` (kill switch — see below).
 
 ### Kill switch
 
@@ -268,7 +268,7 @@ The `Content-Signal` header travels on 304 responses too (RFC 7232 § 4.1 — re
 
 #### Cache flush after a config change
 
-The Markdown response ETag is computed from `(host + route + culture + contentVersion)` — it does NOT include the resolved `Content-Signal` value. After you change `LlmsTxt:ContentSignal:Default` or a per-doctype entry, previously-cached representations will continue to revalidate as 304 and ride the **new** policy automatically (the writer reads the current policy on every response, including the 304 path). However, downstream caches keyed on the response body alone (rare; most CDNs key on URL+headers) won't see the change until the body cache rolls. To flush proactively: save+publish a content node (the package's distributed-cache handler invalidates all per-page Markdown entries on every load-balanced instance), or restart the host. Adopters editing `Content-Signal` regularly should treat it as a content-shape concern, not a hot-reload toggle.
+The Markdown response ETag is computed from `(host + route + culture + contentVersion)` — it does NOT include the resolved `Content-Signal` value. After you change `AiVisibility:ContentSignal:Default` or a per-doctype entry, previously-cached representations will continue to revalidate as 304 and ride the **new** policy automatically (the writer reads the current policy on every response, including the 304 path). However, downstream caches keyed on the response body alone (rare; most CDNs key on URL+headers) won't see the change until the body cache rolls. To flush proactively: save+publish a content node (the package's distributed-cache handler invalidates all per-page Markdown entries on every load-balanced instance), or restart the host. Adopters editing `Content-Signal` regularly should treat it as a content-shape concern, not a hot-reload toggle.
 
 ---
 

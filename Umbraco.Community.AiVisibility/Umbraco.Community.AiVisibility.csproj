@@ -11,13 +11,13 @@
     <Product>Umbraco.Community.AiVisibility</Product>
     <Title>Umbraco.Community.AiVisibility</Title>
     <Version>0.1.0-alpha</Version>
-    <Description>Expose Umbraco published content to LLMs and AI search engines. Auto-generates per-page Markdown at {url}.md, /llms.txt, and /llms-full.txt — plus Accept: text/markdown content negotiation, Link: rel=alternate headers, and a robots.txt audit. Built for Umbraco v17+.</Description>
+    <Description>AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, and *.md page rendering. Auto-generates per-page Markdown at {url}.md, /llms.txt, and /llms-full.txt; surfaces an AI Traffic dashboard so editors can see who's reading the site; audits robots.txt against the AI-crawler list. Built for Umbraco v17+.</Description>
     <Authors>Adam Shallcross</Authors>
-    <PackageTags>umbraco-marketplace;umbraco;llms-txt;ai;markdown;geo;ai-search;chatgpt;claude;perplexity</PackageTags>
+    <PackageTags>umbraco-marketplace;umbraco;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/ashallcross/LlmsTxt.Umbraco</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/ashallcross/LlmsTxt.Umbraco.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
@@ -59,7 +59,7 @@
       <_ExpectedAiBotListFallbackShaLower>$(ExpectedAiBotListFallbackSha256.ToLowerInvariant())</_ExpectedAiBotListFallbackShaLower>
     </PropertyGroup>
     <Error Condition="'$(_AiBotListFallbackShaLower)' != '$(_ExpectedAiBotListFallbackShaLower)'"
-           Text="LlmsTxt: AI bot list FALLBACK SHA mismatch — expected $(_ExpectedAiBotListFallbackShaLower), got $(_AiBotListFallbackShaLower). Refresh ExpectedAiBotListFallbackSha256 in the csproj alongside the fallback file (see docs/maintenance.md)." />
+           Text="AiVisibility: AI bot list FALLBACK SHA mismatch — expected $(_ExpectedAiBotListFallbackShaLower), got $(_AiBotListFallbackShaLower). Refresh ExpectedAiBotListFallbackSha256 in the csproj alongside the fallback file (see docs/maintenance.md)." />
   </Target>
 
   <Target Name="SyncAiBotList" BeforeTargets="BeforeBuild" DependsOnTargets="VerifyAiBotListFallbackHash">
@@ -107,24 +107,24 @@
          a real SHA mismatch — the diagnostic message points the maintainer at
          the right corrective action. -->
     <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == ''"
-           Text="LlmsTxt: AI bot list fetch produced an unreadable or zero-byte file at $(_AiBotListFetched). Network or proxy may be returning truncated content; investigate before bumping the pinned SHA." />
+           Text="AiVisibility: AI bot list fetch produced an unreadable or zero-byte file at $(_AiBotListFetched). Network or proxy may be returning truncated content; investigate before bumping the pinned SHA." />
 
     <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' != '' AND '$(_FetchedAiBotListShaLower)' != '$(_ExpectedAiBotListShaLower)'"
-           Text="LlmsTxt: AI bot list SHA mismatch — expected $(_ExpectedAiBotListShaLower), got $(_FetchedAiBotListShaLower). Refresh the pinned SHA via docs/maintenance.md after reviewing the upstream change." />
+           Text="AiVisibility: AI bot list SHA mismatch — expected $(_ExpectedAiBotListShaLower), got $(_FetchedAiBotListShaLower). Refresh the pinned SHA via docs/maintenance.md after reviewing the upstream change." />
 
     <Copy SourceFiles="@(_FetchedAiBotList)"
           DestinationFiles="$(_AiBotListEmbed)"
           SkipUnchangedFiles="false"
           Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
     <Message Importance="High"
-             Text="LlmsTxt: AI bot list synced from upstream (SHA $(_FetchedAiBotListShaLower))."
+             Text="AiVisibility: AI bot list synced from upstream (SHA $(_FetchedAiBotListShaLower))."
              Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
 
     <Copy SourceFiles="$(AiBotListFallback)"
           DestinationFiles="$(_AiBotListEmbed)"
           SkipUnchangedFiles="false"
           Condition="'@(_FetchedAiBotList)' == ''" />
-    <Warning Text="LlmsTxt: Falling back to AiBotList.fallback.txt — upstream fetch failed (network unreachable, timeout, or HTTP non-2xx). Build is offline-safe."
+    <Warning Text="AiVisibility: Falling back to AiBotList.fallback.txt — upstream fetch failed (network unreachable, timeout, or HTTP non-2xx). Build is offline-safe."
              Condition="'@(_FetchedAiBotList)' == ''" />
 
     <ItemGroup>

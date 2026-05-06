@@ -9,7 +9,7 @@ The build-time `SyncAiBotList` MSBuild target (in `LlmsTxt.Umbraco/LlmsTxt.Umbra
 When the upstream feed updates, the build fails with:
 
 ```
-LlmsTxt: AI bot list SHA mismatch — expected <pinned>, got <actual>.
+AiVisibility: AI bot list SHA mismatch — expected <pinned>, got <actual>.
 Refresh the pinned SHA via docs/maintenance.md after reviewing the upstream change.
 ```
 
@@ -117,7 +117,7 @@ Watch both instances' logs for `Robots audit refresh job RUN — InstanceId=…`
 
 ### Verifying `LogRetentionJob` exactly-once (Story 5.1)
 
-The same Docker SQL Server 2022 setup verifies Story 5.1's `LogRetentionJob` (`IDistributedBackgroundJob`). Configure both TestSite instances with `LlmsTxt:LogRetention:DurationDays: 30` and `LlmsTxt:LogRetention:RunIntervalSecondsOverride: 30` (the dev-only escape hatch — do NOT use in production) so cycles tick every 30 seconds rather than every 24 hours. Hit a few `.md` / `/llms.txt` / `/llms-full.txt` URLs across both instances to populate `llmsTxtRequestLog`.
+The same Docker SQL Server 2022 setup verifies Story 5.1's `LogRetentionJob` (`IDistributedBackgroundJob`). Configure both TestSite instances with `AiVisibility:LogRetention:DurationDays: 30` and `AiVisibility:LogRetention:RunIntervalSecondsOverride: 30` (the dev-only escape hatch — do NOT use in production) so cycles tick every 30 seconds rather than every 24 hours. Hit a few `.md` / `/llms.txt` / `/llms-full.txt` URLs across both instances to populate `aiVisibilityRequestLog`.
 
 Watch both instances' logs for `LlmsTxt log retention job RUN — InstanceId=… CycleStart=… RowsDeleted=…`. Same invariant: **exactly one** RUN entry per cycle across the two instances. If you see two entries for the same `CycleStart`, stop — re-running Spike 0.B is cheaper than absorbing the drift.
 
