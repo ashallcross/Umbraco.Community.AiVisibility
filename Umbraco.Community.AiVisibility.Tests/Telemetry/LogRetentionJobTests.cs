@@ -1,5 +1,5 @@
 using System.Data;
-using LlmsTxt.Umbraco.Background;
+using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,7 +8,7 @@ using NSubstitute;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 using Umbraco.Cms.Infrastructure.Scoping;
 
-namespace LlmsTxt.Umbraco.Tests.Background;
+namespace Umbraco.Community.AiVisibility.Tests.Telemetry;
 
 [TestFixture]
 public class LogRetentionJobTests

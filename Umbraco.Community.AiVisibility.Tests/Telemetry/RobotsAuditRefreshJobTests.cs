@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Background;
+using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,7 +8,7 @@ using NSubstitute;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
 
-namespace LlmsTxt.Umbraco.Tests.Background;
+namespace Umbraco.Community.AiVisibility.Tests.Telemetry;
 
 [TestFixture]
 public class RobotsAuditRefreshJobTests

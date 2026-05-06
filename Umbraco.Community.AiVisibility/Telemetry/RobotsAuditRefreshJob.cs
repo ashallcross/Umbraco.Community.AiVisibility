@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
-namespace LlmsTxt.Umbraco.Background;
+namespace Umbraco.Community.AiVisibility.Telemetry;
 
 /// <summary>
 /// Story 4.2 — recurring distributed background job that re-runs the robots

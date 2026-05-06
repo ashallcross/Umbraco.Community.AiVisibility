@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http;
-using LlmsTxt.Umbraco.Background;
+using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

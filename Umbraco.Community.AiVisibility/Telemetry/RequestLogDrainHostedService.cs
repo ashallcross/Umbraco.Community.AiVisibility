@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Sync;
 using Umbraco.Cms.Infrastructure.Scoping;
 
-namespace LlmsTxt.Umbraco.Background;
+namespace Umbraco.Community.AiVisibility.Telemetry;
 
 /// <summary>
 /// Story 5.1 — drains <see cref="DefaultRequestLog"/>'s bounded channel
@@ -62,7 +62,7 @@ namespace LlmsTxt.Umbraco.Background;
 /// flavour, NOT Core.
 /// </para>
 /// </remarks>
-public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDisposable
+public sealed class RequestLogDrainHostedService : IHostedService, IAsyncDisposable
 {
     internal const int MinBatchSize = 1;
     internal const int MaxBatchSize = 1000;
@@ -74,17 +74,17 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
     private readonly IScopeProvider _scopeProvider;
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IServerRoleAccessor _serverRoleAccessor;
-    private readonly ILogger<LlmsRequestLogDrainHostedService> _logger;
+    private readonly ILogger<RequestLogDrainHostedService> _logger;
 
     private CancellationTokenSource? _drainCts;
     private Task? _drainLoop;
 
-    public LlmsRequestLogDrainHostedService(
+    public RequestLogDrainHostedService(
         IRequestLog requestLog,
         IScopeProvider scopeProvider,
         IOptionsMonitor<AiVisibilitySettings> settings,
         IServerRoleAccessor serverRoleAccessor,
-        ILogger<LlmsRequestLogDrainHostedService> logger)
+        ILogger<RequestLogDrainHostedService> logger)
     {
         _requestLog = requestLog ?? throw new ArgumentNullException(nameof(requestLog));
         _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));

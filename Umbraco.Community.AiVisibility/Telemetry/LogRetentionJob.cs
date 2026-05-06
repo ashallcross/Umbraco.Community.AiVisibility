@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 using Umbraco.Cms.Infrastructure.Scoping;
 
-namespace LlmsTxt.Umbraco.Background;
+namespace Umbraco.Community.AiVisibility.Telemetry;
 
 /// <summary>
 /// Story 5.1 — recurring distributed background job that deletes

@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Background;
+using Umbraco.Community.AiVisibility.Telemetry;
 using LlmsTxt.Umbraco.Composers;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;

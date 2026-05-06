@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Background;
+using Umbraco.Community.AiVisibility.Telemetry;
 using LlmsTxt.Umbraco.Composers;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
@@ -77,9 +77,9 @@ public class NotificationsComposerTests
             .ToArray();
 
         Assert.That(
-            hostedDescriptors.Any(d => d.ImplementationType == typeof(LlmsRequestLogDrainHostedService)),
+            hostedDescriptors.Any(d => d.ImplementationType == typeof(RequestLogDrainHostedService)),
             Is.True,
-            "LlmsRequestLogDrainHostedService must be registered via AddHostedService");
+            "RequestLogDrainHostedService must be registered via AddHostedService");
     }
 
     [Test]

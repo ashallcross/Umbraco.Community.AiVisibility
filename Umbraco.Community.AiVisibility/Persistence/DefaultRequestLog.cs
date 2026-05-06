@@ -10,7 +10,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 /// Story 5.1 — default <see cref="IRequestLog"/> implementation.
 /// Owns a process-wide bounded
 /// <see cref="Channel{T}"/> of <see cref="RequestLogEntry"/>; the
-/// background <c>LlmsRequestLogDrainHostedService</c> reads from
+/// background <c>RequestLogDrainHostedService</c> reads from
 /// <see cref="Reader"/> and batch-writes to
 /// <c>llmsTxtRequestLog</c>.
 /// </summary>

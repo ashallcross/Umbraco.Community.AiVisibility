@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Background;
+using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
@@ -9,7 +9,7 @@ using NSubstitute.ExceptionExtensions;
 using Umbraco.Cms.Core.Sync;
 using Umbraco.Cms.Infrastructure.Scoping;
 
-namespace LlmsTxt.Umbraco.Tests.Background;
+namespace Umbraco.Community.AiVisibility.Tests.Telemetry;
 
 [TestFixture]
 public class LlmsRequestLogDrainHostedServiceTests
@@ -38,12 +38,12 @@ public class LlmsRequestLogDrainHostedServiceTests
         // fire — that's covered by Task 6 tests).
         var settings = new AiVisibilitySettings { RequestLog = new RequestLogSettings { Enabled = false } };
         var scopeProvider = Substitute.For<IScopeProvider>();
-        var drainer = new LlmsRequestLogDrainHostedService(
+        var drainer = new RequestLogDrainHostedService(
             NewDefaultLog(),
             scopeProvider,
             SettingsMonitor(settings),
             RoleAccessor(ServerRole.Single),
-            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+            NullLogger<RequestLogDrainHostedService>.Instance);
 
         await drainer.StartAsync(CancellationToken.None);
         await drainer.StopAsync(CancellationToken.None);
@@ -62,12 +62,12 @@ public class LlmsRequestLogDrainHostedServiceTests
         // is "loop was permitted to start": same shape as
         // StartAsync_ServerRoleUnknown_StartsDrainLoop above.
         var scopeProvider = Substitute.For<IScopeProvider>();
-        var drainer = new LlmsRequestLogDrainHostedService(
+        var drainer = new RequestLogDrainHostedService(
             NewDefaultLog(),
             scopeProvider,
             SettingsMonitor(),
             RoleAccessor(ServerRole.Subscriber),
-            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+            NullLogger<RequestLogDrainHostedService>.Instance);
 
         await drainer.StartAsync(CancellationToken.None);
         // Stop quickly — the loop has parked on WaitToReadAsync and will
@@ -91,12 +91,12 @@ public class LlmsRequestLogDrainHostedServiceTests
         // the built-in drainer has no channel to read from.
         var customLog = Substitute.For<IRequestLog>();
         var scopeProvider = Substitute.For<IScopeProvider>();
-        var drainer = new LlmsRequestLogDrainHostedService(
+        var drainer = new RequestLogDrainHostedService(
             customLog,
             scopeProvider,
             SettingsMonitor(),
             RoleAccessor(ServerRole.Subscriber),
-            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+            NullLogger<RequestLogDrainHostedService>.Instance);
 
         await drainer.StartAsync(CancellationToken.None);
         await drainer.StopAsync(CancellationToken.None);
@@ -115,12 +115,12 @@ public class LlmsRequestLogDrainHostedServiceTests
         // future regression that re-adds Unknown to the suppression list
         // would surface here.
         var scopeProvider = Substitute.For<IScopeProvider>();
-        var drainer = new LlmsRequestLogDrainHostedService(
+        var drainer = new RequestLogDrainHostedService(
             NewDefaultLog(),
             scopeProvider,
             SettingsMonitor(),
             RoleAccessor(ServerRole.Unknown),
-            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+            NullLogger<RequestLogDrainHostedService>.Instance);
 
         await drainer.StartAsync(CancellationToken.None);
         // Stop quickly — the loop has parked on WaitToReadAsync and will
@@ -143,12 +143,12 @@ public class LlmsRequestLogDrainHostedServiceTests
         // cleanly per the documented contract.
         var customLog = Substitute.For<IRequestLog>();
         var scopeProvider = Substitute.For<IScopeProvider>();
-        var drainer = new LlmsRequestLogDrainHostedService(
+        var drainer = new RequestLogDrainHostedService(
             customLog,
             scopeProvider,
             SettingsMonitor(),
             RoleAccessor(ServerRole.Single),
-            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+            NullLogger<RequestLogDrainHostedService>.Instance);
 
         await drainer.StartAsync(CancellationToken.None);
         await drainer.StopAsync(CancellationToken.None);
@@ -178,7 +178,7 @@ public class LlmsRequestLogDrainHostedServiceTests
         scopeProvider.CreateScope(Arg.Any<System.Data.IsolationLevel>())
             .Throws(new InvalidOperationException("simulated DB outage"));
 
-        var drainer = new LlmsRequestLogDrainHostedService(
+        var drainer = new RequestLogDrainHostedService(
             log,
             scopeProvider,
             SettingsMonitor(new AiVisibilitySettings
@@ -186,7 +186,7 @@ public class LlmsRequestLogDrainHostedServiceTests
                 RequestLog = new RequestLogSettings { MaxBatchIntervalSeconds = 1, BatchSize = 1 },
             }),
             RoleAccessor(ServerRole.Single),
-            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+            NullLogger<RequestLogDrainHostedService>.Instance);
 
         await drainer.StartAsync(CancellationToken.None);
         // Allow the loop to flush twice. BatchSize=1 forces a flush per entry.
@@ -200,7 +200,7 @@ public class LlmsRequestLogDrainHostedServiceTests
     [Test]
     public void Type_RegisteredAsHostedService_AndIsAsyncDisposable()
     {
-        var t = typeof(LlmsRequestLogDrainHostedService);
+        var t = typeof(RequestLogDrainHostedService);
         Assert.Multiple(() =>
         {
             Assert.That(typeof(Microsoft.Extensions.Hosting.IHostedService).IsAssignableFrom(t));
@@ -212,7 +212,7 @@ public class LlmsRequestLogDrainHostedServiceTests
     [Test]
     public void ConstructorParameters_MatchDocumentedDISurface()
     {
-        var ctorParams = typeof(LlmsRequestLogDrainHostedService)
+        var ctorParams = typeof(RequestLogDrainHostedService)
             .GetConstructors()
             .Single()
             .GetParameters();
@@ -232,12 +232,12 @@ public class LlmsRequestLogDrainHostedServiceTests
     {
         // Defensive: StopAsync called without a prior successful StartAsync
         // (e.g. drainer was suppressed by the kill switch) must not throw.
-        var drainer = new LlmsRequestLogDrainHostedService(
+        var drainer = new RequestLogDrainHostedService(
             NewDefaultLog(),
             Substitute.For<IScopeProvider>(),
             SettingsMonitor(),
             RoleAccessor(ServerRole.Single),
-            NullLogger<LlmsRequestLogDrainHostedService>.Instance);
+            NullLogger<RequestLogDrainHostedService>.Instance);
 
         await drainer.StopAsync(CancellationToken.None);
         Assert.Pass("StopAsync without StartAsync exits cleanly.");

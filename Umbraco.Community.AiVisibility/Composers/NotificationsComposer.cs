@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Background;
+using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using LlmsTxt.Umbraco.Notifications;
@@ -22,7 +22,7 @@ namespace LlmsTxt.Umbraco.Composers;
 /// <item><see cref="IRequestLog"/> →
 /// <see cref="DefaultRequestLog"/> Singleton (process-wide bounded
 /// channel).</item>
-/// <item><see cref="LlmsRequestLogDrainHostedService"/> as
+/// <item><see cref="RequestLogDrainHostedService"/> as
 /// <see cref="Microsoft.Extensions.Hosting.IHostedService"/>.</item>
 /// <item><see cref="LogRetentionJob"/> as
 /// <see cref="IDistributedBackgroundJob"/>.</item>
@@ -69,7 +69,7 @@ public sealed class NotificationsComposer : IComposer
         builder.Services.TryAddEnumerable(ServiceDescriptor
             .Singleton<IValidateOptions<AiVisibilitySettings>, AiVisibilitySettingsValidator>());
 
-        builder.Services.AddHostedService<LlmsRequestLogDrainHostedService>();
+        builder.Services.AddHostedService<RequestLogDrainHostedService>();
         builder.Services.AddSingleton<IDistributedBackgroundJob, LogRetentionJob>();
 
         builder.AddNotificationAsyncHandler<
