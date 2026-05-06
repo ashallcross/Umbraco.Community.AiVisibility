@@ -5,7 +5,7 @@ updated: 2026-04-29T12:00:00Z
 ---
 # Welcome home
 
-This is the Clean.Core demo content for the LlmsTxt.Umbraco package. The extractor's job is to render this page and convert it to clean Markdown.
+This is the Clean.Core demo content for the Umbraco.Community.AiVisibility package. The extractor's job is to render this page and convert it to clean Markdown.
 
 ## What this package does
 

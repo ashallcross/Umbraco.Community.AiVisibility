@@ -14,7 +14,7 @@
 Same as `clean-core-default/`:
 
 1. Edit `fixture.json`.
-2. Run `dotnet test LlmsTxt.Umbraco.slnx --filter Category=ManifestQuality`.
+2. Run `dotnet test Umbraco.Community.AiVisibility.slnx --filter Category=ManifestQuality`.
 3. Copy actual output → `expected-llms.txt`.
 4. Re-run, commit both.
 

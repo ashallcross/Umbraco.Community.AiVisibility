@@ -52,7 +52,7 @@ The `clean-core-blog-list` fixture pins the current shape so a future change to 
 1. Create `Fixtures/Extraction/<scenario-name>/`. Use `kebab-case` and the `clean-core-` prefix when the source is Clean.Core demo content.
 2. Capture or hand-author `input.html`. To capture from a live TestSite:
    ```bash
-   dotnet run --project LlmsTxt.Umbraco.TestSite/LlmsTxt.Umbraco.TestSite.csproj
+   dotnet run --project Umbraco.Community.AiVisibility.TestSite/Umbraco.Community.AiVisibility.TestSite.csproj
    curl -k -s https://localhost:44314/<path> > input.html
    ```
    Trim browser/DevTools artefacts (`<x-claude-extension>` injections, devtools-only attributes). Keep the `<html>...</html>` envelope so block boundaries / `data-llms-content` / `aria-hidden` / `hidden` / `data-llms-ignore` behaviour is exercised by the fixture.
@@ -61,7 +61,7 @@ The `clean-core-blog-list` fixture pins the current shape so a future change to 
    - Add per-scenario metadata (title and stable Guid) to [`FixtureMetadata`](../../Extraction/FixtureMetadata.cs).
    - Run the explicit capture:
      ```bash
-     dotnet test LlmsTxt.Umbraco.slnx \
+     dotnet test Umbraco.Community.AiVisibility.slnx \
        --filter "TestCategory=ExtractionFixtureCapture"
      ```
 4. **Hand-curate** `expected.md`. The seed is whatever the live extractor produces; commit the curated version. Where the seed pins a real extraction defect (e.g. a malformed link), either:
@@ -69,7 +69,7 @@ The `clean-core-blog-list` fixture pins the current shape so a future change to 
    - Pin the literal output and add a `deferred-work.md` entry explaining the gap.
 5. Run the benchmark suite to confirm the new fixture is green:
    ```bash
-   dotnet test LlmsTxt.Umbraco.slnx --filter Category=ExtractionQuality
+   dotnet test Umbraco.Community.AiVisibility.slnx --filter Category=ExtractionQuality
    ```
 6. Commit the new fixture + the `FixtureMetadata` / capture-helper updates in a single public-repo commit. Two-repo split rules apply (see [`CLAUDE.md`](../../../CLAUDE.md)).
 
@@ -80,7 +80,7 @@ After a deliberate extraction-rule change (new strip selector, conversion-rule t
 1. Confirm the rule change is intentional — if the change was accidental, fix the code, not the fixture.
 2. Run the capture helper for the affected scenario(s):
    ```bash
-   dotnet test LlmsTxt.Umbraco.slnx \
+   dotnet test Umbraco.Community.AiVisibility.slnx \
      --filter "TestCategory=ExtractionFixtureCapture"
    ```
 3. **Hand-diff the new `expected.md` against the previous version.** Every line of drift must be a deliberate consequence of the rule change. Drift not predicted by the rule change means the fix has unintended scope — investigate before committing.
@@ -99,7 +99,7 @@ After a deliberate extraction-rule change (new strip selector, conversion-rule t
 If you hit "byte-different but they look identical" failures:
 
 ```bash
-git check-attr eol -- LlmsTxt.Umbraco.Tests/Fixtures/Extraction/<scenario>/expected.md
+git check-attr eol -- Umbraco.Community.AiVisibility.Tests/Fixtures/Extraction/<scenario>/expected.md
 ```
 
 Should report `eol: lf`. If not, add `*.md text eol=lf` to a `.gitattributes` for the fixtures folder. The benchmark's `ReplaceLineEndings("\n")` handles both inputs in memory, so this is preventative — drift here surfaces as a test failure, not silent corruption.

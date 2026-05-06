@@ -14,7 +14,7 @@
 When the manifest output shape changes deliberately (e.g. Story 2.x adds a new field to the per-page link line, or the H1 / blockquote shape changes):
 
 1. Edit `fixture.json` to reflect any new input data the fixture should exercise.
-2. Run `dotnet test LlmsTxt.Umbraco.slnx --filter Category=ManifestQuality` and let the test fail with the unified diff.
+2. Run `dotnet test Umbraco.Community.AiVisibility.slnx --filter Category=ManifestQuality` and let the test fail with the unified diff.
 3. Inspect the diff — confirm the new actual output is correct.
 4. Copy the actual output back into `expected-llms.txt`.
 5. Re-run the test — it should now pass.

@@ -1,6 +1,6 @@
 # Spike 0 — Risk-Reduction Spike Harnesses
 
-This folder contains the throwaway harnesses for Story 0.A (in-process Razor rendering) and Story 0.B (v17 package mechanics + `IDistributedBackgroundJob`). Both harnesses live in TestSite scope so the package project (`LlmsTxt.Umbraco/`) stays clean of investigation code.
+This folder contains the throwaway harnesses for Story 0.A (in-process Razor rendering) and Story 0.B (v17 package mechanics + `IDistributedBackgroundJob`). Both harnesses live in TestSite scope so the package project (`Umbraco.Community.AiVisibility/`) stays clean of investigation code.
 
 - **0.A** — `SpikeRender*`, `InProcessPageRenderer`, `HttpFetchComparator`, `HtmlDiffer`, `ConcurrentRenderProbe` (this README §0.A)
 - **0.B** — `DistributedJob/*` (this README §0.B)
@@ -17,7 +17,7 @@ This folder contains the throwaway harnesses for Story 0.A (in-process Razor ren
 
 ## What this is
 
-A throwaway harness that lives inside the TestSite to validate the documented v17 Razor-rendering chain end-to-end against Clean.Core 7.0.5 demo content. The package project itself (`LlmsTxt.Umbraco/`) contains **no** rendering code yet — Story 1.1 will rebuild this as the canonical `PageRenderer` once the spike's verdict is signed off.
+A throwaway harness that lives inside the TestSite to validate the documented v17 Razor-rendering chain end-to-end against Clean.Core 7.0.5 demo content. The package project itself (`Umbraco.Community.AiVisibility/`) contains **no** rendering code yet — Story 1.1 will rebuild this as the canonical `PageRenderer` once the spike's verdict is signed off.
 
 ## Files in this folder
 
@@ -36,7 +36,7 @@ A throwaway harness that lives inside the TestSite to validate the documented v1
 
 ```bash
 cd ~/Documents/LlmsTxt
-dotnet run --project LlmsTxt.Umbraco.TestSite/LlmsTxt.Umbraco.TestSite.csproj
+dotnet run --project Umbraco.Community.AiVisibility.TestSite/Umbraco.Community.AiVisibility.TestSite.csproj
 ```
 
 `appsettings.Development.json` is configured with:
@@ -117,7 +117,7 @@ Append a "Manual gate result" section to `0-a-in-process-razor-page-rendering-sp
 
 ## Cleanup after Story 1.1 ships
 
-Once Story 1.1 lands the real `LlmsTxt.Umbraco/Extraction/PageRenderer.cs`, the `0.A` files get deleted along with the spike-only DI registrations in `Program.cs` and the `Spikes/evidence/` `.gitignore` rule. The verdict document survives — it remains the authoritative "why we chose this technique" reference.
+Once Story 1.1 lands the real `Umbraco.Community.AiVisibility/Extraction/PageRenderer.cs`, the `0.A` files get deleted along with the spike-only DI registrations in `Program.cs` and the `Spikes/evidence/` `.gitignore` rule. The verdict document survives — it remains the authoritative "why we chose this technique" reference.
 
 ---
 
@@ -128,7 +128,7 @@ Once Story 1.1 lands the real `LlmsTxt.Umbraco/Extraction/PageRenderer.cs`, the 
 **Status:** Code in place, awaiting Adam's interactive E2E gate (one-instance smoke + two-instance shared-DB run).
 
 > ⚠️ **Heads-up: Umbraco re-writes `Imaging.HMACSecretKey` on first boot.**
-> When you run the TestSite for the first time (especially against a fresh SQL Server), Umbraco's image-processing module generates a per-installation HMAC key and persists it to `appsettings.json`. The 0-B code review flagged this as a secret-leak risk for the public repo. **Before committing, always check `git diff -- LlmsTxt.Umbraco.TestSite/appsettings.json` for an `Imaging` block — if present, delete it.** Umbraco will regenerate per environment; the value has no production meaning.
+> When you run the TestSite for the first time (especially against a fresh SQL Server), Umbraco's image-processing module generates a per-installation HMAC key and persists it to `appsettings.json`. The 0-B code review flagged this as a secret-leak risk for the public repo. **Before committing, always check `git diff -- Umbraco.Community.AiVisibility.TestSite/appsettings.json` for an `Imaging` block — if present, delete it.** Umbraco will regenerate per environment; the value has no production meaning.
 
 ### What 0.B is
 
@@ -155,9 +155,9 @@ The package-side stubs added by 0.B:
 
 | File | Role |
 |---|---|
-| `LlmsTxt.Umbraco/Client/src/elements/llms-spike-dashboard.element.ts` | Lit element rendering a placeholder tile + stub Management API ping result |
-| `LlmsTxt.Umbraco/Client/src/manifests/dashboard-spike.manifest.ts` | Manifest registering the element under `Umb.Section.Settings` with alias `Llms.Dashboard.Spike` |
-| `LlmsTxt.Umbraco/Controllers/Backoffice/LlmsSpikeManagementApiController.cs` | Canonical v17 Management API pattern: `ManagementApiControllerBase` + `[VersionedApiBackOfficeRoute("llmstxt/spike")]` + `[ApiVersion("1.0")]` + `[MapToApi(Constants.ApiName)]` |
+| `Umbraco.Community.AiVisibility/Client/src/elements/llms-spike-dashboard.element.ts` | Lit element rendering a placeholder tile + stub Management API ping result |
+| `Umbraco.Community.AiVisibility/Client/src/manifests/dashboard-spike.manifest.ts` | Manifest registering the element under `Umb.Section.Settings` with alias `Llms.Dashboard.Spike` |
+| `Umbraco.Community.AiVisibility/Controllers/Backoffice/LlmsSpikeManagementApiController.cs` | Canonical v17 Management API pattern: `ManagementApiControllerBase` + `[VersionedApiBackOfficeRoute("llmstxt/spike")]` + `[ApiVersion("1.0")]` + `[MapToApi(Constants.ApiName)]` |
 
 ### How to run the gate (Adam)
 
@@ -168,7 +168,7 @@ This stage runs against the existing TestSite SQLite DB. No special setup beyond
 ##### a. Build the Vite bundle
 
 ```bash
-cd ~/Documents/LlmsTxt/LlmsTxt.Umbraco/Client
+cd ~/Documents/LlmsTxt/Umbraco.Community.AiVisibility/Client
 npm install        # required Node ≥ 22.17.1 per @umbraco-cms/backoffice engines field
 npm run build
 ```
@@ -185,7 +185,7 @@ If `npm run build` fails, capture the error in `0-b-spike-outcome.md § Architec
 
 ```bash
 cd ~/Documents/LlmsTxt
-dotnet run --project LlmsTxt.Umbraco.TestSite/LlmsTxt.Umbraco.TestSite.csproj
+dotnet run --project Umbraco.Community.AiVisibility.TestSite/Umbraco.Community.AiVisibility.TestSite.csproj
 ```
 
 Default `appsettings.Development.json` keeps the spike distributed job inert (`LlmsTxtSpike:DistributedJob:Enabled=false`). The Backoffice + Management API surface still loads.
@@ -275,7 +275,7 @@ In one terminal:
 ```bash
 cd ~/Documents/LlmsTxt
 ASPNETCORE_ENVIRONMENT=Spike.A ASPNETCORE_URLS=http://localhost:5101 \
-  dotnet run --project LlmsTxt.Umbraco.TestSite/LlmsTxt.Umbraco.TestSite.csproj --no-launch-profile
+  dotnet run --project Umbraco.Community.AiVisibility.TestSite/Umbraco.Community.AiVisibility.TestSite.csproj --no-launch-profile
 ```
 
 Wait for `Application started`. The first boot will run Umbraco's unattended install + Clean.Core seed against the empty SQL Server DB. This takes ~60s.
@@ -287,7 +287,7 @@ In a second terminal, ~30s after Instance A logs `Application started`:
 ```bash
 cd ~/Documents/LlmsTxt
 ASPNETCORE_ENVIRONMENT=Spike.B ASPNETCORE_URLS=http://localhost:5102 \
-  dotnet run --project LlmsTxt.Umbraco.TestSite/LlmsTxt.Umbraco.TestSite.csproj --no-launch-profile
+  dotnet run --project Umbraco.Community.AiVisibility.TestSite/Umbraco.Community.AiVisibility.TestSite.csproj --no-launch-profile
 ```
 
 Instance B finds the schema already present (Umbraco migrations are idempotent) and starts in ~10s.
