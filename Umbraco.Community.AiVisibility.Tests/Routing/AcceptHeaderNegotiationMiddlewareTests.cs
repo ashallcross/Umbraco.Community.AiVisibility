@@ -1,9 +1,9 @@
 using System.Text;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Controllers;
+using Umbraco.Community.AiVisibility.Controllers;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Routing;
-using LlmsTxt.Umbraco.Tests.TestHelpers;
+using Umbraco.Community.AiVisibility.Routing;
+using Umbraco.Community.AiVisibility.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -15,7 +15,7 @@ using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
 using Umbraco.Cms.Web.Common.Routing;
 
-namespace LlmsTxt.Umbraco.Tests.Routing;
+namespace Umbraco.Community.AiVisibility.Tests.Routing;
 
 [TestFixture]
 public class AcceptHeaderNegotiationMiddlewareTests
@@ -107,7 +107,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
 
         Assert.That(harness.NextWasCalled, Is.True);
         Assert.That(harness.Extractor.WasCalled, Is.False,
-            ".md suffix is owned by the LlmsPipelineFilter Endpoints route → MarkdownController");
+            ".md suffix is owned by the AiVisibilityPipelineFilter Endpoints route → MarkdownController");
     }
 
     [Test]
@@ -258,7 +258,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
             NullLogger<DefaultExclusionEvaluator>.Instance);
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor, writer, exclusionEvaluator, optionsMonitor,
-            Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
+            Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>(),
             logger);
         var nextCalled = false;
         await middleware.InvokeAsync(ctx, _ => { nextCalled = true; return Task.CompletedTask; });
@@ -525,7 +525,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
             writer,
             controllerExclusion,
             optionsMonitor,
-            Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
+            Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>(),
             NullLogger<MarkdownController>.Instance);
         var controllerCtx = new DefaultHttpContext();
         controllerCtx.Request.Method = "GET";
@@ -577,7 +577,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
         public required StubExtractor Extractor { get; init; }
         public required MemoryStream Body { get; init; }
         public required RecordingLogger<AcceptHeaderNegotiationMiddleware> Logger { get; init; }
-        public required LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher Publisher { get; init; }
+        public required Umbraco.Community.AiVisibility.Notifications.INotificationPublisher Publisher { get; init; }
         public RequestDelegate Next { get; set; } = ctx => Task.CompletedTask;
         public bool NextWasCalled => _nextCalled;
         private bool _nextCalled;
@@ -659,7 +659,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
         var exclusionEvaluator = new DefaultExclusionEvaluator(
             settingsResolver,
             NullLogger<DefaultExclusionEvaluator>.Instance);
-        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor,
             writer,

@@ -1,7 +1,7 @@
-using LlmsTxt.Umbraco.Routing;
+using Umbraco.Community.AiVisibility.Routing;
 using Microsoft.AspNetCore.Http;
 
-namespace LlmsTxt.Umbraco.Tests.Routing;
+namespace Umbraco.Community.AiVisibility.Tests.Routing;
 
 [TestFixture]
 public class IfNoneMatchMatcherTests

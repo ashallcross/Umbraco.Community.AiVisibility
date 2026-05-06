@@ -9,7 +9,7 @@ namespace Umbraco.Community.AiVisibility.Caching;
 /// produces a different body), so a content hash is the simplest and most
 /// stable validator.
 /// <para>
-/// Diverges from <see cref="LlmsTxt.Umbraco.Routing.MarkdownResponseWriter"/>'s
+/// Diverges from <see cref="Umbraco.Community.AiVisibility.Routing.MarkdownResponseWriter"/>'s
 /// per-page ETag (which hashes <c>(host | route | culture | updatedUtc)</c>):
 /// the per-page writer needs <see cref="IPublishedContent.UpdateDate"/> as the
 /// version stamp because the body is computed lazily downstream of the writer;

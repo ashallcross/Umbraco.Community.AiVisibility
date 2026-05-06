@@ -3,8 +3,8 @@ namespace Umbraco.Community.AiVisibility.Robots;
 /// <summary>
 /// Story 4.2 — outcome of a single host's <c>/robots.txt</c> audit. Cached
 /// at <c>llms:robots:{hostname}</c> for
-/// <see cref="LlmsTxt.Umbraco.Configuration.RobotsAuditorSettings.RefreshIntervalHours"/>
-/// hours and rewritten by <see cref="LlmsTxt.Umbraco.Background.RobotsAuditRefreshJob"/>.
+/// <see cref="Umbraco.Community.AiVisibility.Configuration.RobotsAuditorSettings.RefreshIntervalHours"/>
+/// hours and rewritten by <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>.
 /// Read by <see cref="RobotsAuditHealthCheck"/> at view-render time.
 /// </summary>
 /// <param name="Hostname">Lowercased host the audit ran against.</param>

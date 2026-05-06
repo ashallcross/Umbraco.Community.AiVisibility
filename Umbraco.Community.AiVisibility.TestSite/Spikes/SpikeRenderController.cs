@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes;
 
 /// <summary>
 /// SPIKE-ONLY HTTP harness for Story 0.A. Routes:

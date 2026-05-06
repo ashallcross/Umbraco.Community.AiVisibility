@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Builders;
+using Umbraco.Community.AiVisibility.LlmsTxt;
 using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;

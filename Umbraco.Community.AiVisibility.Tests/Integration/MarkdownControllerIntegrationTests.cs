@@ -1,10 +1,10 @@
 using System.Net;
 
-namespace LlmsTxt.Umbraco.Tests.Integration;
+namespace Umbraco.Community.AiVisibility.Tests.Integration;
 
 /// <summary>
 /// Discharges Story 1.1 Spec Task 11's deferred case (2):
-/// <see cref="LlmsTxt.Umbraco.Controllers.MarkdownController"/> returns 404 for an
+/// <see cref="Umbraco.Community.AiVisibility.Controllers.MarkdownController"/> returns 404 for an
 /// unresolved path — proves the LlmsTxt pipeline filter mounts under the integration
 /// harness and the controller is invoked for the not-found case.
 ///

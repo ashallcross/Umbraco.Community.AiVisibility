@@ -1,11 +1,11 @@
 using Umbraco.Community.AiVisibility.Configuration;
 
-namespace LlmsTxt.Umbraco.Tests.TestHelpers;
+namespace Umbraco.Community.AiVisibility.Tests.TestHelpers;
 
 /// <summary>
 /// Story 3.1 — adapt the Story 2.x tests to the Option-A breaking change to
-/// <see cref="LlmsTxt.Umbraco.Builders.LlmsTxtBuilderContext"/> /
-/// <see cref="LlmsTxt.Umbraco.Builders.LlmsFullBuilderContext"/>: their
+/// <see cref="Umbraco.Community.AiVisibility.Builders.LlmsTxtBuilderContext"/> /
+/// <see cref="Umbraco.Community.AiVisibility.Builders.LlmsFullBuilderContext"/>: their
 /// <c>Settings</c> field is now <see cref="ResolvedLlmsSettings"/>, not
 /// <see cref="AiVisibilitySettings"/>. Existing test fixtures construct an
 /// appsettings snapshot and pass it directly; this helper wraps that snapshot

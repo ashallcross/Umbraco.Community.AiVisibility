@@ -1,13 +1,13 @@
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Notifications;
+using Umbraco.Community.AiVisibility.Notifications;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Umbraco.Cms.Web.Common.Routing;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// <see cref="Umbraco.Cms.Web.Common.ApplicationBuilder.UmbracoPipelineFilter.PostRouting"/>
@@ -30,7 +30,7 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
     private readonly IMarkdownResponseWriter _writer;
     private readonly IExclusionEvaluator _exclusionEvaluator;
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
-    private readonly ILlmsNotificationPublisher _notificationPublisher;
+    private readonly INotificationPublisher _notificationPublisher;
     private readonly ILogger<AcceptHeaderNegotiationMiddleware> _logger;
 
     public AcceptHeaderNegotiationMiddleware(
@@ -38,7 +38,7 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
         IMarkdownResponseWriter writer,
         IExclusionEvaluator exclusionEvaluator,
         IOptionsMonitor<AiVisibilitySettings> settings,
-        ILlmsNotificationPublisher notificationPublisher,
+        INotificationPublisher notificationPublisher,
         ILogger<AcceptHeaderNegotiationMiddleware> logger)
     {
         _extractor = extractor;
@@ -65,7 +65,7 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
             return;
         }
 
-        // Suffix gate — `.md` requests are owned by the LlmsPipelineFilter endpoints
+        // Suffix gate — `.md` requests are owned by the AiVisibilityPipelineFilter endpoints
         // route + MarkdownController; never double-handle.
         if (context.Request.Path.HasValue
             && context.Request.Path.Value!.EndsWith(

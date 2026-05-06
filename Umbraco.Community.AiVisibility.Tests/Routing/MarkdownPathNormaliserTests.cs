@@ -1,6 +1,6 @@
-using LlmsTxt.Umbraco.Routing;
+using Umbraco.Community.AiVisibility.Routing;
 
-namespace LlmsTxt.Umbraco.Tests.Routing;
+namespace Umbraco.Community.AiVisibility.Tests.Routing;
 
 [TestFixture]
 public class MarkdownPathNormaliserTests

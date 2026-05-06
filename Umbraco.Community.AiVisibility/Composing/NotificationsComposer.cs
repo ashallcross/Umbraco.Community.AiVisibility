@@ -1,7 +1,7 @@
 using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
-using LlmsTxt.Umbraco.Notifications;
+using Umbraco.Community.AiVisibility.Notifications;
 using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -26,7 +26,7 @@ namespace Umbraco.Community.AiVisibility.Composing;
 /// <see cref="Microsoft.Extensions.Hosting.IHostedService"/>.</item>
 /// <item><see cref="LogRetentionJob"/> as
 /// <see cref="IDistributedBackgroundJob"/>.</item>
-/// <item>Three <see cref="DefaultLlmsRequestLogHandler"/> registrations —
+/// <item>Three <see cref="DefaultRequestLogHandler"/> registrations —
 /// one per notification, via Umbraco's
 /// <c>AddNotificationAsyncHandler&lt;TNotification, THandler&gt;</c>
 /// extension which uses Scoped lifetime.</item>
@@ -53,7 +53,7 @@ public sealed class NotificationsComposer : IComposer
         builder.Services.TryAddSingleton<AiBotList>();
 
         builder.Services.TryAddSingleton<IUserAgentClassifier, DefaultUserAgentClassifier>();
-        builder.Services.TryAddSingleton<ILlmsNotificationPublisher, DefaultLlmsNotificationPublisher>();
+        builder.Services.TryAddSingleton<INotificationPublisher, DefaultNotificationPublisher>();
         builder.Services.TryAddSingleton<IRequestLog, DefaultRequestLog>();
 
         // Story 5.2 — analytics read path. Singleton because
@@ -74,19 +74,19 @@ public sealed class NotificationsComposer : IComposer
 
         builder.AddNotificationAsyncHandler<
             MarkdownPageRequestedNotification,
-            DefaultLlmsRequestLogHandler>();
+            DefaultRequestLogHandler>();
         builder.AddNotificationAsyncHandler<
             LlmsTxtRequestedNotification,
-            DefaultLlmsRequestLogHandler>();
+            DefaultRequestLogHandler>();
         builder.AddNotificationAsyncHandler<
             LlmsFullTxtRequestedNotification,
-            DefaultLlmsRequestLogHandler>();
+            DefaultRequestLogHandler>();
 
         // Composer-time hard-validation (AC6) — Story 4.2
         // RobotsComposer line 69 precedent. TryAddSingleton above
         // no-ops if an adopter pre-registered the service as Scoped or
         // Transient — left unchecked, that captures a Scoped dep into
-        // the Singleton DefaultLlmsRequestLogHandler chain (and hence
+        // the Singleton DefaultRequestLogHandler chain (and hence
         // the Singleton drainer's static reference to the channel).
         var requestLogRegistration = builder.Services
             .FirstOrDefault(d => d.ServiceType == typeof(IRequestLog));

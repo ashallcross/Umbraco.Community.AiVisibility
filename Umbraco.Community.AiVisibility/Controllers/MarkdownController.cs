@@ -1,17 +1,17 @@
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Notifications;
-using LlmsTxt.Umbraco.Routing;
+using Umbraco.Community.AiVisibility.Notifications;
+using Umbraco.Community.AiVisibility.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace LlmsTxt.Umbraco.Controllers;
+namespace Umbraco.Community.AiVisibility.Controllers;
 
 /// <summary>
 /// Renders Umbraco published content as Markdown for the <c>{**path}</c> route guarded by
-/// <see cref="LlmsPipelineFilter"/>'s <c>.md</c> suffix constraint. Story 1.2 made this
+/// <see cref="AiVisibilityPipelineFilter"/>'s <c>.md</c> suffix constraint. Story 1.2 made this
 /// controller responsible for route resolution: it converts a captured path to an
 /// <see cref="Umbraco.Cms.Core.Models.PublishedContent.IPublishedContent"/> via
 /// <see cref="IMarkdownRouteResolver"/>, returns 404 directly when the route doesn't resolve, and
@@ -42,7 +42,7 @@ public sealed class MarkdownController : Controller
     private readonly IMarkdownResponseWriter _responseWriter;
     private readonly IExclusionEvaluator _exclusionEvaluator;
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
-    private readonly ILlmsNotificationPublisher _notificationPublisher;
+    private readonly INotificationPublisher _notificationPublisher;
     private readonly ILogger<MarkdownController> _logger;
 
     public MarkdownController(
@@ -51,7 +51,7 @@ public sealed class MarkdownController : Controller
         IMarkdownResponseWriter responseWriter,
         IExclusionEvaluator exclusionEvaluator,
         IOptionsMonitor<AiVisibilitySettings> settings,
-        ILlmsNotificationPublisher notificationPublisher,
+        INotificationPublisher notificationPublisher,
         ILogger<MarkdownController> logger)
     {
         _extractor = extractor;

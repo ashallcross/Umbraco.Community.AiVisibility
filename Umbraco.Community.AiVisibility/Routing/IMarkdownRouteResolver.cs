@@ -1,6 +1,6 @@
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Resolves an incoming absolute request URI to the

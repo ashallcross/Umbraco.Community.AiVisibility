@@ -1,6 +1,6 @@
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Tests.TestHelpers;
+using Umbraco.Community.AiVisibility.Tests.TestHelpers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -112,7 +112,7 @@ public class ExtractionQualityBenchmarkTests
             "(clean-core-blockgrid-cards), and nested+tables+images " +
             "(clean-core-nested-tables-images) fixtures alongside the seed " +
             "(clean-core-home). Missing: " + string.Join(", ", missing) + ". " +
-            "Fixtures live at LlmsTxt.Umbraco.Tests/Fixtures/Extraction/<scenario>/ " +
+            "Fixtures live at Umbraco.Community.AiVisibility.Tests/Fixtures/Extraction/<scenario>/ " +
             "with both input.html and expected.md.");
     }
 
@@ -169,8 +169,8 @@ public class ExtractionQualityBenchmarkTests
 
     private static string ResolveFixtureRoot()
     {
-        // Test binaries live at .../LlmsTxt.Umbraco.Tests/bin/Debug/net10.0/
-        // Fixtures live alongside the source at .../LlmsTxt.Umbraco.Tests/Fixtures/Extraction/
+        // Test binaries live at .../Umbraco.Community.AiVisibility.Tests/bin/Debug/net10.0/
+        // Fixtures live alongside the source at .../Umbraco.Community.AiVisibility.Tests/Fixtures/Extraction/
         var assemblyDir = Path.GetDirectoryName(typeof(ExtractionQualityBenchmarkTests).Assembly.Location)!;
         var testProjectDir = Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", ".."));
         return Path.Combine(testProjectDir, "Fixtures", "Extraction");

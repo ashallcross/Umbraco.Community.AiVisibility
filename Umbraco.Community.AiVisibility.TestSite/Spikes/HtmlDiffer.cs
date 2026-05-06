@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes;
 
 /// <summary>
 /// Diff helper for the spike — compares two HTML strings after stripping noise that

@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Routing;
+using Umbraco.Community.AiVisibility.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,7 +10,7 @@ using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
 using Umbraco.Cms.Web.Common.Routing;
 
-namespace LlmsTxt.Umbraco.Tests.Routing;
+namespace Umbraco.Community.AiVisibility.Tests.Routing;
 
 /// <summary>
 /// Story 4.1 ACs 1–4 — pins the DiscoverabilityHeaderMiddleware behaviour:

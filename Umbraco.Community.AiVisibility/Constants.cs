@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco;
+namespace Umbraco.Community.AiVisibility;
 
 public static class Constants
 {

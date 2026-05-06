@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Infrastructure.Persistence;
 using Umbraco.Cms.Infrastructure.Scoping;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes.DistributedJob;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes.DistributedJob;
 
 // SPIKE 0.B — wraps NPoco access for the spike's execution-log table.
 // Creates the table on demand using flavor-aware DDL (SQLite + SQL Server),

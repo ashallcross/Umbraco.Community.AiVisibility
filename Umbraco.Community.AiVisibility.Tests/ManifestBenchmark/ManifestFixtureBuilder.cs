@@ -1,12 +1,12 @@
-using LlmsTxt.Umbraco.Builders;
+using Umbraco.Community.AiVisibility.LlmsTxt;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Tests.TestHelpers;
+using Umbraco.Community.AiVisibility.Tests.TestHelpers;
 using NSubstitute;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
 
-namespace LlmsTxt.Umbraco.Tests.ManifestBenchmark;
+namespace Umbraco.Community.AiVisibility.Tests.ManifestBenchmark;
 
 /// <summary>
 /// Story 2.3 — converts a <see cref="ManifestFixture"/> into the inputs both
@@ -97,7 +97,7 @@ internal sealed class ManifestFixtureBuilder
                     var trimmed = v.RelativeUrl.TrimEnd();
                     var withSuffix = trimmed.EndsWith('/')
                         ? trimmed + "index.html.md"
-                        : trimmed + LlmsTxt.Umbraco.Constants.Routes.MarkdownSuffix;
+                        : trimmed + Umbraco.Community.AiVisibility.Constants.Routes.MarkdownSuffix;
                     return new HreflangVariant(v.Culture.ToLowerInvariant(), withSuffix);
                 }).ToList();
                 variantMap[page.Key] = variants;

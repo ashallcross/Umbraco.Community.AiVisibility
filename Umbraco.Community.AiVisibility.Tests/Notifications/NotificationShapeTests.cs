@@ -1,7 +1,7 @@
-using LlmsTxt.Umbraco.Notifications;
+using Umbraco.Community.AiVisibility.Notifications;
 using Umbraco.Community.AiVisibility.Persistence;
 
-namespace LlmsTxt.Umbraco.Tests.Notifications;
+namespace Umbraco.Community.AiVisibility.Tests.Notifications;
 
 [TestFixture]
 public class NotificationShapeTests

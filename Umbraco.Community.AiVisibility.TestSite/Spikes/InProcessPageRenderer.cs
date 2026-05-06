@@ -11,7 +11,7 @@ using Umbraco.Cms.Core.Routing;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Web;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes;
 
 /// <summary>
 /// SPIKE-ONLY in-process Razor renderer. Validates the documented v17 chain:

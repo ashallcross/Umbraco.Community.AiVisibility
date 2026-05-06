@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Tests.ManifestBenchmark;
+namespace Umbraco.Community.AiVisibility.Tests.ManifestBenchmark;
 
 /// <summary>
 /// Story 2.3 — fixture descriptor for the parameterised

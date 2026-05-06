@@ -4,7 +4,7 @@ using AngleSharp.Html.Parser;
 using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Routing;
+using Umbraco.Community.AiVisibility.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

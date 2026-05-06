@@ -662,7 +662,7 @@ public class LlmsSettingsManagementApiControllerTests
             .Single();
         var apiName = typeof(global::Umbraco.Cms.Api.Common.Attributes.MapToApiAttribute)
             .GetProperty("ApiName")?.GetValue(attr) as string;
-        Assert.That(apiName, Is.EqualTo(global::LlmsTxt.Umbraco.Constants.ApiName),
+        Assert.That(apiName, Is.EqualTo(global::Umbraco.Community.AiVisibility.Constants.ApiName),
             "MapToApi must point at Constants.ApiName so the action lands in the existing Swagger doc");
     }
 

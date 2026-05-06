@@ -2,9 +2,9 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
 /// Story 5.1 — coarse classification of an HTTP <c>User-Agent</c> header,
-/// emitted on every <see cref="LlmsTxt.Umbraco.Notifications.MarkdownPageRequestedNotification"/>,
-/// <see cref="LlmsTxt.Umbraco.Notifications.LlmsTxtRequestedNotification"/>, and
-/// <see cref="LlmsTxt.Umbraco.Notifications.LlmsFullTxtRequestedNotification"/>
+/// emitted on every <see cref="Umbraco.Community.AiVisibility.Notifications.MarkdownPageRequestedNotification"/>,
+/// <see cref="Umbraco.Community.AiVisibility.Notifications.LlmsTxtRequestedNotification"/>, and
+/// <see cref="Umbraco.Community.AiVisibility.Notifications.LlmsFullTxtRequestedNotification"/>
 /// and persisted as the <c>userAgentClass</c> column on the
 /// <c>llmsTxtRequestLog</c> table.
 /// </summary>

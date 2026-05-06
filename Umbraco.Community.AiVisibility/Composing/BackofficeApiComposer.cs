@@ -56,7 +56,7 @@ namespace Umbraco.Community.AiVisibility.Composing
 
         // Story 6.0a (Codex finding #2) — explicit allow-list of intended
         // Management API controllers. The previous namespace-prefix match
-        // (`LlmsTxt.Umbraco.Controllers`) silently captured every controller
+        // (`Umbraco.Community.AiVisibility.Controllers`) silently captured every controller
         // under that namespace, including the deleted spike + template
         // scaffolds, and would silently produce duplicate operation IDs in
         // Swagger if two future actions named identically appeared across

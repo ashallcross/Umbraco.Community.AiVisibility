@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Builders;
+using Umbraco.Community.AiVisibility.LlmsTxt;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace LlmsTxt.Umbraco.Tests.TestHelpers;
+namespace Umbraco.Community.AiVisibility.Tests.TestHelpers;
 
 /// <summary>
 /// Bespoke unified-diff formatter for <c>ExtractionQualityBenchmarkTests</c> failure

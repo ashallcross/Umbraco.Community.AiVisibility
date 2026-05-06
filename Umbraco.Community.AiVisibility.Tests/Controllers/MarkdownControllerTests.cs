@@ -1,9 +1,9 @@
 using System.Text;
 using Umbraco.Community.AiVisibility.Configuration;
-using LlmsTxt.Umbraco.Controllers;
+using Umbraco.Community.AiVisibility.Controllers;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Routing;
-using LlmsTxt.Umbraco.Tests.TestHelpers;
+using Umbraco.Community.AiVisibility.Routing;
+using Umbraco.Community.AiVisibility.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Tests.Controllers;
+namespace Umbraco.Community.AiVisibility.Tests.Controllers;
 
 [TestFixture]
 public class MarkdownControllerTests
@@ -518,7 +518,7 @@ public class MarkdownControllerTests
     [Test]
     public async Task Render_Success_PublishesMarkdownPageNotification()
     {
-        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
         var extractor = new StubExtractor(BuildFound("# Home\n"));
         var resolver = MakeStubResolver(content: BuildContent(), culture: "en-GB");
         var body = new MemoryStream();
@@ -538,7 +538,7 @@ public class MarkdownControllerTests
     [Test]
     public async Task Render_NotFound_DoesNotPublish()
     {
-        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
         var extractor = new StubExtractor(BuildFound("never reached"));
         var resolver = StubResolverNotFound();
         var controller = MakeController(extractor, resolver, "GET", "https", "example.test",
@@ -553,7 +553,7 @@ public class MarkdownControllerTests
     [Test]
     public async Task Render_ExtractorError_DoesNotPublish()
     {
-        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
         var extractor = new StubExtractor(MarkdownExtractionResult.Failed(
             new InvalidOperationException("boom"),
             sourceUrl: "https://example.test/buggy",
@@ -572,7 +572,7 @@ public class MarkdownControllerTests
     public async Task Render_IfNoneMatch_Matches_Returns304_DoesNotPublish()
     {
         // 304 revalidation: same body already delivered, no new request to log.
-        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
         var etag = await RunAndCaptureETag("/home.md", "en-GB", HomeUpdated);
 
         var body = new MemoryStream();
@@ -595,7 +595,7 @@ public class MarkdownControllerTests
         // PII discipline gate (DoD line 127): canonical Path on the
         // notification carries no query string components even when the
         // request URL includes them. Manual Gate Step 6.
-        var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
+        var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
         var extractor = new StubExtractor(BuildFound("# Home\n"));
         var resolver = MakeStubResolver(content: BuildContent(), culture: "en-GB");
         var body = new MemoryStream();
@@ -689,7 +689,7 @@ public class MarkdownControllerTests
         AiVisibilitySettings? settings = null,
         MemoryStream? body = null,
         ISettingsResolver? settingsResolverOverride = null,
-        LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher? notificationPublisher = null)
+        Umbraco.Community.AiVisibility.Notifications.INotificationPublisher? notificationPublisher = null)
     {
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = method;
@@ -727,7 +727,7 @@ public class MarkdownControllerTests
             writer,
             exclusionEvaluator,
             optionsMonitor,
-            notificationPublisher ?? Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
+            notificationPublisher ?? Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>(),
             NullLogger<MarkdownController>.Instance);
         controller.ControllerContext = new ControllerContext
         {

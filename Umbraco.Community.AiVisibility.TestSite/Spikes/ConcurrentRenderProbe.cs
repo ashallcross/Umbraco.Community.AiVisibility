@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.TestSite.Spikes;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes;
 
 /// <summary>
 /// SPIKE-ONLY: fires N parallel in-process renders against mixed paths/cultures

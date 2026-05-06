@@ -1,6 +1,6 @@
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Routing;
+using Umbraco.Community.AiVisibility.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -14,7 +14,7 @@ namespace Umbraco.Community.AiVisibility.Composing;
 
 /// <summary>
 /// Registers the <c>{**path:nonfile}.md</c> route, the
-/// <see cref="LlmsPipelineFilter"/>, the
+/// <see cref="AiVisibilityPipelineFilter"/>, the
 /// <see cref="UmbracoRequestOptions.HandleAsServerSideRequest"/> composition,
 /// and the extraction-pipeline DI graph (<see cref="PageRenderer"/>,
 /// <see cref="MarkdownConverter"/>, <see cref="IContentRegionSelector"/>,
@@ -31,7 +31,7 @@ public sealed class RoutingComposer : IComposer
 
         // Pipeline filter — registers the .md endpoint via UmbracoPipelineFilter.Endpoints.
         builder.Services.Configure<UmbracoPipelineOptions>(opts =>
-            opts.AddFilter(new LlmsPipelineFilter()));
+            opts.AddFilter(new AiVisibilityPipelineFilter()));
 
         // Compose UmbracoRequestOptions.HandleAsServerSideRequest with any pre-existing
         // delegate (per AR2 — never overwrite). PostConfigure runs after Configure so
@@ -40,7 +40,7 @@ public sealed class RoutingComposer : IComposer
         {
             var previous = opts.HandleAsServerSideRequest;
             opts.HandleAsServerSideRequest =
-                LlmsPipelineFilter.ComposeHandleAsServerSideRequest(previous);
+                AiVisibilityPipelineFilter.ComposeHandleAsServerSideRequest(previous);
         });
 
         // HttpContextAccessor needed by PageRenderer to derive scheme/host.
@@ -69,7 +69,7 @@ public sealed class RoutingComposer : IComposer
 
         // Story 4.1 — factory-activated discoverability middleware. Transient
         // for the same reason: depends on Scoped IExclusionEvaluator via
-        // request scope. Wired into LlmsPipelineFilter.MapPostRouting in front
+        // request scope. Wired into AiVisibilityPipelineFilter.MapPostRouting in front
         // of the Accept-header negotiation middleware.
         builder.Services.AddTransient<DiscoverabilityHeaderMiddleware>();
 

@@ -1,7 +1,7 @@
 using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.AspNetCore.Http;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Writes a successful <see cref="MarkdownExtractionResult"/> to

@@ -6,7 +6,7 @@ using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Routing;
 using Umbraco.Cms.Web.Common.Routing;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Story 4.1 — <see cref="Umbraco.Cms.Web.Common.ApplicationBuilder.UmbracoPipelineFilter.PostRouting"/>

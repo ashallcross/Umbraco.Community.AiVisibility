@@ -4,7 +4,7 @@ namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 
 /// <summary>
 /// Story 3.1 — package-migration plan that ships the Settings doctype +
-/// per-page exclusion composition for LlmsTxt.Umbraco.
+/// per-page exclusion composition for Umbraco.Community.AiVisibility.
 /// </summary>
 /// <remarks>
 /// <para>

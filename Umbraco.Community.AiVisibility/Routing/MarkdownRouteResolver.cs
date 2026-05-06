@@ -2,7 +2,7 @@ using Umbraco.Cms.Core.Routing;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Web;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Default <see cref="IMarkdownRouteResolver"/> wrapping the v17 published-router trio

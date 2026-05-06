@@ -2,12 +2,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
-using LlmsTxt.Umbraco.Routing;
+using Umbraco.Community.AiVisibility.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace LlmsTxt.Umbraco.Tests.Routing;
+namespace Umbraco.Community.AiVisibility.Tests.Routing;
 
 [TestFixture]
 public class MarkdownResponseWriterTests
@@ -165,7 +165,7 @@ public class MarkdownResponseWriterTests
     {
         // B3 regression — `.md` controller normalises `/home/.md` to `/home/`,
         // Accept-negotiation middleware passes raw `/home`. Without canonical-path
-        // normalisation both ETags differ. With LlmsCanonicalPath.Normalise stripping
+        // normalisation both ETags differ. With CanonicalPath.Normalise stripping
         // trailing slash, the two surfaces converge.
         var noSlash = await CaptureETag(canonicalPath: "/home");
         var trailing = await CaptureETag(canonicalPath: "/home/");

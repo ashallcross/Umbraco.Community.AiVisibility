@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes.DistributedJob;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes.DistributedJob;
 
 // SPIKE 0.B — read-only inspector for the spike's execution-log table.
 // `GET /spikes/distributed-job/rows` returns every row inserted by

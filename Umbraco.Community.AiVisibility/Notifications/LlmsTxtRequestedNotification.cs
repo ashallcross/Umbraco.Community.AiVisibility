@@ -1,11 +1,11 @@
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Cms.Core.Notifications;
 
-namespace LlmsTxt.Umbraco.Notifications;
+namespace Umbraco.Community.AiVisibility.Notifications;
 
 /// <summary>
 /// Story 5.1 — fires after a successful (200) <c>/llms.txt</c> response.
-/// Published from <see cref="LlmsTxt.Umbraco.Controllers.LlmsTxtController"/>.
+/// Published from <see cref="Umbraco.Community.AiVisibility.Controllers.LlmsTxtController"/>.
 /// </summary>
 /// <remarks>
 /// <para>

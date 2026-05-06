@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Append-not-overwrite <c>Vary: Accept</c> emission, deduped on case-insensitive

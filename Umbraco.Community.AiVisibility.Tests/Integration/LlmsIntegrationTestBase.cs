@@ -1,7 +1,7 @@
 using Umbraco.Cms.Tests.Common.Testing;
 using Umbraco.Cms.Tests.Integration.TestServerTest;
 
-namespace LlmsTxt.Umbraco.Tests.Integration;
+namespace Umbraco.Community.AiVisibility.Tests.Integration;
 
 /// <summary>
 /// Base class for Story 1.5's integration tests. Inherits

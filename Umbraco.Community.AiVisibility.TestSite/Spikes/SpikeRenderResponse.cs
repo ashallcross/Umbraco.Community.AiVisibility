@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.TestSite.Spikes;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes;
 
 public sealed record SpikeRenderResponse(
     string Mode,

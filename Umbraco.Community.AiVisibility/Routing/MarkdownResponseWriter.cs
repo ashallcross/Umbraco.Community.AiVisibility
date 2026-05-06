@@ -7,7 +7,7 @@ using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Default <see cref="IMarkdownResponseWriter"/>. Stateless — registered as
@@ -42,7 +42,7 @@ internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
         // controller and the Accept-negotiation middleware compute identical
         // ETag inputs for the same logical resource regardless of percent-
         // encoding or trailing-slash variants the client used.
-        var normalisedPath = LlmsCanonicalPath.Normalise(canonicalPath);
+        var normalisedPath = CanonicalPath.Normalise(canonicalPath);
         // Story 1.5: include request host in ETag input so multi-domain
         // bindings on the same node produce distinct ETags. Without this, a
         // CDN fronting both hosts could serve siteA's body to siteB clients

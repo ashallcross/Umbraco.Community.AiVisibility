@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.TestSite.Spikes.DistributedJob;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes.DistributedJob;
 
 // SPIKE 0.B — bound from `LlmsTxtSpike:DistributedJob:*` in appsettings.
 // The job stays inert unless `Enabled=true` so ordinary TestSite runs do

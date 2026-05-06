@@ -14,7 +14,7 @@ namespace Umbraco.Community.AiVisibility.Robots;
 /// Defensively gated on <see cref="IServerRoleAccessor"/> so multi-instance
 /// front-end servers don't all hammer their own <c>/robots.txt</c> at boot;
 /// the canonical exactly-once guarantee for the recurring refresh remains
-/// the <see cref="LlmsTxt.Umbraco.Background.RobotsAuditRefreshJob"/>'s
+/// the <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>'s
 /// <c>IDistributedBackgroundJob</c> host-DB-lock coordination.
 /// </summary>
 public sealed class StartupRobotsAuditRunner : IHostedService

@@ -1,6 +1,6 @@
-using LlmsTxt.Umbraco.Tests.TestHelpers;
+using Umbraco.Community.AiVisibility.Tests.TestHelpers;
 
-namespace LlmsTxt.Umbraco.Tests.TestHelpers;
+namespace Umbraco.Community.AiVisibility.Tests.TestHelpers;
 
 /// <summary>
 /// Validates the bespoke unified-diff formatter used by

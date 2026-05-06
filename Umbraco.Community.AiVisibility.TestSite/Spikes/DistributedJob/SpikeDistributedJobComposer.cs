@@ -4,7 +4,7 @@ using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes.DistributedJob;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes.DistributedJob;
 
 // SPIKE 0.B — registers the spike harness pieces only when
 // `LlmsTxtSpike:DistributedJob:Enabled=true`, so ordinary TestSite runs

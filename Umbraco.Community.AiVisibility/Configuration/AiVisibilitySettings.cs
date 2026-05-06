@@ -256,7 +256,7 @@ public sealed class RequestLogSettings
 {
     /// <summary>
     /// When <c>false</c>, the package's default
-    /// <c>DefaultLlmsRequestLogHandler</c> short-circuits — notifications
+    /// <c>DefaultRequestLogHandler</c> short-circuits — notifications
     /// still fire (per AC3 — they're public events decoupled from the
     /// writer), but the default writer's <c>EnqueueAsync</c> is never
     /// called. Adopter notification handlers continue to receive events.
@@ -393,7 +393,7 @@ public sealed class AnalyticsSettings
 public sealed class RobotsAuditorSettings
 {
     /// <summary>
-    /// How often the <see cref="LlmsTxt.Umbraco.Background.RobotsAuditRefreshJob"/>
+    /// How often the <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>
     /// (registered as an <c>IDistributedBackgroundJob</c>) re-runs the audit
     /// for every bound hostname. Default <c>24</c> hours. Set to <c>0</c> or
     /// negative to disable the recurring refresh — the Health Check view

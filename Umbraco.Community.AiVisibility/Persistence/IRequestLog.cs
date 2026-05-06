@@ -5,7 +5,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 /// <summary>
 /// Story 5.1 — extension point for the package's request log writer.
 /// Subscribed to all three notifications via the package's default
-/// <see cref="LlmsTxt.Umbraco.Notifications.DefaultLlmsRequestLogHandler"/>;
+/// <see cref="Umbraco.Community.AiVisibility.Notifications.DefaultRequestLogHandler"/>;
 /// adopters override with their own writer to push to App Insights /
 /// Serilog / a custom table / etc.
 /// </summary>
@@ -14,7 +14,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 /// <b>Lifetime: Singleton.</b> The default implementation
 /// (<see cref="DefaultRequestLog"/>) owns a process-wide bounded
 /// <c>System.Threading.Channels.Channel&lt;RequestLogEntry&gt;</c>;
-/// the drainer reads from it. <see cref="LlmsTxt.Umbraco.Composers.NotificationsComposer"/>
+/// the drainer reads from it. <see cref="Umbraco.Community.AiVisibility.Composers.NotificationsComposer"/>
 /// throws <see cref="InvalidOperationException"/> at composition time if
 /// any registered <c>IRequestLog</c> has a non-Singleton lifetime
 /// (Story 4.2 chunk-3 D2 ratification — same shape as the

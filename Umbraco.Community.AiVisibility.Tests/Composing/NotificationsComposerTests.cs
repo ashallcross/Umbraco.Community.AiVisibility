@@ -2,7 +2,7 @@ using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
-using LlmsTxt.Umbraco.Notifications;
+using Umbraco.Community.AiVisibility.Notifications;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Configuration;

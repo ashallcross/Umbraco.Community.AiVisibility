@@ -6,7 +6,7 @@ namespace Umbraco.Community.AiVisibility.Robots;
 /// <summary>
 /// Story 4.2 — Singleton holder for the AI-crawler list. The list is embedded
 /// into the assembly at build time by the <c>SyncAiBotList</c> MSBuild target
-/// (see <c>LlmsTxt.Umbraco.csproj</c>) under the resource name
+/// (see <c>Umbraco.Community.AiVisibility.csproj</c>) under the resource name
 /// <c>Umbraco.Community.AiVisibility.Robots.AiBotList.txt</c>.
 /// </summary>
 /// <remarks>

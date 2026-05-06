@@ -1,15 +1,15 @@
 using System.Text;
 using System.Text.Json;
-using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Tests.TestHelpers;
+using Umbraco.Community.AiVisibility.LlmsTxt;
+using Umbraco.Community.AiVisibility.Tests.TestHelpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace LlmsTxt.Umbraco.Tests.ManifestBenchmark;
+namespace Umbraco.Community.AiVisibility.Tests.ManifestBenchmark;
 
 /// <summary>
 /// Story 2.3 AC4 / AC5 — parameterised quality benchmark for
 /// <c>/llms.txt</c> + <c>/llms-full.txt</c>. Walks
-/// <c>LlmsTxt.Umbraco.Tests/Fixtures/Manifests/&lt;scenario&gt;/</c>, loads
+/// <c>Umbraco.Community.AiVisibility.Tests/Fixtures/Manifests/&lt;scenario&gt;/</c>, loads
 /// <c>fixture.json</c>, drives the default builder against stubbed
 /// <see cref="IPublishedContent"/> derived from the fixture, and diffs the
 /// output against <c>expected-llms.txt</c> (and optionally

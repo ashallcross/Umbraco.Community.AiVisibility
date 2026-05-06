@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Strips the <c>.md</c> or <c>/index.html.md</c> suffix from a captured route path

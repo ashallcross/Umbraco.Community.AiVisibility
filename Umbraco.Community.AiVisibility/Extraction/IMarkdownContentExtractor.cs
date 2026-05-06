@@ -34,7 +34,7 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// </para>
 /// <code>
 /// // Adopter composer — runs after RoutingComposer (preferred for clarity).
-/// [ComposeAfter(typeof(LlmsTxt.Umbraco.Composers.RoutingComposer))]
+/// [ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composers.RoutingComposer))]
 /// public sealed class AcmeExtractorComposer : IComposer
 /// {
 ///     public void Compose(IUmbracoBuilder builder) =>
@@ -62,8 +62,8 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// log only fires when the adopter's registration is in the service collection BEFORE
 /// <see cref="Composers.CachingComposer"/> runs its detection. To guarantee the log
 /// fires, decorate the adopter composer with
-/// <c>[ComposeBefore(typeof(LlmsTxt.Umbraco.Composers.CachingComposer))]</c> in addition
-/// to <c>[ComposeAfter(typeof(LlmsTxt.Umbraco.Composers.RoutingComposer))]</c>. Without
+/// <c>[ComposeBefore(typeof(Umbraco.Community.AiVisibility.Composers.CachingComposer))]</c> in addition
+/// to <c>[ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composers.RoutingComposer))]</c>. Without
 /// the <c>ComposeBefore</c>, override behaviour is unaffected — only the observability
 /// log is.
 /// </para>

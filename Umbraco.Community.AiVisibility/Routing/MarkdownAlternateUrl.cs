@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Story 4.1 — maps a canonical page URL to its Markdown alternate per the

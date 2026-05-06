@@ -1,13 +1,13 @@
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Cms.Core.Notifications;
 
-namespace LlmsTxt.Umbraco.Notifications;
+namespace Umbraco.Community.AiVisibility.Notifications;
 
 /// <summary>
 /// Story 5.1 — fires after a successful (200) Markdown response. Published
-/// from <see cref="LlmsTxt.Umbraco.Controllers.MarkdownController"/> on the
+/// from <see cref="Umbraco.Community.AiVisibility.Controllers.MarkdownController"/> on the
 /// <c>.md</c> route AND from
-/// <see cref="LlmsTxt.Umbraco.Routing.AcceptHeaderNegotiationMiddleware"/>
+/// <see cref="Umbraco.Community.AiVisibility.Routing.AcceptHeaderNegotiationMiddleware"/>
 /// on the <c>Accept: text/markdown</c> diverted path.
 /// </summary>
 /// <remarks>

@@ -6,7 +6,7 @@
 //   1. Place a captured `input.html` under `Fixtures/Extraction/<scenario>/`
 //   2. Add the scenario name to the [TestCase] list below
 //   3. Run the explicit test from your IDE / CLI:
-//        dotnet test LlmsTxt.Umbraco.slnx \
+//        dotnet test Umbraco.Community.AiVisibility.slnx \
 //          --filter "TestCategory=ExtractionFixtureCapture"
 //      (Or run via the IDE's "Run with explicit-fixtures" toggle.)
 //   4. Hand-diff the produced `expected.md` against the captured live output and

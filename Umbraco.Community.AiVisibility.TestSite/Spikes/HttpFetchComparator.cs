@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes;
 
 /// <summary>
 /// SPIKE-ONLY HTTP self-fetcher. Used as the BASELINE TRUTH for AC1 — the

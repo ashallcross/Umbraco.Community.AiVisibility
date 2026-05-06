@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace LlmsTxt.Umbraco.Routing;
+namespace Umbraco.Community.AiVisibility.Routing;
 
 /// <summary>
 /// Story 2.3 — RFC 7232 § 3.2 <c>If-None-Match</c> matcher. Lifted from

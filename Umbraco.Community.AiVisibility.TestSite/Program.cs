@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.TestSite.Spikes;
+using Umbraco.Community.AiVisibility.TestSite.Spikes;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

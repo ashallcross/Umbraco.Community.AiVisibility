@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes.DistributedJob;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes.DistributedJob;
 
 // SPIKE 0.B — implements `Umbraco.Cms.Infrastructure.BackgroundJobs.IDistributedBackgroundJob`
 // (canonical v17 namespace, validated against Umbraco.Cms.Infrastructure 17.3.2 via

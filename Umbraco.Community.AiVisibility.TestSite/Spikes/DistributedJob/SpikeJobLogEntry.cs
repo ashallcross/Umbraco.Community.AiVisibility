@@ -1,6 +1,6 @@
 using NPoco;
 
-namespace LlmsTxt.Umbraco.TestSite.Spikes.DistributedJob;
+namespace Umbraco.Community.AiVisibility.TestSite.Spikes.DistributedJob;
 
 // SPIKE 0.B — NPoco POCO for the TestSite-only execution-log table.
 // Lives in TestSite, NOT in the package project. The package's real

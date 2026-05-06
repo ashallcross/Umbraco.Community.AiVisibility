@@ -7,7 +7,7 @@ namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
 /// <summary>
 /// Story 6.0a AC2 (Codex finding #2) — release-guard reflection tests
-/// asserting the shipped <c>LlmsTxt.Umbraco.dll</c> contains no spike or
+/// asserting the shipped <c>Umbraco.Community.AiVisibility.dll</c> contains no spike or
 /// template controllers and no unauthorised <c>Ping</c> actions. Run as
 /// part of the launch-readiness CI gate via the <c>ReleaseGuard</c>
 /// category filter.
