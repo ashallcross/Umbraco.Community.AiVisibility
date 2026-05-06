@@ -67,10 +67,17 @@ public static class Constants
         /// <summary>
         /// Story 4.2 — stable identifier for <c>RobotsAuditHealthCheck</c>'s
         /// <c>[HealthCheck(...)]</c> attribute. Umbraco persists Health Check
-        /// IDs in adopter logs and Backoffice run records; <b>NEVER</b>
-        /// regenerate this value. The accompanying
+        /// IDs in adopter logs and Backoffice run records; <b>once v1.0
+        /// ships, do NOT regenerate this value</b> — adopters' "ignored
+        /// health checks" lists key on it and a rotation orphans those
+        /// entries silently. The accompanying
         /// <see cref="RobotsAuditGuidParseSentinel"/> guarantees a typo here
         /// fails at type-init rather than silently shipping a different ID.
+        /// <br/><br/>
+        /// History: rotated once on 2026-05-06 in Story 6.0c (package rename
+        /// from <c>LlmsTxt.Umbraco</c> to <c>Umbraco.Community.AiVisibility</c>);
+        /// the rotation was acceptable pre-1.0 because no production adopters
+        /// existed yet. The forward-compat constraint takes effect from v1.0.
         /// </summary>
         public const string RobotsAuditGuid = "1c840ef7-4f3b-4aa3-9732-dddb375814d9";
 

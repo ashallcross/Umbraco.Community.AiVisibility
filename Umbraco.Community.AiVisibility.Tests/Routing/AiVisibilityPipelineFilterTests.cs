@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 namespace Umbraco.Community.AiVisibility.Tests.Routing;
 
 [TestFixture]
-public class LlmsPipelineFilterTests
+public class AiVisibilityPipelineFilterTests
 {
     [TestCase("/home.md", ExpectedResult = true)]
     [TestCase("/blog/post-1.md", ExpectedResult = true)]

@@ -20,7 +20,7 @@ namespace Umbraco.Community.AiVisibility.Robots;
 /// <b>Adopter override:</b> register a Singleton implementation BEFORE the
 /// package's composer runs (<c>services.AddSingleton&lt;IRobotsAuditor, MyImpl&gt;()</c>)
 /// to replace the default. <b>Do not register a Scoped or Transient
-/// override</b> — the singleton <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>
+/// override</b> — the singleton <see cref="Umbraco.Community.AiVisibility.Telemetry.RobotsAuditRefreshJob"/>
 /// captures the auditor by constructor and a Scoped/Transient lifetime
 /// would form a captive dependency caught at composition time by
 /// <c>ServiceProviderOptions.ValidateScopes = ValidateOnBuild = true</c>.
@@ -48,7 +48,7 @@ public interface IRobotsAuditor
     /// Force a fresh audit, bypassing any cached state on the way IN, and
     /// re-inserting the result on the way OUT. Used by the Backoffice Health
     /// Check view (where the editor's intent is "show me current state") and
-    /// by <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>.
+    /// by <see cref="Umbraco.Community.AiVisibility.Telemetry.RobotsAuditRefreshJob"/>.
     /// <para>
     /// Default implementation forwards to <see cref="AuditAsync"/> for
     /// backward compatibility with adopter implementations that don't

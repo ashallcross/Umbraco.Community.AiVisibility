@@ -16,7 +16,7 @@ namespace Umbraco.Community.AiVisibility.Tests.Integration;
 /// </para>
 /// </summary>
 [TestFixture]
-public sealed class MarkdownControllerIntegrationTests : LlmsIntegrationTestBase
+public sealed class MarkdownControllerIntegrationTests : IntegrationTestBase
 {
     [Test]
     public async Task Get_UnpublishedPath_Returns404()

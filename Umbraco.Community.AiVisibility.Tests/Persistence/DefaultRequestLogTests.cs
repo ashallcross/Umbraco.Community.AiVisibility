@@ -9,7 +9,7 @@ using NSubstitute;
 namespace Umbraco.Community.AiVisibility.Tests.Persistence;
 
 [TestFixture]
-public class DefaultLlmsRequestLogTests
+public class DefaultRequestLogTests
 {
     private static IOptionsMonitor<AiVisibilitySettings> SettingsMonitor(AiVisibilitySettings? value = null)
     {

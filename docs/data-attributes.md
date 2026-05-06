@@ -58,7 +58,7 @@ Add the following to `appsettings.json` to suppress the header globally:
 
 ```json
 {
-  "LlmsTxt": {
+  "AiVisibility": {
     "DiscoverabilityHeader": {
       "Enabled": false
     }
@@ -79,10 +79,10 @@ The TagHelpers are **opt-in** alternatives to the auto-emitted HTTP `Link` heade
 Add the package's TagHelper namespace to your `_ViewImports.cshtml`:
 
 ```cshtml
-@addTagHelper LlmsTxt.Umbraco.TagHelpers.*, LlmsTxt.Umbraco
+@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility
 ```
 
-Both TagHelpers are auto-discovered once the directive is in scope. No `services.AddXxx()` call required. The namespace scope (rather than wildcard `*, LlmsTxt.Umbraco`) is deliberate so future internal types in other namespaces don't auto-register as adopter-facing TagHelpers.
+Both TagHelpers are auto-discovered once the directive is in scope. No `services.AddXxx()` call required. The namespace scope (rather than wildcard `*, Umbraco.Community.AiVisibility`) is deliberate so future internal types in other namespaces don't auto-register as adopter-facing TagHelpers.
 
 ### `<llms-link />` — emits `<link rel="alternate">` in `<head>`
 
@@ -126,10 +126,10 @@ Visually hidden via the `llms-hint` CSS class — sighted users don't see it, bu
 
 #### Optional CSS stylesheet
 
-The package ships `wwwroot/llms-txt-umbraco.css` as an RCL static asset containing the `.llms-hint` visually-hidden ruleset. Add this to your layout's `<head>` if you don't already have a `.visually-hidden` (or equivalent) class in your own CSS:
+The package ships `wwwroot/umbraco-community-aivisibility.css` as an RCL static asset containing the `.llms-hint` visually-hidden ruleset. Add this to your layout's `<head>` if you don't already have a `.visually-hidden` (or equivalent) class in your own CSS:
 
 ```cshtml
-<link href="/llms-txt-umbraco.css" rel="stylesheet" />
+<link href="/umbraco-community-aivisibility.css" rel="stylesheet" />
 ```
 
 CSS-class-only (no inline styles) — strict CSP `style-src 'self'` adopters are not affected.
@@ -148,34 +148,34 @@ These match the HTTP `Link` header's gating exactly — adopters who toggle a pa
 
 ## Customising the exclusion contract
 
-`ILlmsExclusionEvaluator` is the seam the `Link` header middleware, the `.md` controller, the Accept-negotiation middleware, and both TagHelpers consume to decide "should this page emit Markdown discoverability?". The default `DefaultLlmsExclusionEvaluator` (public sealed) implements the per-page-bool-then-doctype-list rule described above.
+`IExclusionEvaluator` is the seam the `Link` header middleware, the `.md` controller, the Accept-negotiation middleware, and both TagHelpers consume to decide "should this page emit Markdown discoverability?". The default `DefaultExclusionEvaluator` (public sealed) implements the per-page-bool-then-doctype-list rule described above.
 
 To layer extra rules without re-implementing the default — for example, suppressing on staging-only paths, or routing exclusion through your own settings store — wrap-and-delegate via the standard ASP.NET Core DI Decorator pattern:
 
 ```csharp
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-[ComposeAfter(typeof(LlmsTxt.Umbraco.Composers.RoutingComposer))]
+[ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composing.RoutingComposer))]
 public sealed class AcmeExclusionComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
         // Replace the default registration with a decorator that wraps it.
-        builder.Services.AddScoped<ILlmsExclusionEvaluator, AcmeExclusionEvaluator>();
+        builder.Services.AddScoped<IExclusionEvaluator, AcmeExclusionEvaluator>();
         // Re-register the default as itself so the decorator can ctor-inject it.
-        builder.Services.AddScoped<DefaultLlmsExclusionEvaluator>();
+        builder.Services.AddScoped<DefaultExclusionEvaluator>();
     }
 }
 
-internal sealed class AcmeExclusionEvaluator : ILlmsExclusionEvaluator
+internal sealed class AcmeExclusionEvaluator : IExclusionEvaluator
 {
-    private readonly DefaultLlmsExclusionEvaluator _inner;
+    private readonly DefaultExclusionEvaluator _inner;
 
-    public AcmeExclusionEvaluator(DefaultLlmsExclusionEvaluator inner)
+    public AcmeExclusionEvaluator(DefaultExclusionEvaluator inner)
     {
         _inner = inner;
     }
@@ -196,7 +196,7 @@ internal sealed class AcmeExclusionEvaluator : ILlmsExclusionEvaluator
 }
 ```
 
-`ILlmsExclusionEvaluator` is `Scoped` (the default reads the request-scoped `ILlmsSettingsResolver`); your decorator must register `Scoped` too. Adopters who re-register as `Singleton` will hit a captive-dependency exception on first request.
+`IExclusionEvaluator` is `Scoped` (the default reads the request-scoped `ISettingsResolver`); your decorator must register `Scoped` too. Adopters who re-register as `Singleton` will hit a captive-dependency exception on first request.
 
 ---
 
@@ -232,7 +232,7 @@ Site-level default:
 
 ```json
 {
-  "LlmsTxt": {
+  "AiVisibility": {
     "ContentSignal": {
       "Default": "ai-train=no, search=yes, ai-input=yes"
     }
@@ -244,7 +244,7 @@ Per-doctype override (case-insensitive):
 
 ```json
 {
-  "LlmsTxt": {
+  "AiVisibility": {
     "ContentSignal": {
       "Default": "ai-train=no, search=yes",
       "PerDocTypeAlias": {

@@ -19,7 +19,7 @@ namespace Umbraco.Community.AiVisibility.Tests.Composing;
 /// — the canonical DI gate per project-context.md § Testing Rules.
 /// </summary>
 [TestFixture]
-public class LlmsSettingsApiControllerCompositionTests
+public class SettingsApiControllerCompositionTests
 {
     [Test]
     public void Compose_StartupValidation_LlmsSettingsApiController_NoCaptiveDependency()

@@ -10,12 +10,12 @@ namespace Umbraco.Community.AiVisibility.Tests.Composing;
 /// <summary>
 /// Story 5.2 AC12 — DI lifetime correctness gate for
 /// <see cref="AnalyticsManagementApiController"/>. Mirrors Story 3.2's
-/// <c>LlmsSettingsApiControllerCompositionTests</c> stub-driven shape per
+/// <c>SettingsApiControllerCompositionTests</c> stub-driven shape per
 /// project-context.md § Testing Rules — the canonical gate ratified at the
 /// Epic 4 → 5 reconciliation gate (architecture.md:393).
 /// </summary>
 [TestFixture]
-public class LlmsAnalyticsApiControllerCompositionTests
+public class AnalyticsApiControllerCompositionTests
 {
     [Test]
     public void Compose_StartupValidation_LlmsAnalyticsApiController_NoCaptiveDependency()

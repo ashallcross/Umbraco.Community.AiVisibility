@@ -35,7 +35,7 @@ namespace Umbraco.Community.AiVisibility.Tests.Configuration;
 /// </list>
 /// </summary>
 [TestFixture]
-public class LlmsTxtSettingsDefaultsTests
+public class AiVisibilitySettingsDefaultsTests
 {
     // AC7 — every documented in-code default. If a field is reordered or its
     // default value changes, update this fixture in the SAME PR + flag the

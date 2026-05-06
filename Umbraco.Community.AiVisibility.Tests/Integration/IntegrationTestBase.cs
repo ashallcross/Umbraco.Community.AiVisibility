@@ -40,6 +40,6 @@ namespace Umbraco.Community.AiVisibility.Tests.Integration;
 [NonParallelizable]
 [Category("Integration")]
 [UmbracoTest(Database = UmbracoTestOptions.Database.NewSchemaPerFixture)]
-public abstract class LlmsIntegrationTestBase : UmbracoTestServerTestBase
+public abstract class IntegrationTestBase : UmbracoTestServerTestBase
 {
 }

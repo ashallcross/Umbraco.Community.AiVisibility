@@ -72,9 +72,13 @@ public sealed class AddRequestLogTable_1_0 : AsyncMigrationBase
 
         Create.Table<RequestLogEntry>().Do();
 
+        // The TableName constant is preserved as the historical immutable
+        // value `llmsTxtRequestLog` per AC5; the actual table created here
+        // resolves through the entity's [TableName] annotation, which now
+        // emits `aiVisibilityRequestLog`. Log the rendered name to avoid
+        // operator-facing confusion.
         _logger.LogInformation(
-            "AiVisibility: AddRequestLogTable_1_0 — created table {TableName}.",
-            TableName);
+            "AiVisibility: AddRequestLogTable_1_0 — created table aiVisibilityRequestLog.");
 
         return Task.CompletedTask;
     }

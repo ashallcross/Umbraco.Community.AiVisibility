@@ -19,13 +19,13 @@ namespace Umbraco.Community.AiVisibility.Tests.Backoffice;
 
 /// <summary>
 /// Story 5.2 — Management API controller tests for the AI Traffic dashboard.
-/// Mirrors Story 3.2 <c>LlmsSettingsManagementApiControllerTests</c> shape:
+/// Mirrors Story 3.2 <c>SettingsManagementApiControllerTests</c> shape:
 /// auth-attribute reflection (3) + GetRequests happy/validation/filtering
 /// (12) + GetClassifications (3) + GetSummary (2) + GetRetention (1) +
 /// auth surface (2) + cancellation (1) = 24 tests targeting AC1–AC4 + AC11.
 /// </summary>
 [TestFixture]
-public class LlmsAnalyticsManagementApiControllerTests
+public class AnalyticsManagementApiControllerTests
 {
     private static readonly DateTime FixedNowUtc = new DateTime(2026, 5, 4, 12, 0, 0, DateTimeKind.Utc);
 

@@ -33,7 +33,7 @@ namespace Umbraco.Community.AiVisibility.Robots;
 /// everything" robots.txt directive and is NOT flagged.
 /// </para>
 /// <para>
-/// <b>Refresh:</b> <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>
+/// <b>Refresh:</b> <see cref="Umbraco.Community.AiVisibility.Telemetry.RobotsAuditRefreshJob"/>
 /// re-runs <see cref="AuditAsync"/> on the configured cadence and
 /// rewrites the cached entry. The Health Check view reads the cache;
 /// it does NOT trigger fetches itself except on cache miss.
@@ -48,7 +48,7 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
     /// to <c>false</c> so a hostile <c>/robots.txt</c> redirect cannot pull
     /// the auditor onto an unintended origin (e.g. cloud metadata endpoints).
     /// </summary>
-    public const string HttpClientName = "LlmsTxt.RobotsAudit";
+    public const string HttpClientName = "AiVisibility.RobotsAudit";
 
     /// <summary>
     /// Hard cap on the response body the auditor will read. robots.txt files
@@ -145,7 +145,7 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
     /// <summary>
     /// Force-refresh the audit for a host — bypasses the cache and rewrites
     /// the entry. Called by
-    /// <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/> and by
+    /// <see cref="Umbraco.Community.AiVisibility.Telemetry.RobotsAuditRefreshJob"/> and by
     /// <see cref="RobotsAuditHealthCheck.GetStatusAsync"/> (where the editor's
     /// intent is "show me current state").
     /// </summary>

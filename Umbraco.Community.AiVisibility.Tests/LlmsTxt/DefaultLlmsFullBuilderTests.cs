@@ -145,7 +145,7 @@ public class DefaultLlmsFullBuilderTests
     /// truncation footer (the 5 MB default cap is far above the test fixtures'
     /// few hundred bytes). Pins the contract together: TreeOrder default +
     /// 5120 KB cap. The default values themselves are pinned by
-    /// <c>LlmsTxtSettingsDefaultsTests</c>; this test pins the builder's
+    /// <c>AiVisibilitySettingsDefaultsTests</c>; this test pins the builder's
     /// behaviour when those defaults are in effect.
     /// </summary>
     [Test]

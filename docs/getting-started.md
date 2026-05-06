@@ -93,7 +93,7 @@ Including responses where we don't divert — required so downstream caches and 
 
 ### Adopter ordering
 
-The middleware runs in `UmbracoPipelineFilter.PostRouting`, after Umbraco's routing middleware (which populates `UmbracoRouteValues`) and before authentication/authorization. Adopters who register their own `UmbracoPipelineFilter` with a `PostRouting` callback that mutates `Accept` (or short-circuits the response) will see their changes win or lose by composer-registration order — `[ComposeAfter(typeof(LlmsTxt.Umbraco.Composers.RoutingComposer))]` puts an adopter's filter after ours.
+The middleware runs in `UmbracoPipelineFilter.PostRouting`, after Umbraco's routing middleware (which populates `UmbracoRouteValues`) and before authentication/authorization. Adopters who register their own `UmbracoPipelineFilter` with a `PostRouting` callback that mutates `Accept` (or short-circuits the response) will see their changes win or lose by composer-registration order — `[ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composing.RoutingComposer))]` puts an adopter's filter after ours.
 
 ### Why not User-Agent sniffing?
 
@@ -110,8 +110,8 @@ Use this when your templates have a non-standard "main content" boundary that th
 ```csharp
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
-using LlmsTxt.Umbraco.Composers;
-using LlmsTxt.Umbraco.Extraction;
+using Umbraco.Community.AiVisibility.Composing;
+using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.DependencyInjection;
 using AngleSharp.Dom;
 
@@ -149,7 +149,7 @@ The package's defaults are registered via `services.TryAddTransient`, so your re
 
 **Caching interaction:** when you override `IMarkdownContentExtractor`, the package's caching decorator (Story 1.2) is **not** wrapped around your implementation. The bypass is logged once at startup as an `Information`-level entry (`Adopter has overridden IMarkdownContentExtractor; skipping caching decorator wrap`). If you want caching with your own extractor, wrap our `CachingMarkdownExtractorDecorator` yourself in your composer.
 
-If you want that bypass log to fire reliably, decorate your composer with `[ComposeBefore(typeof(LlmsTxt.Umbraco.Composers.CachingComposer))]` in addition to `[ComposeAfter(typeof(RoutingComposer))]`. Without it, the override still wins (DI's last-registration-wins rule applies) but the log line is non-deterministic.
+If you want that bypass log to fire reliably, decorate your composer with `[ComposeBefore(typeof(Umbraco.Community.AiVisibility.Composing.CachingComposer))]` in addition to `[ComposeAfter(typeof(RoutingComposer))]`. Without it, the override still wins (DI's last-registration-wins rule applies) but the log line is non-deterministic.
 
 ### Lifetime guidance
 
@@ -211,7 +211,7 @@ Set `AiVisibility:Hreflang:Enabled: true` in `appsettings.json` to add sibling-c
 
 ```jsonc
 {
-  "LlmsTxt": {
+  "AiVisibility": {
     "Hreflang": { "Enabled": true }
   }
 }
@@ -223,11 +223,11 @@ Hreflang is **only** applied to `/llms.txt`. `/llms-full.txt` is a single-cultur
 
 ## Settings doctype + Backoffice (Story 3.1)
 
-From v0.4, the package ships a `LlmsTxt Settings` Umbraco document type that editors can use to override site-name, site-summary, and per-doctype exclusion without editing `appsettings.json`. The doctype is created automatically on first boot via Umbraco's `PackageMigrationPlan` pipeline (the package registers `LlmsTxtSettingsMigrationPlan`, which runs a `CreateLlmsSettingsDoctype` step that calls `IContentTypeService.Save(...)` imperatively). Re-runs are no-ops — `EnsureSettingsDoctype` skip-checks `IContentTypeService.Get(alias)` before creating anything.
+From v0.4, the package ships a `AI Visibility Settings` Umbraco document type that editors can use to override site-name, site-summary, and per-doctype exclusion without editing `appsettings.json`. The doctype is created automatically on first boot via Umbraco's `PackageMigrationPlan` pipeline (the package registers `LlmsTxtSettingsMigrationPlan`, which runs a `CreateLlmsSettingsDoctype` step that calls `IContentTypeService.Save(...)` imperatively). Re-runs are no-ops — `EnsureSettingsDoctype` skip-checks `IContentTypeService.Get(alias)` before creating anything.
 
 ### Where to find it
 
-After install, open Backoffice → Content. Create a new node from the root and pick **LlmsTxt Settings**. Fill in:
+After install, open Backoffice → Content. Create a new node from the root and pick **AI Visibility Settings**. Fill in:
 
 - **Site name** — the H1 emitted at the top of `/llms.txt`. Empty falls back to the matched root content node's name.
 - **Site summary** — the blockquote under the `/llms.txt` H1. Soft-capped at 500 chars (truncated with ellipsis on overflow).
@@ -235,7 +235,7 @@ After install, open Backoffice → Content. Create a new node from the root and 
 
 ### Per-page "Exclude from LLM exports" toggle
 
-To let editors exclude individual pages, attach the **LlmsTxt Exclusion (composition)** doctype as a composition to any of your own doctypes (Backoffice → Settings → Document Types → your doctype → Add composition). The composition adds a single boolean property `excludeFromLlmExports` (default `false`). Toggling it `true` on a published page causes:
+To let editors exclude individual pages, attach the **AI Visibility Exclusion (composition)** doctype as a composition to any of your own doctypes (Backoffice → Settings → Document Types → your doctype → Add composition). The composition adds a single boolean property `excludeFromLlmExports` (default `false`). Toggling it `true` on a published page causes:
 
 - `GET /that-page.md` → `404 Not Found`
 - The page is omitted from `/llms.txt` and `/llms-full.txt`
@@ -249,7 +249,7 @@ The package resolves effective settings in this order:
 
 | Layer | Source | Wins over |
 |---|---|---|
-| Settings doctype | `LlmsTxt Settings` content node properties | appsettings + in-code defaults |
+| Settings doctype | `AI Visibility Settings` content node properties | appsettings + in-code defaults |
 | `appsettings.json` | `AiVisibility:` section | in-code defaults |
 | In-code defaults | `LlmsTxtSettings` initialiser | — |
 
@@ -272,7 +272,7 @@ If your site uses [uSync](https://github.com/KevinJump/uSync) or `uSync.Complete
 
 ```jsonc
 {
-  "LlmsTxt": {
+  "AiVisibility": {
     "Migrations": {
       "SkipSettingsDoctype": true
     }
@@ -280,7 +280,7 @@ If your site uses [uSync](https://github.com/KevinJump/uSync) or `uSync.Complete
 }
 ```
 
-This stops the package from registering `LlmsTxtSettingsMigrationPlan` with Umbraco's migration pipeline. uSync then serialises the doctype on first install and owns the lifecycle. The resolver still works — it just falls back fully to appsettings when no `LlmsTxt Settings` content node exists.
+This stops the package from registering `LlmsTxtSettingsMigrationPlan` with Umbraco's migration pipeline. uSync then serialises the doctype on first install and owns the lifecycle. The resolver still works — it just falls back fully to appsettings when no `AI Visibility Settings` content node exists.
 
 **Caveat:** flipping this flag from `false` to `true` AFTER the migration has already run does NOT remove the doctype from the host DB (Umbraco's plan-state record persists the executed state). To relocate schema ownership to uSync, delete the doctype manually first.
 
@@ -349,9 +349,9 @@ Layer 4 also covers the explicit-empty-string case: an editor clearing the `site
 
 ## Backoffice Settings dashboard (Story 3.2)
 
-From v0.5, the package ships a Backoffice dashboard under **Settings → LlmsTxt** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `LlmsTxt Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of pages with `excludeFromLlmExports` toggled on.
+From v0.5, the package ships a Backoffice dashboard under **Settings → LlmsTxt** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `AI Visibility Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of pages with `excludeFromLlmExports` toggled on.
 
-The dashboard surfaces exactly the same overlay rules `ILlmsSettingsResolver` enforces (Settings node value > appsettings value > in-code default). On first save, if no `LlmsTxt Settings` content node exists yet, the dashboard creates one at the root automatically — adopters using uSync to own the doctype lifecycle don't need to pre-create the node before opening the dashboard.
+The dashboard surfaces exactly the same overlay rules `ILlmsSettingsResolver` enforces (Settings node value > appsettings value > in-code default). On first save, if no `AI Visibility Settings` content node exists yet, the dashboard creates one at the root automatically — adopters using uSync to own the doctype lifecycle don't need to pre-create the node before opening the dashboard.
 
 **Permissions.** The dashboard is conditioned on `Umb.Section.Settings`. Editors without Settings-section access don't see the tile (UX-DR4 — graceful no-render). The Management API behind the dashboard (`/umbraco/management/api/v1/llmstxt/settings/...`) is gated by `[Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]`; calls without Settings access return HTTP 403, calls without any auth return HTTP 401.
 
@@ -374,7 +374,7 @@ Operations land in the existing `/umbraco/swagger/umbracocommunityaivisibility/s
 
 ### First-run onboarding hint (Story 3.3)
 
-On first visit to the LlmsTxt Settings dashboard, an info-level notice appears at the top reminding adopters that the package is already producing default output ("LlmsTxt is now active and producing default output…"). Click `Dismiss` to hide it for your user account; the notice is **per-user**, keyed by your Backoffice user `unique` GUID, and survives browser refreshes and re-logins.
+On first visit to the AI Visibility Settings dashboard, an info-level notice appears at the top reminding adopters that the package is already producing default output ("LlmsTxt is now active and producing default output…"). Click `Dismiss` to hide it for your user account; the notice is **per-user**, keyed by your Backoffice user `unique` GUID, and survives browser refreshes and re-logins.
 
 Storage backing: `localStorage` keyed by `aivisibility.onboarding.dismissed.v1.{userUnique}`. The `v1.` segment lets a future onboarding scheme (Story 5.2's auto-hide tying into AI traffic logs) ship a parallel key without ambiguity over which version dismissed a given user. Adopters running storage-disabled browser modes (incognito with site-data blocking) will see the notice each session — the dismiss handler degrades gracefully (no exception, no broken UI) but the flag does not persist across sessions in that mode.
 

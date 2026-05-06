@@ -132,7 +132,7 @@ public static class AiVisibilityCacheKeys
     /// Story 4.2 — robots audit cache prefix. Shape:
     /// <c>aiv:robots:{hostname}</c>. The robots audit lives under a
     /// different invalidation regime than per-page / manifest caches:
-    /// <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>
+    /// <see cref="Umbraco.Community.AiVisibility.Telemetry.RobotsAuditRefreshJob"/>
     /// rewrites the entry on the configured cadence; content-cache
     /// refresher notifications do NOT clear this prefix (audit results
     /// don't change when content publishes). The host is normalised

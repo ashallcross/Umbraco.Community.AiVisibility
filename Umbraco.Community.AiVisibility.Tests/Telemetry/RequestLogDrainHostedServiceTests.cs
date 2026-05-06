@@ -12,7 +12,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 namespace Umbraco.Community.AiVisibility.Tests.Telemetry;
 
 [TestFixture]
-public class LlmsRequestLogDrainHostedServiceTests
+public class RequestLogDrainHostedServiceTests
 {
     private static IOptionsMonitor<AiVisibilitySettings> SettingsMonitor(AiVisibilitySettings? value = null)
     {

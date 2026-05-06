@@ -17,7 +17,7 @@ using Umbraco.Cms.Core.Web;
 namespace Umbraco.Community.AiVisibility.Tests.Backoffice;
 
 [TestFixture]
-public class LlmsSettingsManagementApiControllerTests
+public class SettingsManagementApiControllerTests
 {
     private static readonly Guid SettingsNodeKey = Guid.Parse("aaaa1111-aaaa-1111-aaaa-aaaa11111111");
     private static readonly Guid HomeNodeKey = Guid.Parse("bbbb2222-bbbb-2222-bbbb-bbbb22222222");

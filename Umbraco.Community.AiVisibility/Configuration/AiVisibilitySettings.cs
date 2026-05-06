@@ -393,7 +393,7 @@ public sealed class AnalyticsSettings
 public sealed class RobotsAuditorSettings
 {
     /// <summary>
-    /// How often the <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>
+    /// How often the <see cref="Umbraco.Community.AiVisibility.Telemetry.RobotsAuditRefreshJob"/>
     /// (registered as an <c>IDistributedBackgroundJob</c>) re-runs the audit
     /// for every bound hostname. Default <c>24</c> hours. Set to <c>0</c> or
     /// negative to disable the recurring refresh — the Health Check view
