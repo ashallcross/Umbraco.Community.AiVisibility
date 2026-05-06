@@ -2,7 +2,7 @@
 #
 # The package's MSBuild pipeline fetches the AI-crawler list from upstream
 # (ai-robots-txt/ai.robots.txt) at build time and verifies the SHA against a
-# pinned constant in `LlmsTxt.Umbraco/LlmsTxt.Umbraco.csproj`. To exercise both
+# pinned constant in `Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj`. To exercise both
 # code paths, this workflow runs two independent jobs:
 #
 #   - build-online   — network reachable; expects the SHA-pinned fetch to
@@ -48,27 +48,27 @@ jobs:
 
       - name: npm ci (Backoffice TS)
         run: npm ci
-        working-directory: LlmsTxt.Umbraco/Client
+        working-directory: Umbraco.Community.AiVisibility/Client
 
       - name: npm run build (Backoffice TS)
         run: npm run build
-        working-directory: LlmsTxt.Umbraco/Client
+        working-directory: Umbraco.Community.AiVisibility/Client
 
       - name: dotnet restore
-        run: dotnet restore LlmsTxt.Umbraco.slnx
+        run: dotnet restore Umbraco.Community.AiVisibility.slnx
 
       - name: dotnet build (Release)
         run: |
           set -euo pipefail
           # Capture stdout so we can assert the online-path log line is present.
-          dotnet build LlmsTxt.Umbraco.slnx --configuration Release --no-restore | tee build-online.log
+          dotnet build Umbraco.Community.AiVisibility.slnx --configuration Release --no-restore | tee build-online.log
           if ! grep -q "AI bot list synced from upstream" build-online.log; then
             echo "::error::Online build did not emit the expected SHA-synced message — fetch path may be broken or skipped."
             exit 1
           fi
 
       - name: dotnet test (Release)
-        run: dotnet test LlmsTxt.Umbraco.slnx --configuration Release --no-build --verbosity normal
+        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal
 
   build-offline:
     name: Build + test (offline — falls back to committed snapshot)
@@ -88,14 +88,14 @@ jobs:
 
       - name: npm ci (Backoffice TS, online — TypeScript build is a separate concern)
         run: npm ci
-        working-directory: LlmsTxt.Umbraco/Client
+        working-directory: Umbraco.Community.AiVisibility/Client
 
       - name: npm run build (Backoffice TS)
         run: npm run build
-        working-directory: LlmsTxt.Umbraco/Client
+        working-directory: Umbraco.Community.AiVisibility/Client
 
       - name: dotnet restore
-        run: dotnet restore LlmsTxt.Umbraco.slnx
+        run: dotnet restore Umbraco.Community.AiVisibility.slnx
 
       # Override the source URL so the MSBuild fetch fails deterministically
       # (no network access required — :65535 is reserved port-zero shape that
@@ -104,7 +104,7 @@ jobs:
       - name: dotnet build (Release, offline simulated via unreachable AI-bot URL)
         run: |
           set -euo pipefail
-          dotnet build LlmsTxt.Umbraco.slnx \
+          dotnet build Umbraco.Community.AiVisibility.slnx \
             --configuration Release \
             --no-restore \
             "/p:AiBotListSourceUrl=http://localhost:65535/unreachable.txt" \
@@ -115,4 +115,4 @@ jobs:
           fi
 
       - name: dotnet test (Release)
-        run: dotnet test LlmsTxt.Umbraco.slnx --configuration Release --no-build --verbosity normal
+        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal
