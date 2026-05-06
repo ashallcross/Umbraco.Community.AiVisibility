@@ -56,7 +56,7 @@ public sealed class LogRetentionJob : IDistributedBackgroundJob
     internal const int MaxRunIntervalSecondsOverride = 86_400;
 
     private const string RunLogTemplate =
-        "LlmsTxt log retention job RUN — InstanceId={InstanceId} CycleStart={CycleStart} RowsDeleted={RowsDeleted}";
+        "AiVisibility log retention job RUN — InstanceId={InstanceId} CycleStart={CycleStart} RowsDeleted={RowsDeleted}";
 
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IScopeProvider _scopeProvider;
@@ -78,7 +78,7 @@ public sealed class LogRetentionJob : IDistributedBackgroundJob
     }
 
     /// <inheritdoc />
-    public string Name => "LlmsTxt:LogRetention";
+    public string Name => "AiVisibility:LogRetention";
 
     /// <inheritdoc />
     public TimeSpan Period
@@ -119,7 +119,7 @@ public sealed class LogRetentionJob : IDistributedBackgroundJob
         if (retention.DurationDays <= 0)
         {
             _logger.LogTrace(
-                "LlmsTxt log retention job: DurationDays <= 0, retention disabled.");
+                "AiVisibility log retention job: DurationDays <= 0, retention disabled.");
             return Task.CompletedTask;
         }
 
@@ -128,7 +128,7 @@ public sealed class LogRetentionJob : IDistributedBackgroundJob
         if (Interlocked.CompareExchange(ref _cycleInFlight, 1, 0) != 0)
         {
             _logger.LogTrace(
-                "LlmsTxt log retention job: prior cycle still in flight, skipping this tick.");
+                "AiVisibility log retention job: prior cycle still in flight, skipping this tick.");
             return Task.CompletedTask;
         }
 
@@ -152,7 +152,7 @@ public sealed class LogRetentionJob : IDistributedBackgroundJob
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
-                    "LlmsTxt log retention job: DELETE failed (cutoff {Cutoff:o}). " +
+                    "AiVisibility log retention job: DELETE failed (cutoff {Cutoff:o}). " +
                     "Cycle will retry next tick.",
                     cutoff);
                 return Task.CompletedTask;

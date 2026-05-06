@@ -88,7 +88,7 @@ public sealed class CreateAiVisibilitySettingsDoctype : AsyncMigrationBase
         var composition = new ContentType(_shortStringHelper, parentId: -1)
         {
             Alias = CompositionAlias,
-            Name = "LlmsTxt Exclusion (composition)",
+            Name = "AI Visibility Exclusion (composition)",
             Description = "Apply to any of your own doctypes to expose a per-page \"Exclude from LLM exports\" toggle.",
             Icon = "icon-eye-blocked color-red",
             IsElement = true,
@@ -138,8 +138,8 @@ public sealed class CreateAiVisibilitySettingsDoctype : AsyncMigrationBase
         var settings = new ContentType(_shortStringHelper, parentId: -1)
         {
             Alias = SettingsDoctypeAlias,
-            Name = "LlmsTxt Settings",
-            Description = "Settings for the LlmsTxt.Umbraco package — site name, summary, and per-doctype exclusion list. One node per Umbraco install, applied to every site (allowed at root). Adopters needing per-site overrides register a custom ISettingsResolver — see docs/getting-started.md.",
+            Name = "AI Visibility Settings",
+            Description = "Settings for the Umbraco.Community.AiVisibility package — site name, summary, and per-doctype exclusion list. One node per Umbraco install, applied to every site (allowed at root). Adopters needing per-site overrides register a custom ISettingsResolver — see docs/getting-started.md.",
             Icon = "icon-settings color-purple",
             AllowedAsRoot = true,
         };
@@ -167,7 +167,7 @@ public sealed class CreateAiVisibilitySettingsDoctype : AsyncMigrationBase
         {
             Alias = "excludedDoctypeAliases",
             Name = "Excluded doctype aliases",
-            Description = "One doctype alias per line (or comma/semicolon separated). Pages whose ContentType.Alias matches any line are omitted from /llms.txt, /llms-full.txt, and .md (404). Cumulative with appsettings LlmsTxt:ExcludedDoctypeAliases.",
+            Description = "One doctype alias per line (or comma/semicolon separated). Pages whose ContentType.Alias matches any line are omitted from /llms.txt, /llms-full.txt, and .md (404). Cumulative with appsettings AiVisibility:ExcludedDoctypeAliases.",
             SortOrder = 30,
         }, "exclusion", "Exclusion");
 

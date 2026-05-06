@@ -143,14 +143,14 @@ public class LogRetentionJobTests
             Arg.Any<object[]>());
         scope.Received(1).Complete();
         // RUN log line emission — architect-A5 manual gate Step 13's
-        // exactly-once verification depends on `grep "LlmsTxt log retention
+        // exactly-once verification depends on `grep "AiVisibility log retention
         // job RUN"` succeeding. Pin it via the underlying ILogger.Log
         // method (LogInformation is an extension method NSubstitute
         // cannot intercept directly).
         logger.Received(1).Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o!.ToString()!.Contains("LlmsTxt log retention job RUN")),
+            Arg.Is<object>(o => o!.ToString()!.Contains("AiVisibility log retention job RUN")),
             null,
             Arg.Any<Func<object, Exception?, string>>()!);
     }

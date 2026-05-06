@@ -415,7 +415,7 @@ public class RoutingComposerTests
         var builder = Substitute.For<IUmbracoBuilder>();
         builder.Services.Returns(services);
 
-        // RoutingComposer binds AiVisibilitySettings to the LlmsTxt: section. An empty
+        // RoutingComposer binds AiVisibilitySettings to the AiVisibility: section. An empty
         // configuration is fine — the bind succeeds with default values.
         var config = new ConfigurationBuilder().Build();
         builder.Config.Returns(config);

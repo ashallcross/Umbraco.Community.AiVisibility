@@ -7,7 +7,7 @@ namespace Umbraco.Community.AiVisibility.Tests.Configuration;
 /// Story 4.1 AC9 — pins the appsettings binding contract for
 /// <see cref="ContentSignalSettings.PerDocTypeAlias"/>:
 /// <para>
-///   <c>LlmsTxt:ContentSignal:PerDocTypeAlias:articlePage = "..."</c> binds to
+///   <c>AiVisibility:ContentSignal:PerDocTypeAlias:articlePage = "..."</c> binds to
 ///   <c>PerDocTypeAlias["articlePage"] = "..."</c> and lookups against the
 ///   bound dictionary are case-insensitive (matching the resolver's
 ///   <c>OrdinalIgnoreCase</c> contract).
@@ -29,7 +29,7 @@ public class ContentSignalSettingsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["LlmsTxt:ContentSignal:Default"] = "ai-train=no, search=yes, ai-input=yes",
+                ["AiVisibility:ContentSignal:Default"] = "ai-train=no, search=yes, ai-input=yes",
             })
             .Build();
 
@@ -51,9 +51,9 @@ public class ContentSignalSettingsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["LlmsTxt:ContentSignal:Default"] = "ai-train=no",
-                ["LlmsTxt:ContentSignal:PerDocTypeAlias:articlePage"] = "ai-train=yes, search=yes",
-                ["LlmsTxt:ContentSignal:PerDocTypeAlias:LandingPage"] = "ai-train=no, search=no",
+                ["AiVisibility:ContentSignal:Default"] = "ai-train=no",
+                ["AiVisibility:ContentSignal:PerDocTypeAlias:articlePage"] = "ai-train=yes, search=yes",
+                ["AiVisibility:ContentSignal:PerDocTypeAlias:LandingPage"] = "ai-train=no, search=no",
             })
             .Build();
 

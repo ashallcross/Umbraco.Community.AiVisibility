@@ -99,7 +99,7 @@ public sealed class RequestLogDrainHostedService : IHostedService, IAsyncDisposa
         if (!settings.Enabled)
         {
             _logger.LogInformation(
-                "LlmsTxt request log drainer suppressed (LlmsTxt:RequestLog:Enabled is false). " +
+                "AiVisibility request log drainer suppressed (AiVisibility:RequestLog:Enabled is false). " +
                 "Notifications still fire to all subscribed handlers; only the default DB writer is parked.");
             return Task.CompletedTask;
         }
@@ -117,7 +117,7 @@ public sealed class RequestLogDrainHostedService : IHostedService, IAsyncDisposa
         if (_requestLog is not DefaultRequestLog defaultLog)
         {
             _logger.LogInformation(
-                "LlmsTxt request log drainer not started: a custom IRequestLog ({TypeName}) is registered; " +
+                "AiVisibility request log drainer not started: a custom IRequestLog ({TypeName}) is registered; " +
                 "the adopter's writer owns its own persistence path.",
                 _requestLog.GetType().FullName);
             return Task.CompletedTask;
@@ -130,7 +130,7 @@ public sealed class RequestLogDrainHostedService : IHostedService, IAsyncDisposa
             drainerToken);
 
         _logger.LogInformation(
-            "LlmsTxt request log drainer started (server role {Role}, batch size {BatchSize}, max batch interval {Interval}s).",
+            "AiVisibility request log drainer started (server role {Role}, batch size {BatchSize}, max batch interval {Interval}s).",
             role,
             Math.Clamp(settings.BatchSize, MinBatchSize, MaxBatchSize),
             Math.Clamp(settings.MaxBatchIntervalSeconds, MinMaxBatchIntervalSeconds, MaxMaxBatchIntervalSeconds));
@@ -226,7 +226,7 @@ public sealed class RequestLogDrainHostedService : IHostedService, IAsyncDisposa
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
-                    "LlmsTxt request log drainer: unhandled exception during drain cycle. " +
+                    "AiVisibility request log drainer: unhandled exception during drain cycle. " +
                     "Discarding {BatchCount} entries; loop continues.",
                     batch.Count);
                 batch.Clear();
@@ -252,7 +252,7 @@ public sealed class RequestLogDrainHostedService : IHostedService, IAsyncDisposa
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "LlmsTxt request log drainer: shutdown flush failed.");
+            _logger.LogWarning(ex, "AiVisibility request log drainer: shutdown flush failed.");
         }
     }
 
@@ -269,7 +269,7 @@ public sealed class RequestLogDrainHostedService : IHostedService, IAsyncDisposa
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
-                "LlmsTxt request log drainer: DB write failed for batch of {BatchCount}. " +
+                "AiVisibility request log drainer: DB write failed for batch of {BatchCount}. " +
                 "Current batch entries are dropped; subsequent cycles' entries are unaffected " +
                 "(this is best-effort logging by design).",
                 batch.Count);

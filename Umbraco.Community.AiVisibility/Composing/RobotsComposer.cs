@@ -71,7 +71,7 @@ public sealed class RobotsComposer : IComposer
         if (auditorRegistration is not null && auditorRegistration.Lifetime != ServiceLifetime.Singleton)
         {
             throw new InvalidOperationException(
-                $"LlmsTxt: IRobotsAuditor must be registered as Singleton; found {auditorRegistration.Lifetime}. " +
+                $"AiVisibility: IRobotsAuditor must be registered as Singleton; found {auditorRegistration.Lifetime}. " +
                 "Adopter overrides via services.AddSingleton<IRobotsAuditor, …>() are honoured (see HealthChecks/IRobotsAuditor.cs); " +
                 "Scoped or Transient overrides would form a captive dependency in RobotsAuditRefreshJob.");
         }

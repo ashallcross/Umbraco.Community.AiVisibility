@@ -11,7 +11,7 @@ namespace Umbraco.Community.AiVisibility.LlmsTxt;
 
 /// <summary>
 /// Story 2.3 — resolves sibling-culture variants for the matched manifest pages
-/// when <c>LlmsTxt:Hreflang:Enabled</c> is <c>true</c> (FR25). Only invoked from
+/// when <c>AiVisibility:Hreflang:Enabled</c> is <c>true</c> (FR25). Only invoked from
 /// the <see cref="Controllers.LlmsTxtController"/> hot path; <c>/llms-full.txt</c>
 /// is hreflang-blind by design (AC3 last bullet — the full manifest is a
 /// single-culture concatenated dump consumed off-site).

@@ -133,9 +133,9 @@ public sealed class DefaultRequestLog : IRequestLog
         try
         {
             _logger.LogWarning(
-                "LlmsTxt request log overflow — dropped {DroppedCount} entries in the last {IntervalSeconds}s. " +
-                "Queue capacity is {QueueCapacity}; raising LlmsTxt:RequestLog:QueueCapacity " +
-                "or LlmsTxt:RequestLog:BatchSize may help.",
+                "AiVisibility request log overflow — dropped {DroppedCount} entries in the last {IntervalSeconds}s. " +
+                "Queue capacity is {QueueCapacity}; raising AiVisibility:RequestLog:QueueCapacity " +
+                "or AiVisibility:RequestLog:BatchSize may help.",
                 droppedSnapshot,
                 (int)_overflowLogInterval.TotalSeconds,
                 _capacity);

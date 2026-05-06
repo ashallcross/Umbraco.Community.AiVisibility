@@ -140,7 +140,7 @@ public class DefaultLlmsFullBuilderTests
     // ────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Story 3.3 AC3 — zero-config (no `LlmsTxt:` section in appsettings,
+    /// Story 3.3 AC3 — zero-config (no `AiVisibility:` section in appsettings,
     /// no Settings doctype edits) emits each page in tree-order with no
     /// truncation footer (the 5 MB default cap is far above the test fixtures'
     /// few hundred bytes). Pins the contract together: TreeOrder default +
@@ -301,7 +301,7 @@ public class DefaultLlmsFullBuilderTests
         Assert.Multiple(() =>
         {
             Assert.That(manifest, Does.Contain("# A"), "page A emitted normally");
-            Assert.That(manifest, Does.Contain("<!-- LlmsTxt: skipped B due to extraction error -->"),
+            Assert.That(manifest, Does.Contain("<!-- AiVisibility: skipped B due to extraction error -->"),
                 "page B's extraction failure produces a placeholder comment in B's slot");
             Assert.That(manifest, Does.Contain("# C"), "page C emitted normally after the failure");
             Assert.That(IndexOf(manifest, "# A"), Is.LessThan(IndexOf(manifest, "skipped B")));
@@ -338,7 +338,7 @@ public class DefaultLlmsFullBuilderTests
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
 
-        Assert.That(manifest, Does.Contain("<!-- LlmsTxt: skipped A due to extraction error -->"),
+        Assert.That(manifest, Does.Contain("<!-- AiVisibility: skipped A due to extraction error -->"),
             "Error status (without exception) produces the same skip placeholder");
     }
 

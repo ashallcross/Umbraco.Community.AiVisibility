@@ -638,8 +638,8 @@ public class ContentCacheRefresherHandlerTests
     [Test]
     public async Task RefreshAll_ClearsSettingsNamespace_ViaPrefixWalk()
     {
-        // RefreshAll's existing ClearByKey("llms:") prefix-walk covers the new
-        // llms:settings: namespace too — no extra code needed in the handler
+        // RefreshAll's existing ClearByKey("aiv:") prefix-walk covers the new
+        // aiv:settings: namespace too — no extra code needed in the handler
         // for that path. Pin the contract so a future refactor can't silently
         // narrow the prefix walk. Settings cache is host-independent post-D1-A;
         // we seed distinct cultures rather than distinct hosts.

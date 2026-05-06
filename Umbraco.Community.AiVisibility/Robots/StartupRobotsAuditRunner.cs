@@ -41,7 +41,7 @@ public sealed class StartupRobotsAuditRunner : IHostedService
         if (!_settings.CurrentValue.RobotsAuditOnStartup)
         {
             _logger.LogTrace(
-                "Startup robots audit suppressed (LlmsTxt:RobotsAuditOnStartup is false).");
+                "Startup robots audit suppressed (AiVisibility:RobotsAuditOnStartup is false).");
             return Task.CompletedTask;
         }
 

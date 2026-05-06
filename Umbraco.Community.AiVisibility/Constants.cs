@@ -2,27 +2,27 @@ namespace Umbraco.Community.AiVisibility;
 
 public static class Constants
 {
-    public const string ApiName = "llmstxtumbraco";
+    public const string ApiName = "umbracocommunityaivisibility";
 
     public static class Routes
     {
         public const string MarkdownSuffix = ".md";
         public const string IndexHtmlMdSuffix = "/index.html.md";
-        public const string MarkdownRouteName = "Llms.MarkdownRoute";
+        public const string MarkdownRouteName = "AiVisibility.MarkdownRoute";
         public const string MarkdownRoutePattern = "{**path}";
 
         // Story 2.1 — /llms.txt manifest route. Mounted as a discrete endpoint
         // (NOT via the .md catch-all) so the route ordering is explicit and
         // unambiguous. Path is case-insensitive at the constraint level.
         public const string LlmsTxtPath = "/llms.txt";
-        public const string LlmsTxtRouteName = "Llms.LlmsTxtRoute";
+        public const string LlmsTxtRouteName = "AiVisibility.LlmsTxtRoute";
         public const string LlmsTxtRoutePattern = "llms.txt";
 
         // Story 2.2 — /llms-full.txt manifest route. Same registration shape as
         // /llms.txt: discrete endpoint, registered before the .md catch-all,
         // case-insensitive path matching.
         public const string LlmsFullPath = "/llms-full.txt";
-        public const string LlmsFullRouteName = "Llms.LlmsFullTxtRoute";
+        public const string LlmsFullRouteName = "AiVisibility.LlmsFullTxtRoute";
         public const string LlmsFullRoutePattern = "llms-full.txt";
     }
 
@@ -45,21 +45,21 @@ public static class Constants
         // Mirrors Umbraco.Community.AiVisibility.Caching.AiVisibilityCacheKeys — duplicated here for grep-ability
         // alongside other package-prefixed names. The Caching helper is canonical for
         // composition; these constants are for cross-folder string literals.
-        public const string Prefix = "llms:";
-        public const string PagePrefix = "llms:page:";
-        public const string LlmsTxtPrefix = "llms:llmstxt:";
-        public const string LlmsFullPrefix = "llms:llmsfull:";
+        public const string Prefix = "aiv:";
+        public const string PagePrefix = "aiv:page:";
+        public const string LlmsTxtPrefix = "aiv:llmstxt:";
+        public const string LlmsFullPrefix = "aiv:llmsfull:";
 
         // Story 3.1 — resolver settings cache namespace. Mirrored from
         // Umbraco.Community.AiVisibility.Caching.AiVisibilityCacheKeys.SettingsPrefix for grep-ability.
-        public const string SettingsPrefix = "llms:settings:";
+        public const string SettingsPrefix = "aiv:settings:";
 
         // Story 4.2 — robots audit cache namespace. Mirrored from
         // Umbraco.Community.AiVisibility.Caching.AiVisibilityCacheKeys.RobotsPrefix for grep-ability.
         // The robots-audit cache lives under a different invalidation regime
         // than per-page / manifest caches — see AiVisibilityCacheKeys.Robots for the
         // full rationale.
-        public const string RobotsPrefix = "llms:robots:";
+        public const string RobotsPrefix = "aiv:robots:";
     }
 
     public static class HealthChecks

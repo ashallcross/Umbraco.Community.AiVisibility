@@ -11,7 +11,7 @@ namespace Umbraco.Community.AiVisibility.Composing;
 /// <summary>
 /// Story 3.1 — registers <see cref="ISettingsResolver"/> + the
 /// Settings-doctype migration plan. The migration-plan registration is gated
-/// on <c>LlmsTxt:Migrations:SkipSettingsDoctype</c> for uSync coexistence
+/// on <c>AiVisibility:Migrations:SkipSettingsDoctype</c> for uSync coexistence
 /// (architecture.md line 1092).
 /// </summary>
 /// <remarks>

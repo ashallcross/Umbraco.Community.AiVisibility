@@ -2,7 +2,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
 /// Story 5.2 — one row in the AI Traffic dashboard's table
-/// (<c>GET /umbraco/management/api/v1/llmstxt/analytics/requests</c>).
+/// (<c>GET /umbraco/management/api/v1/aivisibility/analytics/requests</c>).
 /// Mirrors the columns of Story 5.1's <see cref="Persistence.Entities.RequestLogEntry"/>
 /// — projection only, no schema annotations.
 /// </summary>
@@ -36,7 +36,7 @@ public sealed record LlmsAnalyticsRequestViewModel(
 /// <param name="RangeTo">Effective UTC range end (exclusive upper bound; post-clamp).</param>
 /// <param name="TotalCappedAt">
 /// When non-null, indicates <see cref="Total"/> exceeded
-/// <c>LlmsTxt:Analytics:MaxResultRows</c>; the dashboard shows the
+/// <c>AiVisibility:Analytics:MaxResultRows</c>; the dashboard shows the
 /// "Showing first N results — narrow your range" footer.
 /// </param>
 public sealed record LlmsAnalyticsRequestPageViewModel(
@@ -51,7 +51,7 @@ public sealed record LlmsAnalyticsRequestPageViewModel(
 
 /// <summary>
 /// Story 5.2 — view model returned by
-/// <c>GET /umbraco/management/api/v1/llmstxt/analytics/classifications</c>.
+/// <c>GET /umbraco/management/api/v1/aivisibility/analytics/classifications</c>.
 /// Populates the dashboard's UA-class filter chip set; classes with zero rows
 /// in the current range are silently absent (epic Failure &amp; Edge Cases case 4 —
 /// "avoid empty filter options").
@@ -67,7 +67,7 @@ public sealed record LlmsAnalyticsClassificationViewModel(
 
 /// <summary>
 /// Story 5.2 — view model returned by
-/// <c>GET /umbraco/management/api/v1/llmstxt/analytics/summary</c>.
+/// <c>GET /umbraco/management/api/v1/aivisibility/analytics/summary</c>.
 /// Feeds the dashboard's "Showing N requests from X to Y" header line.
 /// </summary>
 /// <param name="TotalRequests">Row count for the queried range; never null (SQL <c>COUNT(*)</c>).</param>
@@ -84,7 +84,7 @@ public sealed record LlmsAnalyticsSummaryViewModel(
 
 /// <summary>
 /// Story 5.2 — view model returned by
-/// <c>GET /umbraco/management/api/v1/llmstxt/analytics/retention</c>.
+/// <c>GET /umbraco/management/api/v1/aivisibility/analytics/retention</c>.
 /// One-shot read of <c>IOptionsMonitor&lt;AiVisibilitySettings&gt;.CurrentValue.LogRetention.DurationDays</c>
 /// so the dashboard can render AC9's retention-aware empty-state hint without
 /// duplicating the config-binding logic on the TypeScript side.

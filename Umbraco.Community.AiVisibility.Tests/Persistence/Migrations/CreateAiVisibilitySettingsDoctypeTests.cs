@@ -47,10 +47,10 @@ public class CreateAiVisibilitySettingsDoctypeTests
         await migration.RunAsync();
 
         _contentTypeService.Received().Save(
-            Arg.Is<IContentType>(c => c.Name == "LlmsTxt Exclusion (composition)"),
+            Arg.Is<IContentType>(c => c.Name == "AI Visibility Exclusion (composition)"),
             Arg.Any<int>());
         _contentTypeService.Received().Save(
-            Arg.Is<IContentType>(c => c.Name == "LlmsTxt Settings"),
+            Arg.Is<IContentType>(c => c.Name == "AI Visibility Settings"),
             Arg.Any<int>());
     }
 

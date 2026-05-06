@@ -22,12 +22,12 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
 /// Story 3.2 — Backoffice Settings dashboard's Management API surface.
-/// Routes to <c>/umbraco/management/api/v1/llmstxt/settings/...</c> via Spike 0.B's
+/// Routes to <c>/umbraco/management/api/v1/aivisibility/settings/...</c> via Spike 0.B's
 /// canonical pattern (locked decision #5):
-/// <c>[VersionedApiBackOfficeRoute("llmstxt/settings")]</c> from
+/// <c>[VersionedApiBackOfficeRoute("aivisibility/settings")]</c> from
 /// <c>Umbraco.Cms.Api.Management.Routing</c> — the framework prepends
 /// <c>/umbraco/management/api/v{version}/</c> so the resolved prefix is
-/// <c>/umbraco/management/api/v1/llmstxt/settings/</c>.
+/// <c>/umbraco/management/api/v1/aivisibility/settings/</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -63,7 +63,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// </para>
 /// </remarks>
 [ApiVersion("1.0")]
-[VersionedApiBackOfficeRoute("llmstxt/settings")]
+[VersionedApiBackOfficeRoute("aivisibility/settings")]
 [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
 [MapToApi(Constants.ApiName)]
 public sealed class SettingsManagementApiController : ManagementApiControllerBase
@@ -106,7 +106,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     internal const string SiteSummaryAlias = "siteSummary";
     internal const string ExcludedAliasesAlias = "excludedDoctypeAliases";
     internal const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
-    internal const string DefaultSettingsNodeName = "LlmsTxt Settings";
+    internal const string DefaultSettingsNodeName = "AI Visibility Settings";
 
     /// <summary>
     /// Characters that <see cref="DefaultSettingsResolver"/> uses as alias
@@ -179,7 +179,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
         if (validation.IsInvalid)
         {
             return Task.FromResult<IActionResult>(Problem(
-                title: "Invalid LlmsTxt settings payload",
+                title: "Invalid AI Visibility settings payload",
                 detail: validation.Detail,
                 statusCode: StatusCodes.Status400BadRequest));
         }
@@ -192,7 +192,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
             // Doctype not present in the host (uSync coexistence path with
             // SkipSettingsDoctype + uSync hasn't imported the schema yet).
             return Task.FromResult<IActionResult>(Problem(
-                title: "LlmsTxt Settings doctype not installed",
+                title: "AI Visibility Settings doctype not installed",
                 detail: $"Content type '{SettingsDoctypeAlias}' was not found. "
                     + "Install via the package migration or import the doctype via uSync.",
                 statusCode: StatusCodes.Status400BadRequest));
@@ -215,7 +215,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
                 publishResult.Result.ToString(),
                 content.Key);
             return Task.FromResult<IActionResult>(Problem(
-                title: "Failed to publish LlmsTxt Settings node",
+                title: "Failed to publish AI Visibility Settings node",
                 detail: "Check user permissions on the Settings node and the host's publish pipeline.",
                 statusCode: StatusCodes.Status400BadRequest));
         }

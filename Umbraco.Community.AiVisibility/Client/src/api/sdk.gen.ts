@@ -18,7 +18,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
     meta?: Record<string, unknown>;
 };
 
-export class LlmsTxtUmbracoService {
+export class UmbracoCommunityAiVisibilityService {
     public static ping<ThrowOnError extends boolean = false>(options?: Options<PingData, ThrowOnError>) {
         return (options?.client ?? client).get<PingResponses, PingErrors, ThrowOnError>({
             security: [
@@ -27,7 +27,7 @@ export class LlmsTxtUmbracoService {
                     type: 'http'
                 }
             ],
-            url: '/umbraco/llmstxtumbraco/api/v1/ping',
+            url: '/umbraco/umbracocommunityaivisibility/api/v1/ping',
             ...options
         });
     }
@@ -40,7 +40,7 @@ export class LlmsTxtUmbracoService {
                     type: 'http'
                 }
             ],
-            url: '/umbraco/llmstxtumbraco/api/v1/whatsMyName',
+            url: '/umbraco/umbracocommunityaivisibility/api/v1/whatsMyName',
             ...options
         });
     }
@@ -53,7 +53,7 @@ export class LlmsTxtUmbracoService {
                     type: 'http'
                 }
             ],
-            url: '/umbraco/llmstxtumbraco/api/v1/whatsTheTimeMrWolf',
+            url: '/umbraco/umbracocommunityaivisibility/api/v1/whatsTheTimeMrWolf',
             ...options
         });
     }
@@ -66,7 +66,7 @@ export class LlmsTxtUmbracoService {
                     type: 'http'
                 }
             ],
-            url: '/umbraco/llmstxtumbraco/api/v1/whoAmI',
+            url: '/umbraco/umbracocommunityaivisibility/api/v1/whoAmI',
             ...options
         });
     }

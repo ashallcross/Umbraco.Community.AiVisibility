@@ -13,7 +13,7 @@ class _ extends Error {
     super(...arguments), this.name = "AuthContextUnavailableError";
   }
 }
-const G = "/umbraco/management/api/v1/llmstxt/analytics/requests", K = "/umbraco/management/api/v1/llmstxt/analytics/classifications", Q = "/umbraco/management/api/v1/llmstxt/analytics/summary", V = "/umbraco/management/api/v1/llmstxt/analytics/retention", Y = 50, W = 7, Z = 200;
+const G = "/umbraco/management/api/v1/aivisibility/analytics/requests", K = "/umbraco/management/api/v1/aivisibility/analytics/classifications", Q = "/umbraco/management/api/v1/aivisibility/analytics/summary", V = "/umbraco/management/api/v1/aivisibility/analytics/retention", Y = 50, W = 7, Z = 200;
 function R(t) {
   switch (t) {
     case "AiTraining":
@@ -433,4 +433,4 @@ export {
   it as default,
   at as element
 };
-//# sourceMappingURL=aiv-ai-traffic-dashboard.element-DOcmx-Q7.js.map
+//# sourceMappingURL=aiv-ai-traffic-dashboard.element-DkAKzgPI.js.map

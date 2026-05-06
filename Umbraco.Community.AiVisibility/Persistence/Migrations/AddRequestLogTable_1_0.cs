@@ -65,7 +65,7 @@ public sealed class AddRequestLogTable_1_0 : AsyncMigrationBase
         if (schemaCreator.TableExists(TableName))
         {
             _logger.LogDebug(
-                "LlmsTxt: AddRequestLogTable_1_0 — table {TableName} already exists; short-circuiting.",
+                "AiVisibility: AddRequestLogTable_1_0 — table {TableName} already exists; short-circuiting.",
                 TableName);
             return Task.CompletedTask;
         }
@@ -73,7 +73,7 @@ public sealed class AddRequestLogTable_1_0 : AsyncMigrationBase
         Create.Table<RequestLogEntry>().Do();
 
         _logger.LogInformation(
-            "LlmsTxt: AddRequestLogTable_1_0 — created table {TableName}.",
+            "AiVisibility: AddRequestLogTable_1_0 — created table {TableName}.",
             TableName);
 
         return Task.CompletedTask;

@@ -177,7 +177,7 @@ export type PingData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/llmstxtumbraco/api/v1/ping';
+    url: '/umbraco/umbracocommunityaivisibility/api/v1/ping';
 };
 
 export type PingErrors = {
@@ -200,7 +200,7 @@ export type WhatsMyNameData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/llmstxtumbraco/api/v1/whatsMyName';
+    url: '/umbraco/umbracocommunityaivisibility/api/v1/whatsMyName';
 };
 
 export type WhatsMyNameErrors = {
@@ -223,7 +223,7 @@ export type WhatsTheTimeMrWolfData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/llmstxtumbraco/api/v1/whatsTheTimeMrWolf';
+    url: '/umbraco/umbracocommunityaivisibility/api/v1/whatsTheTimeMrWolf';
 };
 
 export type WhatsTheTimeMrWolfErrors = {
@@ -246,7 +246,7 @@ export type WhoAmIData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/llmstxtumbraco/api/v1/whoAmI';
+    url: '/umbraco/umbracocommunityaivisibility/api/v1/whoAmI';
 };
 
 export type WhoAmIErrors = {

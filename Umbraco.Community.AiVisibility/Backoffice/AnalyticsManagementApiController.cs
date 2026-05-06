@@ -17,12 +17,12 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
 /// Story 5.2 — read-only Backoffice Management API for the AI Traffic
-/// dashboard. Routes to <c>/umbraco/management/api/v1/llmstxt/analytics/...</c>
+/// dashboard. Routes to <c>/umbraco/management/api/v1/aivisibility/analytics/...</c>
 /// per Spike 0.B's canonical pattern (locked decision #5):
-/// <c>[VersionedApiBackOfficeRoute("llmstxt/analytics")]</c> from
+/// <c>[VersionedApiBackOfficeRoute("aivisibility/analytics")]</c> from
 /// <c>Umbraco.Cms.Api.Management.Routing</c> — the framework prepends
 /// <c>/umbraco/management/api/v{version}/</c> so the resolved prefix is
-/// <c>/umbraco/management/api/v1/llmstxt/analytics/</c>.
+/// <c>/umbraco/management/api/v1/aivisibility/analytics/</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -52,7 +52,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// </para>
 /// <para>
 /// <b>Swagger doc co-location:</b> <see cref="MapToApiAttribute"/> binds the
-/// four operations to the existing <c>llmstxtumbraco</c> Swagger doc (registered
+/// four operations to the existing <c>umbracocommunityaivisibility</c> Swagger doc (registered
 /// by <c>BackofficeApiComposer</c>). The framework filter
 /// <c>BackOfficeSecurityRequirementsOperationFilterBase</c> auto-adds the 401 +
 /// 403 response schemas — Story 3.2 Spec Drift Note #6 documents the
@@ -62,7 +62,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// </para>
 /// </remarks>
 [ApiVersion("1.0")]
-[VersionedApiBackOfficeRoute("llmstxt/analytics")]
+[VersionedApiBackOfficeRoute("aivisibility/analytics")]
 [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
 [MapToApi(Constants.ApiName)]
 public sealed class AnalyticsManagementApiController : ManagementApiControllerBase
@@ -161,7 +161,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
 
             if (rangeWasClamped)
             {
-                Response.Headers["X-Llms-Range-Clamped"] = "true";
+                Response.Headers["X-AiVisibility-Range-Clamped"] = "true";
             }
 
             return Ok(new LlmsAnalyticsRequestPageViewModel(
@@ -182,7 +182,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
         {
             _logger.LogWarning(
                 ex,
-                "LlmsTxt analytics GetRequests failed for range {RangeFrom}..{RangeTo} pageSize={PageSize} page={Page}",
+                "AiVisibility analytics GetRequests failed for range {RangeFrom}..{RangeTo} pageSize={PageSize} page={Page}",
                 parsedFrom,
                 parsedTo,
                 pageSizeSafe,
@@ -225,7 +225,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
                 .ToArray();
             if (rangeWasClamped)
             {
-                Response.Headers["X-Llms-Range-Clamped"] = "true";
+                Response.Headers["X-AiVisibility-Range-Clamped"] = "true";
             }
             return Ok(viewModel);
         }
@@ -237,7 +237,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
         {
             _logger.LogWarning(
                 ex,
-                "LlmsTxt analytics GetClassifications failed for range {RangeFrom}..{RangeTo}",
+                "AiVisibility analytics GetClassifications failed for range {RangeFrom}..{RangeTo}",
                 parsedFrom,
                 parsedTo);
             return Problem(
@@ -274,7 +274,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
             var row = _reader.ReadSummary(parsedFrom, parsedTo);
             if (rangeWasClamped)
             {
-                Response.Headers["X-Llms-Range-Clamped"] = "true";
+                Response.Headers["X-AiVisibility-Range-Clamped"] = "true";
             }
             return Ok(new LlmsAnalyticsSummaryViewModel(
                 row.TotalRequests,
@@ -291,7 +291,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
         {
             _logger.LogWarning(
                 ex,
-                "LlmsTxt analytics GetSummary failed for range {RangeFrom}..{RangeTo}",
+                "AiVisibility analytics GetSummary failed for range {RangeFrom}..{RangeTo}",
                 parsedFrom,
                 parsedTo);
             return Problem(
@@ -317,7 +317,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
     /// Parses + clamps the <c>?from=</c> / <c>?to=</c> query inputs into
     /// timezone-aware UTC <see cref="DateTime"/> values. Returns
     /// <c>(null, from, to)</c> on success; <c>(IActionResult, default,
-    /// default)</c> on failure. Sets the <c>X-Llms-Range-Clamped: true</c>
+    /// default)</c> on failure. Sets the <c>X-AiVisibility-Range-Clamped: true</c>
     /// response header when the requested span exceeds
     /// <see cref="AnalyticsSettings.MaxRangeDays"/> and the controller
     /// narrowed it.
@@ -377,7 +377,7 @@ public sealed class AnalyticsManagementApiController : ManagementApiControllerBa
         {
             var clampedFrom = parsedTo.AddDays(-maxRangeDays);
             _logger.LogInformation(
-                "LlmsTxt analytics range clamped — original {OriginalSpanDays:F1} days exceeds max {MaxRangeDays} days; clamped from={ClampedFrom:O}",
+                "AiVisibility analytics range clamped — original {OriginalSpanDays:F1} days exceeds max {MaxRangeDays} days; clamped from={ClampedFrom:O}",
                 spanDays,
                 maxRangeDays,
                 clampedFrom);

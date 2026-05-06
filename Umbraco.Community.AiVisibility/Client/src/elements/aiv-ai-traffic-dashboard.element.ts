@@ -15,10 +15,10 @@ import type {
 } from "@umbraco-cms/backoffice/dashboard";
 
 // ────────────────────────────────────────────────────────────────────────
-// View-model contracts shared with LlmsAnalyticsManagementApiController.cs
+// View-model contracts shared with AnalyticsManagementApiController.cs
 // ────────────────────────────────────────────────────────────────────────
 
-interface LlmsAnalyticsRequestViewModel {
+interface AnalyticsRequestViewModel {
   id: number;
   createdUtc: string;          // ISO-8601 UTC
   path: string;
@@ -28,8 +28,8 @@ interface LlmsAnalyticsRequestViewModel {
   referrerHost: string | null;
 }
 
-interface LlmsAnalyticsRequestPageViewModel {
-  items: LlmsAnalyticsRequestViewModel[];
+interface AnalyticsRequestPageViewModel {
+  items: AnalyticsRequestViewModel[];
   total: number;
   page: number;
   pageSize: number;
@@ -39,12 +39,12 @@ interface LlmsAnalyticsRequestPageViewModel {
   totalCappedAt: number | null;
 }
 
-interface LlmsAnalyticsClassificationViewModel {
+interface AnalyticsClassificationViewModel {
   class: string;
   count: number;
 }
 
-interface LlmsAnalyticsSummaryViewModel {
+interface AnalyticsSummaryViewModel {
   totalRequests: number;
   firstSeenUtc: string | null;
   lastSeenUtc: string | null;
@@ -52,7 +52,7 @@ interface LlmsAnalyticsSummaryViewModel {
   rangeTo: string;
 }
 
-interface LlmsAnalyticsRetentionViewModel {
+interface AnalyticsRetentionViewModel {
   durationDays: number;
 }
 
@@ -66,9 +66,9 @@ type DashboardState =
   | { kind: "loading" }
   | {
       kind: "ready";
-      requests: LlmsAnalyticsRequestPageViewModel;
-      classifications: LlmsAnalyticsClassificationViewModel[];
-      summary: LlmsAnalyticsSummaryViewModel;
+      requests: AnalyticsRequestPageViewModel;
+      classifications: AnalyticsClassificationViewModel[];
+      summary: AnalyticsSummaryViewModel;
     }
   | { kind: "error"; message: string }
   | { kind: "auth-error" };
@@ -85,10 +85,10 @@ interface FilterState {
   pageSize: number;
 }
 
-const REQUESTS_PATH = "/umbraco/management/api/v1/llmstxt/analytics/requests";
-const CLASSIFICATIONS_PATH = "/umbraco/management/api/v1/llmstxt/analytics/classifications";
-const SUMMARY_PATH = "/umbraco/management/api/v1/llmstxt/analytics/summary";
-const RETENTION_PATH = "/umbraco/management/api/v1/llmstxt/analytics/retention";
+const REQUESTS_PATH = "/umbraco/management/api/v1/aivisibility/analytics/requests";
+const CLASSIFICATIONS_PATH = "/umbraco/management/api/v1/aivisibility/analytics/classifications";
+const SUMMARY_PATH = "/umbraco/management/api/v1/aivisibility/analytics/summary";
+const RETENTION_PATH = "/umbraco/management/api/v1/aivisibility/analytics/retention";
 
 const DEFAULT_PAGE_SIZE = 50;
 const DEFAULT_RANGE_DAYS = 7;
@@ -133,7 +133,7 @@ export class AiVisibilityAiTrafficDashboardElement
   @state() private _state: DashboardState = { kind: "loading" };
   @state() private _filter: FilterState = this.#defaultFilter();
   @state() private _retentionDays: number | null = null;
-  @state() private _lastClassifications: LlmsAnalyticsClassificationViewModel[] = [];
+  @state() private _lastClassifications: AnalyticsClassificationViewModel[] = [];
   @state() private _dateRangeError: string | null = null;
 
   private _inflight: AbortController | null = null;
@@ -209,7 +209,7 @@ export class AiVisibilityAiTrafficDashboardElement
       const ac = new AbortController();
       const res = await this.#authedFetch(RETENTION_PATH, ac.signal);
       if (!res.ok) return;
-      const body = (await res.json()) as LlmsAnalyticsRetentionViewModel;
+      const body = (await res.json()) as AnalyticsRetentionViewModel;
       this._retentionDays = body.durationDays;
     } catch {
       // Non-blocking — retention hint just won't surface.
@@ -258,9 +258,9 @@ export class AiVisibilityAiTrafficDashboardElement
         return;
       }
 
-      const requests = (await requestsRes.json()) as LlmsAnalyticsRequestPageViewModel;
-      const classifications = (await classRes.json()) as LlmsAnalyticsClassificationViewModel[];
-      const summary = (await summaryRes.json()) as LlmsAnalyticsSummaryViewModel;
+      const requests = (await requestsRes.json()) as AnalyticsRequestPageViewModel;
+      const classifications = (await classRes.json()) as AnalyticsClassificationViewModel[];
+      const summary = (await summaryRes.json()) as AnalyticsSummaryViewModel;
 
       this._lastClassifications = classifications;
       this._state = { kind: "ready", requests, classifications, summary };

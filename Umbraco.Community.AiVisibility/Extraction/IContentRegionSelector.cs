@@ -60,7 +60,7 @@ public interface IContentRegionSelector
     /// </param>
     /// <param name="configuredSelectors">
     /// CSS selector list from <see cref="Configuration.AiVisibilitySettings.MainContentSelectors"/>
-    /// (sourced from <c>appsettings.json</c> under <c>LlmsTxt:MainContentSelectors</c>).
+    /// (sourced from <c>appsettings.json</c> under <c>AiVisibility:MainContentSelectors</c>).
     /// Adopters' implementations may honour or ignore this list as they see fit;
     /// the package's default selector consults it after the built-in
     /// <c>data-llms-content</c> / <c>&lt;main&gt;</c> / <c>&lt;article&gt;</c> chain.

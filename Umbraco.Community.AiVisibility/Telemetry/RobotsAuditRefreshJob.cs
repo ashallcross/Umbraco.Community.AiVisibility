@@ -83,7 +83,7 @@ public sealed class RobotsAuditRefreshJob : IDistributedBackgroundJob
     }
 
     /// <inheritdoc />
-    public string Name => "LlmsTxt:RobotsAuditRefresh";
+    public string Name => "AiVisibility:RobotsAuditRefresh";
 
     /// <inheritdoc />
     public TimeSpan Period

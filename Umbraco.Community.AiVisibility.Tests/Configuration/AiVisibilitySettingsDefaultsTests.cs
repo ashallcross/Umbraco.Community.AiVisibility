@@ -20,8 +20,8 @@ namespace Umbraco.Community.AiVisibility.Tests.Configuration;
 /// </description></item>
 /// <item><description>
 /// <see cref="AppsettingsBindWithEmptySection_AllFieldsHoldInCodeDefaults"/>
-/// — an empty <see cref="IConfiguration"/> with no <c>LlmsTxt:</c> section.
-/// Pins the AC1 contract: a host with no <c>LlmsTxt:</c> entry in its
+/// — an empty <see cref="IConfiguration"/> with no <c>AiVisibility:</c> section.
+/// Pins the AC1 contract: a host with no <c>AiVisibility:</c> entry in its
 /// <c>appsettings.json</c> still gets the in-code defaults via the
 /// <c>configuration.GetSection(...).Get&lt;AiVisibilitySettings&gt;() ?? new()</c>
 /// composer pattern.
@@ -140,7 +140,7 @@ public class LlmsTxtSettingsDefaultsTests
             Assert.That(settings.Analytics.DefaultRangeDays, Is.EqualTo(7),
                 "Analytics.DefaultRangeDays defaults to 7 (Story 5.2 AC6 — last-week default range)");
             Assert.That(settings.Analytics.MaxRangeDays, Is.EqualTo(365),
-                "Analytics.MaxRangeDays defaults to 365 (Story 5.2 AC2 — wider requests trigger X-Llms-Range-Clamped header)");
+                "Analytics.MaxRangeDays defaults to 365 (Story 5.2 AC2 — wider requests trigger X-AiVisibility-Range-Clamped header)");
             Assert.That(settings.Analytics.MaxResultRows, Is.EqualTo(10000),
                 "Analytics.MaxResultRows defaults to 10000 (Story 5.2 epic Failure case 3 — cap surface footer)");
         });
@@ -150,7 +150,7 @@ public class LlmsTxtSettingsDefaultsTests
     public void AppsettingsBindWithEmptySection_AllFieldsHoldInCodeDefaults()
     {
         // AC1 + AC7 — pin the contract that the package's composer relies on:
-        // an IConfiguration whose `LlmsTxt:` section exists but carries no
+        // an IConfiguration whose `AiVisibility:` section exists but carries no
         // values bound via the standard GetSection(...).Get<T>() ?? new()
         // pattern resolves to the in-code defaults. The probe key materialises
         // the section so the binder actually runs (without it, GetSection
@@ -160,7 +160,7 @@ public class LlmsTxtSettingsDefaultsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["LlmsTxt:__BinderProbe"] = "x",
+                ["AiVisibility:__BinderProbe"] = "x",
             })
             .Build();
 
@@ -205,7 +205,7 @@ public class LlmsTxtSettingsDefaultsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["LlmsTxt:SiteName"] = "Custom",
+                ["AiVisibility:SiteName"] = "Custom",
             })
             .Build();
 
@@ -250,9 +250,9 @@ public class LlmsTxtSettingsDefaultsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["LlmsTxt:LlmsFullScope:ExcludedDocTypeAliases"] = null,
-                ["LlmsTxt:LlmsFullScope:IncludedDocTypeAliases"] = null,
-                ["LlmsTxt:ExcludedDoctypeAliases"] = null,
+                ["AiVisibility:LlmsFullScope:ExcludedDocTypeAliases"] = null,
+                ["AiVisibility:LlmsFullScope:IncludedDocTypeAliases"] = null,
+                ["AiVisibility:ExcludedDoctypeAliases"] = null,
             })
             .Build();
 

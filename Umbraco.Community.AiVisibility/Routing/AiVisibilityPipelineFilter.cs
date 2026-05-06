@@ -13,7 +13,7 @@ namespace Umbraco.Community.AiVisibility.Routing;
 public sealed class AiVisibilityPipelineFilter : UmbracoPipelineFilter
 {
     public AiVisibilityPipelineFilter()
-        : base("LlmsTxt")
+        : base("Umbraco.Community.AiVisibility")
     {
         Endpoints = MapEndpoints;
         // Story 1.3 — Accept-header content negotiation runs after Umbraco's routing

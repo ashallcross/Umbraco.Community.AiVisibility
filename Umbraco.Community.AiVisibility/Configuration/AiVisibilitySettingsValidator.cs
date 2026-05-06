@@ -36,35 +36,35 @@ internal sealed class AiVisibilitySettingsValidator : IValidateOptions<AiVisibil
 
         if (a.DefaultPageSize < 1)
         {
-            failures.Add($"LlmsTxt:Analytics:DefaultPageSize must be >= 1 (got {a.DefaultPageSize}).");
+            failures.Add($"AiVisibility:Analytics:DefaultPageSize must be >= 1 (got {a.DefaultPageSize}).");
         }
 
         if (a.MaxPageSize < 1)
         {
-            failures.Add($"LlmsTxt:Analytics:MaxPageSize must be >= 1 (got {a.MaxPageSize}).");
+            failures.Add($"AiVisibility:Analytics:MaxPageSize must be >= 1 (got {a.MaxPageSize}).");
         }
 
         if (a.DefaultPageSize > a.MaxPageSize && a.MaxPageSize >= 1)
         {
             failures.Add(
-                $"LlmsTxt:Analytics:DefaultPageSize ({a.DefaultPageSize}) exceeds MaxPageSize ({a.MaxPageSize}); " +
+                $"AiVisibility:Analytics:DefaultPageSize ({a.DefaultPageSize}) exceeds MaxPageSize ({a.MaxPageSize}); " +
                 "requests without ?pageSize will be silently clamped down.");
         }
 
         if (a.DefaultRangeDays < 1)
         {
-            failures.Add($"LlmsTxt:Analytics:DefaultRangeDays must be >= 1 (got {a.DefaultRangeDays}).");
+            failures.Add($"AiVisibility:Analytics:DefaultRangeDays must be >= 1 (got {a.DefaultRangeDays}).");
         }
 
         if (a.MaxRangeDays < 1)
         {
-            failures.Add($"LlmsTxt:Analytics:MaxRangeDays must be >= 1 (got {a.MaxRangeDays}).");
+            failures.Add($"AiVisibility:Analytics:MaxRangeDays must be >= 1 (got {a.MaxRangeDays}).");
         }
 
         if (a.DefaultRangeDays > a.MaxRangeDays && a.MaxRangeDays >= 1)
         {
             failures.Add(
-                $"LlmsTxt:Analytics:DefaultRangeDays ({a.DefaultRangeDays}) exceeds MaxRangeDays ({a.MaxRangeDays}); " +
+                $"AiVisibility:Analytics:DefaultRangeDays ({a.DefaultRangeDays}) exceeds MaxRangeDays ({a.MaxRangeDays}); " +
                 "requests without ?from will be silently clamped to a narrower span.");
         }
 

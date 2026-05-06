@@ -2,34 +2,34 @@ namespace Umbraco.Community.AiVisibility.Caching;
 
 /// <summary>
 /// Stable cache-key shapes for all LlmsTxt entries. Keys are inspectable,
-/// human-readable, and lowercase-prefixed with <c>llms:</c> so
+/// human-readable, and lowercase-prefixed with <c>aiv:</c> so
 /// <see cref="Umbraco.Cms.Core.Cache.IAppCache.ClearByKey"/> can prefix-clear
 /// the whole namespace on <c>RefreshAll</c>.
 /// </summary>
 public static class AiVisibilityCacheKeys
 {
-    public const string Prefix = "llms:";
-    public const string PagePrefix = "llms:page:";
+    public const string Prefix = "aiv:";
+    public const string PagePrefix = "aiv:page:";
 
     /// <summary>
     /// Story 2.1 — <c>/llms.txt</c> manifest cache prefix. Architecture line 287
-    /// pins the shape: <c>llms:llmstxt:{hostname}:{culture}</c> (lowercase, no
+    /// pins the shape: <c>aiv:llmstxt:{hostname}:{culture}</c> (lowercase, no
     /// internal hyphen). Manifest invalidation in <c>ContentCacheRefresherHandler</c>
-    /// uses prefix-clear (<c>llms:llmstxt:{host}:</c>) to nuke all cultures for an
+    /// uses prefix-clear (<c>aiv:llmstxt:{host}:</c>) to nuke all cultures for an
     /// affected hostname in one call.
     /// </summary>
-    public const string LlmsTxtPrefix = "llms:llmstxt:";
+    public const string LlmsTxtPrefix = "aiv:llmstxt:";
 
     /// <summary>
     /// Per-page cache key. <para>
-    /// Shape: <c>llms:page:{nodeKey:N}:{host}:{culture}</c>. Story 1.5 added
+    /// Shape: <c>aiv:page:{nodeKey:N}:{host}:{culture}</c>. Story 1.5 added
     /// <paramref name="host"/> to the key so multi-domain bindings against the
     /// same content node never collide on a CDN/proxy fronting both hosts.
     /// </para>
     /// <para>
     /// <paramref name="nodeKey"/> stays as the second segment (immediately after the
-    /// <c>llms:page:</c> prefix) so <see cref="ContentCacheRefresherHandler"/>'s
-    /// race-mitigating prefix-clear (<c>llms:page:{nodeKey:N}:</c>) still finds and
+    /// <c>aiv:page:</c> prefix) so <see cref="ContentCacheRefresherHandler"/>'s
+    /// race-mitigating prefix-clear (<c>aiv:page:{nodeKey:N}:</c>) still finds and
     /// clears every per-host entry for that node, regardless of how many hostnames
     /// have warmed entries against it.
     /// </para>
@@ -48,7 +48,7 @@ public static class AiVisibilityCacheKeys
 
     /// <summary>
     /// <c>/llms.txt</c> manifest cache key. Shape:
-    /// <c>llms:llmstxt:{host}:{culture}</c>. Reuses <see cref="NormaliseHost"/>
+    /// <c>aiv:llmstxt:{host}:{culture}</c>. Reuses <see cref="NormaliseHost"/>
     /// and <see cref="NormaliseCulture"/> so casing/port-stripping aligns with
     /// the per-page key shape — adopters inspecting cache contents see one set of
     /// rules, not two.
@@ -63,7 +63,7 @@ public static class AiVisibilityCacheKeys
         => $"{LlmsTxtPrefix}{NormaliseHost(host)}:{NormaliseCulture(culture)}";
 
     /// <summary>
-    /// Per-host prefix for invalidation. Shape: <c>llms:llmstxt:{host}:</c>.
+    /// Per-host prefix for invalidation. Shape: <c>aiv:llmstxt:{host}:</c>.
     /// Passing this to <c>IAppPolicyCache.ClearByKey</c> drops every culture's
     /// manifest entry for the given hostname.
     /// </summary>
@@ -72,19 +72,19 @@ public static class AiVisibilityCacheKeys
 
     /// <summary>
     /// Story 2.2 — <c>/llms-full.txt</c> manifest cache prefix. Architecture line
-    /// 288 pins the shape: <c>llms:llmsfull:{hostname}:{culture}</c> (lowercase, no
+    /// 288 pins the shape: <c>aiv:llmsfull:{hostname}:{culture}</c> (lowercase, no
     /// internal hyphen — matches <see cref="LlmsTxtPrefix"/> convention; the
     /// hyphenated form in <c>package-spec.md</c> § 11 is stale spec drift,
     /// architecture wins). Manifest invalidation in
     /// <see cref="ContentCacheRefresherHandler"/> uses prefix-clear
-    /// (<c>llms:llmsfull:{host}:</c>) to nuke all cultures for an affected
+    /// (<c>aiv:llmsfull:{host}:</c>) to nuke all cultures for an affected
     /// hostname in one call — same pattern as <see cref="LlmsTxtPrefix"/>.
     /// </summary>
-    public const string LlmsFullPrefix = "llms:llmsfull:";
+    public const string LlmsFullPrefix = "aiv:llmsfull:";
 
     /// <summary>
     /// <c>/llms-full.txt</c> manifest cache key. Shape:
-    /// <c>llms:llmsfull:{host}:{culture}</c>. Reuses <see cref="NormaliseHost"/>
+    /// <c>aiv:llmsfull:{host}:{culture}</c>. Reuses <see cref="NormaliseHost"/>
     /// and <see cref="NormaliseCulture"/> so casing/port-stripping aligns with
     /// the per-page key shape and the <c>/llms.txt</c> shape — adopters
     /// inspecting cache contents see one set of rules, not three.
@@ -100,7 +100,7 @@ public static class AiVisibilityCacheKeys
 
     /// <summary>
     /// Per-host prefix for <c>/llms-full.txt</c> invalidation. Shape:
-    /// <c>llms:llmsfull:{host}:</c>. Same shape as
+    /// <c>aiv:llmsfull:{host}:</c>. Same shape as
     /// <see cref="LlmsTxtHostPrefix"/> applied to the <c>llms-full</c> namespace.
     /// </summary>
     public static string LlmsFullHostPrefix(string? host)
@@ -108,7 +108,7 @@ public static class AiVisibilityCacheKeys
 
     /// <summary>
     /// Story 3.1 — resolver settings cache prefix. Shape:
-    /// <c>llms:settings:{culture}</c>. Caches the per-culture overlay of the
+    /// <c>aiv:settings:{culture}</c>. Caches the per-culture overlay of the
     /// Settings doctype values onto the appsettings snapshot. There is one
     /// global Settings node per Umbraco install (the doctype is allowed at root
     /// and the resolver picks the first match), so the cache key omits host —
@@ -117,10 +117,10 @@ public static class AiVisibilityCacheKeys
     /// <see cref="ContentCacheRefresherHandler"/> via
     /// <c>ClearByKey(SettingsPrefix)</c> on every refresh notification (AC5).
     /// </summary>
-    public const string SettingsPrefix = "llms:settings:";
+    public const string SettingsPrefix = "aiv:settings:";
 
     /// <summary>
-    /// Resolver settings cache key. Shape: <c>llms:settings:{culture}</c>.
+    /// Resolver settings cache key. Shape: <c>aiv:settings:{culture}</c>.
     /// Host-independent (one global Settings node per install). Reuses
     /// <see cref="NormaliseCulture"/> so casing/invariant-sentinel handling
     /// aligns with the per-page and manifest key shapes.
@@ -130,7 +130,7 @@ public static class AiVisibilityCacheKeys
 
     /// <summary>
     /// Story 4.2 — robots audit cache prefix. Shape:
-    /// <c>llms:robots:{hostname}</c>. The robots audit lives under a
+    /// <c>aiv:robots:{hostname}</c>. The robots audit lives under a
     /// different invalidation regime than per-page / manifest caches:
     /// <see cref="Umbraco.Community.AiVisibility.Background.RobotsAuditRefreshJob"/>
     /// rewrites the entry on the configured cadence; content-cache
@@ -138,10 +138,10 @@ public static class AiVisibilityCacheKeys
     /// don't change when content publishes). The host is normalised
     /// via <see cref="NormaliseHost"/> for cross-key shape consistency.
     /// </summary>
-    public const string RobotsPrefix = "llms:robots:";
+    public const string RobotsPrefix = "aiv:robots:";
 
     /// <summary>
-    /// Robots audit cache key. Shape: <c>llms:robots:{hostname}</c>.
+    /// Robots audit cache key. Shape: <c>aiv:robots:{hostname}</c>.
     /// Host-only (no culture) — robots.txt is a host-level directive and
     /// not language-variant-aware.
     /// </summary>

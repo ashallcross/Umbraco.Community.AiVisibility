@@ -17,10 +17,10 @@ import type {
 } from "@umbraco-cms/backoffice/dashboard";
 
 // ────────────────────────────────────────────────────────────────────────
-// View-model contracts shared with LlmsSettingsManagementApiController.cs
+// View-model contracts shared with SettingsManagementApiController.cs
 // ────────────────────────────────────────────────────────────────────────
 
-interface LlmsSettingsViewModel {
+interface SettingsViewModel {
   siteName: string | null;
   siteSummary: string | null;
   excludedDoctypeAliases: string[];
@@ -28,13 +28,13 @@ interface LlmsSettingsViewModel {
   settingsNodeKey: string | null;
 }
 
-interface LlmsDoctypeViewModel {
+interface DoctypeViewModel {
   alias: string;
   name: string;
   iconCss: string | null;
 }
 
-interface LlmsExcludedPageViewModel {
+interface ExcludedPageViewModel {
   key: string;
   name: string;
   path: string;
@@ -43,8 +43,8 @@ interface LlmsExcludedPageViewModel {
   contentTypeName: string;
 }
 
-interface LlmsExcludedPagesPageViewModel {
-  items: LlmsExcludedPageViewModel[];
+interface ExcludedPagesPageViewModel {
+  items: ExcludedPageViewModel[];
   total: number;
   skip: number;
   take: number;
@@ -62,7 +62,7 @@ interface ProblemDetails {
 
 type LoadState =
   | { kind: "loading" }
-  | { kind: "ready"; settings: LlmsSettingsViewModel; doctypes: LlmsDoctypeViewModel[] }
+  | { kind: "ready"; settings: SettingsViewModel; doctypes: DoctypeViewModel[] }
   | { kind: "error"; message: string };
 
 type SaveState =
@@ -73,7 +73,7 @@ type SaveState =
 
 type ExcludedPagesState =
   | { kind: "loading" }
-  | { kind: "ready"; page: LlmsExcludedPagesPageViewModel }
+  | { kind: "ready"; page: ExcludedPagesPageViewModel }
   | { kind: "error"; message: string };
 
 interface FormState {
@@ -82,9 +82,9 @@ interface FormState {
   excludedDoctypeAliases: string[];
 }
 
-const SETTINGS_PATH = "/umbraco/management/api/v1/llmstxt/settings/";
-const DOCTYPES_PATH = "/umbraco/management/api/v1/llmstxt/settings/doctypes";
-const EXCLUDED_PAGES_PATH = "/umbraco/management/api/v1/llmstxt/settings/excluded-pages";
+const SETTINGS_PATH = "/umbraco/management/api/v1/aivisibility/settings/";
+const DOCTYPES_PATH = "/umbraco/management/api/v1/aivisibility/settings/doctypes";
+const EXCLUDED_PAGES_PATH = "/umbraco/management/api/v1/aivisibility/settings/excluded-pages";
 const SAVE_TOAST_TIMEOUT_MS = 3000;
 
 // Story 3.3 — onboarding hint per-user persistence. Keyed by Backoffice user
@@ -93,10 +93,10 @@ const SAVE_TOAST_TIMEOUT_MS = 3000;
 // AI traffic logs) ship a parallel key without ambiguity over which version
 // dismissed a given user.
 // Body copy verbatim from epics.md:1067.
-const ONBOARDING_DISMISS_STORAGE_PREFIX = "llms.onboarding.dismissed.v1.";
+const ONBOARDING_DISMISS_STORAGE_PREFIX = "aivisibility.onboarding.dismissed.v1.";
 const ONBOARDING_RESOLVE_TIMEOUT_MS = 2000;
 const ONBOARDING_BODY =
-  "LlmsTxt is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
+  "AI Visibility is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
 
 @customElement("aiv-settings-dashboard")
 export class AiVisibilitySettingsDashboardElement
@@ -230,8 +230,8 @@ export class AiVisibilitySettingsDashboardElement
   async #fetchInitial(): Promise<void> {
     this._state = { kind: "loading" };
     const [settingsResult, doctypesResult] = await Promise.all([
-      this.#fetchJson<LlmsSettingsViewModel>(SETTINGS_PATH),
-      this.#fetchJson<LlmsDoctypeViewModel[]>(DOCTYPES_PATH),
+      this.#fetchJson<SettingsViewModel>(SETTINGS_PATH),
+      this.#fetchJson<DoctypeViewModel[]>(DOCTYPES_PATH),
     ]);
 
     if (!this.isConnected) return;
@@ -265,7 +265,7 @@ export class AiVisibilitySettingsDashboardElement
 
   async #fetchExcludedPages(): Promise<void> {
     this._excludedPages = { kind: "loading" };
-    const result = await this.#fetchJson<LlmsExcludedPagesPageViewModel>(
+    const result = await this.#fetchJson<ExcludedPagesPageViewModel>(
       `${EXCLUDED_PAGES_PATH}?skip=0&take=100`,
     );
     if (!this.isConnected) return;
@@ -291,7 +291,7 @@ export class AiVisibilitySettingsDashboardElement
     }
     this._saveState = { kind: "saving" };
 
-    const result = await this.#fetchJson<LlmsSettingsViewModel>(SETTINGS_PATH, {
+    const result = await this.#fetchJson<SettingsViewModel>(SETTINGS_PATH, {
       method: "PUT",
       body: {
         siteName: this._formState.siteName.length === 0 ? null : this._formState.siteName,
@@ -465,13 +465,13 @@ export class AiVisibilitySettingsDashboardElement
 
   override render() {
     if (this._state.kind === "loading") {
-      return html`<uui-box headline="LlmsTxt — Settings">
+      return html`<uui-box headline="AI Visibility — Settings">
         <uui-loader-bar></uui-loader-bar>
         <p class="muted">Loading settings…</p>
       </uui-box>`;
     }
     if (this._state.kind === "error") {
-      return html`<uui-box headline="LlmsTxt — Settings">
+      return html`<uui-box headline="AI Visibility — Settings">
         <p class="error">Failed to load: ${this._state.message}</p>
         <uui-button look="secondary" @click=${() => void this.#fetchInitial()}>Retry</uui-button>
       </uui-box>`;
@@ -488,7 +488,7 @@ export class AiVisibilitySettingsDashboardElement
 
     return html`
       ${this.#renderOnboardingNotice()}
-      <uui-box headline="LlmsTxt — Settings">
+      <uui-box headline="AI Visibility — Settings">
         <p class="intro">
           Configure the package's site name, site summary, and the list of
           content types to omit from <code>/llms.txt</code>,

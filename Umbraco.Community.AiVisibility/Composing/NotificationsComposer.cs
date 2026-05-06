@@ -94,7 +94,7 @@ public sealed class NotificationsComposer : IComposer
             && requestLogRegistration.Lifetime != ServiceLifetime.Singleton)
         {
             throw new InvalidOperationException(
-                $"LlmsTxt: IRequestLog must be registered as Singleton; found {requestLogRegistration.Lifetime}. " +
+                $"AiVisibility: IRequestLog must be registered as Singleton; found {requestLogRegistration.Lifetime}. " +
                 "Adopter overrides via services.AddSingleton<IRequestLog, ...>() are honoured (see Persistence/IRequestLog.cs); " +
                 "Scoped or Transient overrides would form a captive dependency in the request-log drainer.");
         }

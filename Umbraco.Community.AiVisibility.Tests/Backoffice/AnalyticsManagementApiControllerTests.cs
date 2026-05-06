@@ -145,7 +145,7 @@ public class LlmsAnalyticsManagementApiControllerTests
         Assert.That(attr, Is.Not.Null);
 
         var template = attr!.Template;
-        Assert.That(template, Does.EndWith("llmstxt/analytics"));
+        Assert.That(template, Does.EndWith("aivisibility/analytics"));
 
         var version = typeof(AnalyticsManagementApiController)
             .GetCustomAttribute<ApiVersionAttribute>(inherit: false);
@@ -224,7 +224,7 @@ public class LlmsAnalyticsManagementApiControllerTests
         controller.GetRequests(from, to, null, null, null, CancellationToken.None);
 
         Assert.That(
-            controller.Response.Headers.ContainsKey("X-Llms-Range-Clamped"),
+            controller.Response.Headers.ContainsKey("X-AiVisibility-Range-Clamped"),
             Is.False,
             "30-day range stays under default 365 — no clamp header");
     }
@@ -247,7 +247,7 @@ public class LlmsAnalyticsManagementApiControllerTests
         {
             Assert.That(body!.RangeFrom, Is.EqualTo(FixedNowUtc.AddDays(-365)),
                 "from clamped to to - 365 days");
-            Assert.That(controller.Response.Headers["X-Llms-Range-Clamped"].ToString(),
+            Assert.That(controller.Response.Headers["X-AiVisibility-Range-Clamped"].ToString(),
                 Is.EqualTo("true"));
         });
 

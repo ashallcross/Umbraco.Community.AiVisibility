@@ -194,7 +194,7 @@ public class SettingsComposerTests
         var services = new ServiceCollection();
         var configEntries = new Dictionary<string, string?>
         {
-            ["LlmsTxt:Migrations:SkipSettingsDoctype"] = skipDoctype ? "true" : "false",
+            ["AiVisibility:Migrations:SkipSettingsDoctype"] = skipDoctype ? "true" : "false",
         };
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configEntries)

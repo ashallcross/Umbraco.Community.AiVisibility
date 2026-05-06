@@ -1,7 +1,7 @@
 namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
-/// Strongly-typed binding for the <c>LlmsTxt:</c> section of <c>appsettings.json</c>.
+/// Strongly-typed binding for the <c>AiVisibility:</c> section of <c>appsettings.json</c>.
 /// Story 1.1 shipped a minimal surface; Story 1.2 added the per-page cache TTL.
 /// Story 2.1 added the <c>/llms.txt</c> manifest configuration surface
 /// (<see cref="SiteName"/>, <see cref="SiteSummary"/>, <see cref="LlmsTxtBuilder"/>).
@@ -16,7 +16,7 @@ namespace Umbraco.Community.AiVisibility.Configuration;
 /// </summary>
 public sealed class AiVisibilitySettings
 {
-    public const string SectionName = "LlmsTxt";
+    public const string SectionName = "AiVisibility";
 
     /// <summary>
     /// Adopter-configured CSS selector list, consulted after the built-in
@@ -35,7 +35,7 @@ public sealed class AiVisibilitySettings
     /// </para>
     /// <para>
     /// Setting to <c>0</c> effectively disables caching — each request re-renders.
-    /// Adopters who need that behaviour can set <c>"LlmsTxt:CachePolicySeconds": 0</c>
+    /// Adopters who need that behaviour can set <c>"AiVisibility:CachePolicySeconds": 0</c>
     /// in <c>appsettings.json</c>.
     /// </para>
     /// </summary>
@@ -250,7 +250,7 @@ public sealed class AiVisibilitySettings
 
 /// <summary>
 /// Story 5.1 — configuration block for the request log writer + bounded
-/// queue + batch drainer. Bound from <c>LlmsTxt:RequestLog</c>.
+/// queue + batch drainer. Bound from <c>AiVisibility:RequestLog</c>.
 /// </summary>
 public sealed class RequestLogSettings
 {
@@ -298,7 +298,7 @@ public sealed class RequestLogSettings
 
 /// <summary>
 /// Story 5.1 — configuration block for the log retention job. Bound from
-/// <c>LlmsTxt:LogRetention</c>.
+/// <c>AiVisibility:LogRetention</c>.
 /// </summary>
 public sealed class LogRetentionSettings
 {
@@ -342,7 +342,7 @@ public sealed class LogRetentionSettings
 /// <summary>
 /// Story 5.2 — configuration block for the AI Traffic Backoffice dashboard's
 /// Management API (<c>AnalyticsManagementApiController</c>). Bound from
-/// <c>LlmsTxt:Analytics</c>. All values are CEILINGS not floors per
+/// <c>AiVisibility:Analytics</c>. All values are CEILINGS not floors per
 /// project-context.md § Testing Rules — adopters narrow them to suit their
 /// host DB sizing.
 /// </summary>
@@ -368,7 +368,7 @@ public sealed class AnalyticsSettings
 
     /// <summary>
     /// Maximum allowed range span; wider requests clamp <c>from = to -
-    /// MaxRangeDays</c> AND surface the <c>X-Llms-Range-Clamped: true</c>
+    /// MaxRangeDays</c> AND surface the <c>X-AiVisibility-Range-Clamped: true</c>
     /// response header so the dashboard can display the effective range.
     /// Default <c>365</c> days.
     /// </summary>
@@ -388,7 +388,7 @@ public sealed class AnalyticsSettings
 
 /// <summary>
 /// Story 4.2 — configuration block for <c>DefaultRobotsAuditor</c> +
-/// <c>RobotsAuditRefreshJob</c>. Bound from <c>LlmsTxt:RobotsAuditor</c>.
+/// <c>RobotsAuditRefreshJob</c>. Bound from <c>AiVisibility:RobotsAuditor</c>.
 /// </summary>
 public sealed class RobotsAuditorSettings
 {
@@ -536,7 +536,7 @@ public sealed class MigrationsSettings
 
 /// <summary>
 /// Configuration block for <c>DefaultLlmsTxtBuilder</c>. Bound from the
-/// <c>LlmsTxt:LlmsTxtBuilder</c> sub-section.
+/// <c>AiVisibility:LlmsTxtBuilder</c> sub-section.
 /// </summary>
 public sealed class LlmsTxtBuilderSettings
 {
@@ -643,7 +643,7 @@ public sealed class LlmsFullScopeSettings
 
 /// <summary>
 /// Configuration block for <c>DefaultLlmsFullBuilder</c>. Bound from the
-/// <c>LlmsTxt:LlmsFullBuilder</c> sub-section.
+/// <c>AiVisibility:LlmsFullBuilder</c> sub-section.
 /// </summary>
 public sealed class LlmsFullBuilderSettings
 {
@@ -667,7 +667,7 @@ public sealed class LlmsFullBuilderSettings
 
 /// <summary>
 /// Configuration block for the Story 2.3 hreflang variant suffix on
-/// <c>/llms.txt</c>. Bound from the <c>LlmsTxt:Hreflang</c> sub-section.
+/// <c>/llms.txt</c>. Bound from the <c>AiVisibility:Hreflang</c> sub-section.
 /// <para>
 /// See architecture.md § Multi-Site &amp; Multi-Language and FR25 for the v1
 /// contract. The variant resolution walks the matched <c>IDomain</c> set

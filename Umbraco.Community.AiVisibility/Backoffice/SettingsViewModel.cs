@@ -1,7 +1,7 @@
 namespace Umbraco.Community.AiVisibility.Backoffice;
 
 /// <summary>
-/// Story 3.2 — view model returned by <c>GET /umbraco/management/api/v1/llmstxt/settings/</c>
+/// Story 3.2 — view model returned by <c>GET /umbraco/management/api/v1/aivisibility/settings/</c>
 /// (and the round-trip body of <c>PUT /</c>). Carries the per-field
 /// resolver overlay <see cref="Configuration.ISettingsResolver.ResolveAsync"/>
 /// produces, plus the live <c>aiVisibilitySettings</c> content node key so the dashboard
@@ -10,14 +10,14 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// </summary>
 /// <param name="SiteName">
 /// Effective site name (Settings doctype value if non-empty, else the appsettings
-/// <c>LlmsTxt:SiteName</c> value, else <c>null</c>).
+/// <c>AiVisibility:SiteName</c> value, else <c>null</c>).
 /// </param>
 /// <param name="SiteSummary">
 /// Effective site summary (same per-field overlay rule as <paramref name="SiteName"/>);
 /// truncated server-side to <see cref="SummaryMaxChars"/>.
 /// </param>
 /// <param name="ExcludedDoctypeAliases">
-/// Union of the appsettings <c>LlmsTxt:ExcludedDoctypeAliases</c> list and the
+/// Union of the appsettings <c>AiVisibility:ExcludedDoctypeAliases</c> list and the
 /// Settings node's <c>excludedDoctypeAliases</c> property (case-insensitive).
 /// Sorted ascending by ordinal-ignore-case for stable round-trip.
 /// </param>
@@ -37,7 +37,7 @@ public sealed record SettingsViewModel(
     Guid? SettingsNodeKey);
 
 /// <summary>
-/// Story 3.2 — request body of <c>PUT /umbraco/management/api/v1/llmstxt/settings/</c>.
+/// Story 3.2 — request body of <c>PUT /umbraco/management/api/v1/aivisibility/settings/</c>.
 /// The controller validates the payload server-side (defence-in-depth — the
 /// dashboard's client-side checks in <c>aiv-settings-dashboard.element.ts</c>
 /// catch the same issues earlier) and writes through <c>IContentService</c>.
@@ -64,7 +64,7 @@ public sealed record LlmsSettingsUpdateRequest(
     IReadOnlyList<string> ExcludedDoctypeAliases);
 
 /// <summary>
-/// Story 3.2 — view model returned by <c>GET /umbraco/management/api/v1/llmstxt/settings/doctypes</c>.
+/// Story 3.2 — view model returned by <c>GET /umbraco/management/api/v1/aivisibility/settings/doctypes</c>.
 /// Populates the dashboard's <c>excludedDoctypeAliases</c> multi-select source.
 /// </summary>
 /// <param name="Alias">
@@ -87,7 +87,7 @@ public sealed record LlmsDoctypeViewModel(
 
 /// <summary>
 /// Story 3.2 — one row in the dashboard's read-only "Excluded pages" table
-/// (<c>GET /umbraco/management/api/v1/llmstxt/settings/excluded-pages</c>).
+/// (<c>GET /umbraco/management/api/v1/aivisibility/settings/excluded-pages</c>).
 /// Each row represents a published page whose
 /// <c>excludeFromLlmExports</c> composition property is <c>true</c>.
 /// </summary>

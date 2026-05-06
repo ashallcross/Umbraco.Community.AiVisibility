@@ -32,7 +32,7 @@ namespace Umbraco.Community.AiVisibility.Composing
                 // Along with having a generated swagger JSON file that we can use to auto generate a TypeScript client
                 opt.SwaggerDoc(Constants.ApiName, new OpenApiInfo
                 {
-                    Title = "Llms Txt Umbraco Backoffice API",
+                    Title = "Umbraco Community AI Visibility Backoffice API",
                     Version = "1.0",
                     // Contact = new OpenApiContact
                     // {

@@ -277,7 +277,7 @@ internal sealed class DefaultLlmsFullBuilder : ILlmsFullBuilder
     private static string BuildSkippedPlaceholder(IPublishedContent page)
     {
         var safeTitle = MarkdownEscaping.EscapeMarkdownLinkText(page.Name ?? string.Empty);
-        return $"<!-- LlmsTxt: skipped {safeTitle} due to extraction error -->";
+        return $"<!-- AiVisibility: skipped {safeTitle} due to extraction error -->";
     }
 
     /// <summary>

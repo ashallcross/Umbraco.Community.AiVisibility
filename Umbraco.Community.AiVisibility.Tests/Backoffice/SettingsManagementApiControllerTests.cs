@@ -173,7 +173,7 @@ public class LlmsSettingsManagementApiControllerTests
         fixture.ContentTypeService.Get("aiVisibilitySettings").Returns(contentType);
         var newContent = Substitute.For<IContent>();
         newContent.Key.Returns(SettingsNodeKey);
-        fixture.ContentService.Create("LlmsTxt Settings", parentId: -1, "aiVisibilitySettings")
+        fixture.ContentService.Create("AI Visibility Settings", parentId: -1, "aiVisibilitySettings")
             .Returns(newContent);
         fixture.ContentService.Publish(Arg.Any<IContent>(), Arg.Any<string[]>())
             .Returns(SuccessfulPublishResult(newContent));
@@ -186,7 +186,7 @@ public class LlmsSettingsManagementApiControllerTests
         var result = await fixture.Controller.PutAsync(request, CancellationToken.None);
 
         Assert.That(result, Is.InstanceOf<OkObjectResult>());
-        fixture.ContentService.Received(1).Create("LlmsTxt Settings", -1, "aiVisibilitySettings");
+        fixture.ContentService.Received(1).Create("AI Visibility Settings", -1, "aiVisibilitySettings");
         fixture.ContentService.Received(1).Save(newContent);
         fixture.ContentService.Received(1).Publish(newContent, Arg.Any<string[]>());
     }
@@ -412,8 +412,8 @@ public class LlmsSettingsManagementApiControllerTests
         var fixture = new ControllerFixture();
         var blog = StubContentType("blogPost", "Blog Post", isElement: false, "icon-document");
         var home = StubContentType("homePage", "Home Page", isElement: false, "icon-home");
-        var settingsCt = StubContentType("aiVisibilitySettings", "LlmsTxt Settings", isElement: false, null);
-        var composition = StubContentType("llmsTxtSettingsComposition", "LlmsTxt Exclusion", isElement: true, null);
+        var settingsCt = StubContentType("aiVisibilitySettings", "AI Visibility Settings", isElement: false, null);
+        var composition = StubContentType("llmsTxtSettingsComposition", "AI Visibility Exclusion", isElement: true, null);
         fixture.ContentTypeService.GetAll().Returns(new[] { settingsCt, blog, composition, home });
 
         var result = fixture.Controller.GetDoctypes(CancellationToken.None);
@@ -637,9 +637,11 @@ public class LlmsSettingsManagementApiControllerTests
     }
 
     [Test]
-    public void Controller_HasVersionedApiBackOfficeRouteWithLlmstxtSettingsTemplate()
+    public void Controller_HasVersionedApiBackOfficeRouteWithAivisibilitySettingsTemplate()
     {
-        // Spike 0.B locked decision #5 — route prefix MUST be "llmstxt/settings".
+        // Story 6.0c (post-rename) — route prefix MUST be "aivisibility/settings".
+        // The Spike 0.B locked decision #5 originally pinned "llmstxt/settings";
+        // Story 6.0c flipped both production + this assertion in lockstep.
         // VersionedApiBackOfficeRoute may also be inherited; assert the OWN-declared
         // attribute matches the expected template.
         var routeAttr = typeof(SettingsManagementApiController)
@@ -649,8 +651,8 @@ public class LlmsSettingsManagementApiControllerTests
         // The framework expands the template into a full route prefix that
         // ends in our suffix; assert end-with so the test stays stable across
         // framework changes to the surrounding prefix.
-        Assert.That(routeAttr.Template, Does.EndWith("llmstxt/settings"),
-            "VersionedApiBackOfficeRoute suffix MUST be 'llmstxt/settings' per Spike 0.B locked decision #5");
+        Assert.That(routeAttr.Template, Does.EndWith("aivisibility/settings"),
+            "VersionedApiBackOfficeRoute suffix MUST be 'aivisibility/settings' (Story 6.0c renamed from 'llmstxt/settings')");
     }
 
     [Test]
@@ -818,7 +820,7 @@ public class LlmsSettingsManagementApiControllerTests
         {
             var settingsNode = Substitute.For<IPublishedContent>();
             settingsNode.Key.Returns(SettingsNodeKey);
-            settingsNode.Name.Returns("LlmsTxt Settings");
+            settingsNode.Name.Returns("AI Visibility Settings");
             var ct = Substitute.For<IPublishedContentType>();
             ct.Alias.Returns("aiVisibilitySettings");
             settingsNode.ContentType.Returns(ct);
