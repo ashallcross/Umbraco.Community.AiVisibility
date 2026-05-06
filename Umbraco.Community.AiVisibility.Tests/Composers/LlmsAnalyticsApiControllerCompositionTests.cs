@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers.Backoffice;
 using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +23,7 @@ public class LlmsAnalyticsApiControllerCompositionTests
         // Build the dep graph the controller actually consumes:
         //   - IAnalyticsReader (Singleton — internal default impl wraps
         //     IScopeProvider + NPoco; Story 5.2 testability seam)
-        //   - IOptionsMonitor<LlmsTxtSettings> (Singleton)
+        //   - IOptionsMonitor<AiVisibilitySettings> (Singleton)
         //   - TimeProvider (Singleton — TimeProvider.System per Story 5.1
         //     NotificationsComposer line 47).
         //   - ILogger<T> (Singleton — services.AddLogging registers it).
@@ -33,7 +33,7 @@ public class LlmsAnalyticsApiControllerCompositionTests
         var services = new ServiceCollection();
 
         services.AddSingleton(_ => Substitute.For<IAnalyticsReader>());
-        services.AddSingleton(_ => Substitute.For<IOptionsMonitor<LlmsTxtSettings>>());
+        services.AddSingleton(_ => Substitute.For<IOptionsMonitor<AiVisibilitySettings>>());
         services.AddSingleton(TimeProvider.System);
         services.AddLogging();
 

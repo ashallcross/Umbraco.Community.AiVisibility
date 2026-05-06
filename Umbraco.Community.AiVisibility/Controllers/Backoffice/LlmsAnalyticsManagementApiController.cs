@@ -1,6 +1,6 @@
 using System.Globalization;
 using Asp.Versioning;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -75,13 +75,13 @@ public sealed class LlmsAnalyticsManagementApiController : ManagementApiControll
     private static readonly int UserAgentClassNamesCount = Enum.GetNames<UserAgentClass>().Length;
 
     private readonly ILogger<LlmsAnalyticsManagementApiController> _logger;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IAnalyticsReader _reader;
     private readonly TimeProvider _timeProvider;
 
     public LlmsAnalyticsManagementApiController(
         ILogger<LlmsAnalyticsManagementApiController> logger,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         IAnalyticsReader reader,
         TimeProvider? timeProvider = null)
     {

@@ -1,31 +1,31 @@
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Configuration;
+namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
-/// Story 4.1 — built-in <see cref="ILlmsExclusionEvaluator"/> lifting the
+/// Story 4.1 — built-in <see cref="IExclusionEvaluator"/> lifting the
 /// per-page-bool-then-resolver-throw-fail-open shape that previously lived
 /// independently in <c>MarkdownController.IsExcludedAsync</c> +
 /// <c>AcceptHeaderNegotiationMiddleware.IsExcludedAsync</c>.
 /// <para>
 /// Public so adopters can wrap-and-delegate via the DI Decorator pattern
-/// (e.g. register their own <see cref="ILlmsExclusionEvaluator"/> that
+/// (e.g. register their own <see cref="IExclusionEvaluator"/> that
 /// constructor-injects this default and applies extra rules before/after
 /// delegating). <c>sealed</c> keeps subclassing off the table — adopters
 /// who need to alter behaviour compose, not inherit.
 /// </para>
 /// </summary>
-public sealed class DefaultLlmsExclusionEvaluator : ILlmsExclusionEvaluator
+public sealed class DefaultExclusionEvaluator : IExclusionEvaluator
 {
     internal const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
 
-    private readonly ILlmsSettingsResolver _settingsResolver;
-    private readonly ILogger<DefaultLlmsExclusionEvaluator> _logger;
+    private readonly ISettingsResolver _settingsResolver;
+    private readonly ILogger<DefaultExclusionEvaluator> _logger;
 
-    public DefaultLlmsExclusionEvaluator(
-        ILlmsSettingsResolver settingsResolver,
-        ILogger<DefaultLlmsExclusionEvaluator> logger)
+    public DefaultExclusionEvaluator(
+        ISettingsResolver settingsResolver,
+        ILogger<DefaultExclusionEvaluator> logger)
     {
         _settingsResolver = settingsResolver;
         _logger = logger;
@@ -70,7 +70,7 @@ public sealed class DefaultLlmsExclusionEvaluator : ILlmsExclusionEvaluator
         {
             _logger.LogWarning(
                 ex,
-                "ILlmsExclusionEvaluator — ILlmsSettingsResolver threw for {Host} {Culture}; treating as not-excluded (fail-open)",
+                "IExclusionEvaluator — ISettingsResolver threw for {Host} {Culture}; treating as not-excluded (fail-open)",
                 host,
                 culture);
             return false;

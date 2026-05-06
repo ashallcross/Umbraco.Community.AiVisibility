@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Configuration;
+namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
 /// Strongly-typed binding for the <c>LlmsTxt:</c> section of <c>appsettings.json</c>.
@@ -11,10 +11,10 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// opt-in flag (FR25) for sibling-culture variant suffixes in <c>/llms.txt</c>.
 /// Story 3.1 added the top-level <see cref="ExcludedDoctypeAliases"/> +
 /// <see cref="SettingsResolverCachePolicySeconds"/> + <see cref="Migrations"/>
-/// surface that <c>ILlmsSettingsResolver</c> consumes to overlay the Settings
+/// surface that <c>ISettingsResolver</c> consumes to overlay the Settings
 /// doctype values onto these appsettings values.
 /// </summary>
-public sealed class LlmsTxtSettings
+public sealed class AiVisibilitySettings
 {
     public const string SectionName = "LlmsTxt";
 
@@ -47,7 +47,7 @@ public sealed class LlmsTxtSettings
     /// the literal <c>"Site"</c> when no root resolves).
     /// <para>
     /// Source in Story 2.1: <c>appsettings.json</c> only. Story 3.1 introduces
-    /// <c>ILlmsSettingsResolver</c> so the Settings doctype value (when present)
+    /// <c>ISettingsResolver</c> so the Settings doctype value (when present)
     /// overlays this appsettings value without changing the contract here.
     /// </para>
     /// </summary>
@@ -59,7 +59,7 @@ public sealed class LlmsTxtSettings
     /// marker (<c>&gt; </c>).
     /// <para>
     /// Source in Story 2.1: <c>appsettings.json</c> only. Story 3.1 overlays the
-    /// Settings doctype value via <c>ILlmsSettingsResolver</c>.
+    /// Settings doctype value via <c>ISettingsResolver</c>.
     /// </para>
     /// </summary>
     public string? SiteSummary { get; init; }
@@ -85,7 +85,7 @@ public sealed class LlmsTxtSettings
     /// </para>
     /// <para>
     /// Source in Story 2.2: <c>appsettings.json</c> only. Story 3.1's
-    /// <c>ILlmsSettingsResolver</c> may overlay this with a Settings doctype value
+    /// <c>ISettingsResolver</c> may overlay this with a Settings doctype value
     /// without changing the contract here.
     /// </para>
     /// </summary>
@@ -122,7 +122,7 @@ public sealed class LlmsTxtSettings
     /// </para>
     /// <para>
     /// Source in Story 2.3: <c>appsettings.json</c> only. Story 3.1's
-    /// <c>ILlmsSettingsResolver</c> may overlay this with a Settings doctype value
+    /// <c>ISettingsResolver</c> may overlay this with a Settings doctype value
     /// without changing the contract here.
     /// </para>
     /// <para>
@@ -150,7 +150,7 @@ public sealed class LlmsTxtSettings
     /// filters to appear in <c>/llms-full.txt</c>.
     /// </para>
     /// <para>
-    /// <c>ILlmsSettingsResolver</c> overlays the Settings-doctype
+    /// <c>ISettingsResolver</c> overlays the Settings-doctype
     /// <c>excludedDoctypeAliases</c> field as a <b>union</b> with this appsettings
     /// list — adopters' appsettings entries are never discarded by an editor edit.
     /// </para>
@@ -187,10 +187,10 @@ public sealed class LlmsTxtSettings
 
     /// <summary>
     /// Story 3.1 — migration-plan registration controls. Currently only carries
-    /// <see cref="LlmsMigrationsSettings.SkipSettingsDoctype"/> for uSync
+    /// <see cref="MigrationsSettings.SkipSettingsDoctype"/> for uSync
     /// coexistence (architecture.md line 1092 + epics.md AC1).
     /// </summary>
-    public LlmsMigrationsSettings Migrations { get; init; } = new();
+    public MigrationsSettings Migrations { get; init; } = new();
 
     /// <summary>
     /// Story 4.1 — controls for the always-on HTTP <c>Link</c> discoverability
@@ -508,7 +508,7 @@ public sealed class ContentSignalSettings
 /// <see cref="SkipSettingsDoctype"/> ships; future migrations (e.g. Epic 5's
 /// request-log table) may add their own opt-out flags here.
 /// </summary>
-public sealed class LlmsMigrationsSettings
+public sealed class MigrationsSettings
 {
     /// <summary>
     /// When <c>true</c>, <c>SettingsComposer</c> does NOT register
@@ -566,7 +566,7 @@ public sealed class LlmsTxtBuilderSettings
     /// Cache TTL for the <c>/llms.txt</c> manifest's HTTP <c>Cache-Control: max-age</c>
     /// header AND its in-memory cache lifetime. Default: 300s (matches the per-llmstxt
     /// guidance in <c>architecture.md</c> § Caching &amp; HTTP). Distinct from
-    /// <see cref="LlmsTxtSettings.CachePolicySeconds"/> (per-page Markdown).
+    /// <see cref="AiVisibilitySettings.CachePolicySeconds"/> (per-page Markdown).
     /// </summary>
     public int CachePolicySeconds { get; init; } = 300;
 }
@@ -658,7 +658,7 @@ public sealed class LlmsFullBuilderSettings
     /// <c>Cache-Control: max-age</c> header AND its in-memory cache lifetime.
     /// Default: 300s (matches the manifest guidance in <c>architecture.md</c>
     /// § Caching &amp; HTTP). Distinct from
-    /// <see cref="LlmsTxtSettings.CachePolicySeconds"/> (per-page Markdown,
+    /// <see cref="AiVisibilitySettings.CachePolicySeconds"/> (per-page Markdown,
     /// default 60s) and from <see cref="LlmsTxtBuilderSettings.CachePolicySeconds"/>
     /// (the index manifest, default 300s).
     /// </summary>

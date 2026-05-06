@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Background;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,10 +14,10 @@ namespace LlmsTxt.Umbraco.Tests.Background;
 [TestFixture]
 public class LlmsRequestLogDrainHostedServiceTests
 {
-    private static IOptionsMonitor<LlmsTxtSettings> SettingsMonitor(LlmsTxtSettings? value = null)
+    private static IOptionsMonitor<AiVisibilitySettings> SettingsMonitor(AiVisibilitySettings? value = null)
     {
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        monitor.CurrentValue.Returns(value ?? new LlmsTxtSettings());
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        monitor.CurrentValue.Returns(value ?? new AiVisibilitySettings());
         return monitor;
     }
 
@@ -28,7 +28,7 @@ public class LlmsRequestLogDrainHostedServiceTests
         return accessor;
     }
 
-    private static DefaultRequestLog NewDefaultLog(LlmsTxtSettings? settings = null) =>
+    private static DefaultRequestLog NewDefaultLog(AiVisibilitySettings? settings = null) =>
         new(SettingsMonitor(settings), NullLogger<DefaultRequestLog>.Instance, TimeProvider.System);
 
     [Test]
@@ -36,7 +36,7 @@ public class LlmsRequestLogDrainHostedServiceTests
     {
         // AC3 + AC5: kill switch suppresses the drainer (notifications still
         // fire — that's covered by Task 6 tests).
-        var settings = new LlmsTxtSettings { RequestLog = new RequestLogSettings { Enabled = false } };
+        var settings = new AiVisibilitySettings { RequestLog = new RequestLogSettings { Enabled = false } };
         var scopeProvider = Substitute.For<IScopeProvider>();
         var drainer = new LlmsRequestLogDrainHostedService(
             NewDefaultLog(),
@@ -181,7 +181,7 @@ public class LlmsRequestLogDrainHostedServiceTests
         var drainer = new LlmsRequestLogDrainHostedService(
             log,
             scopeProvider,
-            SettingsMonitor(new LlmsTxtSettings
+            SettingsMonitor(new AiVisibilitySettings
             {
                 RequestLog = new RequestLogSettings { MaxBatchIntervalSeconds = 1, BatchSize = 1 },
             }),
@@ -222,7 +222,7 @@ public class LlmsRequestLogDrainHostedServiceTests
             Assert.That(ctorParams[0].ParameterType, Is.EqualTo(typeof(IRequestLog)));
             Assert.That(ctorParams[1].ParameterType, Is.EqualTo(typeof(IScopeProvider)),
                 "Infrastructure-flavour IScopeProvider per architecture.md line 350");
-            Assert.That(ctorParams[2].ParameterType, Is.EqualTo(typeof(IOptionsMonitor<LlmsTxtSettings>)));
+            Assert.That(ctorParams[2].ParameterType, Is.EqualTo(typeof(IOptionsMonitor<AiVisibilitySettings>)));
             Assert.That(ctorParams[3].ParameterType, Is.EqualTo(typeof(IServerRoleAccessor)));
         });
     }

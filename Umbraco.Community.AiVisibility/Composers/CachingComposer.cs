@@ -1,6 +1,6 @@
 using System.Linq;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -98,7 +98,7 @@ public sealed class CachingComposer : IComposer
                 sp.GetRequiredService<AppCaches>(),
                 sp.GetRequiredService<ICacheKeyIndex>(),
                 sp.GetRequiredService<IHttpContextAccessor>(),
-                sp.GetRequiredService<IOptionsMonitor<LlmsTxtSettings>>(),
+                sp.GetRequiredService<IOptionsMonitor<AiVisibilitySettings>>(),
                 sp.GetRequiredService<ILogger<CachingMarkdownExtractorDecorator>>()));
     }
 }

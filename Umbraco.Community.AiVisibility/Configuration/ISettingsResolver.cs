@@ -1,10 +1,10 @@
-namespace LlmsTxt.Umbraco.Configuration;
+namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
 /// Story 3.1 extension point — resolves the effective per-site settings
 /// (appsettings + Settings doctype overlay) for the given (hostname, culture)
 /// pair. Cached per (host, culture) at <c>llms:settings:{host}:{culture}</c>
-/// for <see cref="LlmsTxtSettings.SettingsResolverCachePolicySeconds"/>
+/// for <see cref="AiVisibilitySettings.SettingsResolverCachePolicySeconds"/>
 /// (default 300s).
 /// </summary>
 /// <remarks>
@@ -12,7 +12,7 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// <b>Adopter override discipline</b> — same as
 /// <see cref="Builders.ILlmsTxtBuilder"/> (Story 2.1). Adopters wanting to
 /// swap the resolver register
-/// <c>services.AddScoped&lt;ILlmsSettingsResolver, MyResolver&gt;()</c> before
+/// <c>services.AddScoped&lt;ISettingsResolver, MyResolver&gt;()</c> before
 /// or after <see cref="Composers.SettingsComposer"/>; our composer's
 /// <c>TryAddScoped</c> bows out for pre-registrations, and DI's
 /// last-registration-wins semantics handle post-registrations.
@@ -31,14 +31,14 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// hreflang resolver-throw graceful degradation.
 /// </para>
 /// </remarks>
-public interface ILlmsSettingsResolver
+public interface ISettingsResolver
 {
     /// <summary>
     /// Resolves the effective settings for the given (hostname, culture) pair.
     /// The first call per cache key walks the published cache for the matching
     /// <c>llmsSettings</c> root content node and overlays its values onto the
-    /// current <see cref="LlmsTxtSettings"/> snapshot; subsequent calls within
-    /// <see cref="LlmsTxtSettings.SettingsResolverCachePolicySeconds"/> return
+    /// current <see cref="AiVisibilitySettings"/> snapshot; subsequent calls within
+    /// <see cref="AiVisibilitySettings.SettingsResolverCachePolicySeconds"/> return
     /// the cached record without re-walking.
     /// </summary>
     /// <param name="hostname">
@@ -57,12 +57,12 @@ public interface ILlmsSettingsResolver
 
 /// <summary>
 /// Story 3.1 — immutable record returned by
-/// <see cref="ILlmsSettingsResolver.ResolveAsync"/>. Carries the per-field
+/// <see cref="ISettingsResolver.ResolveAsync"/>. Carries the per-field
 /// overlay of Settings doctype values onto the appsettings snapshot.
 /// </summary>
 /// <param name="SiteName">
 /// Effective site name. Doctype value wins; falls back to appsettings
-/// <see cref="LlmsTxtSettings.SiteName"/> when the doctype field is empty.
+/// <see cref="AiVisibilitySettings.SiteName"/> when the doctype field is empty.
 /// May be <c>null</c> if neither layer provides a value — downstream callers
 /// (e.g. <c>DefaultLlmsTxtBuilder.ResolveSiteName</c>) fall back to the
 /// matched root content node's <c>Name</c> or the literal <c>"Site"</c>.
@@ -73,7 +73,7 @@ public interface ILlmsSettingsResolver
 /// ellipsis on truncation) per Story 3.1 Failure &amp; Edge Cases.
 /// </param>
 /// <param name="ExcludedDoctypeAliases">
-/// <b>Union</b> of <see cref="LlmsTxtSettings.ExcludedDoctypeAliases"/>
+/// <b>Union</b> of <see cref="AiVisibilitySettings.ExcludedDoctypeAliases"/>
 /// (top-level appsettings list) AND the doctype's
 /// <c>excludedDoctypeAliases</c> property (parsed for newline / comma /
 /// semicolon separators). Case-insensitive
@@ -81,13 +81,13 @@ public interface ILlmsSettingsResolver
 /// layer contributes any aliases.
 /// </param>
 /// <param name="BaseSettings">
-/// Full <see cref="LlmsTxtSettings"/> snapshot at resolution time.
+/// Full <see cref="AiVisibilitySettings"/> snapshot at resolution time.
 /// Downstream callers needing fields the resolver doesn't overlay
-/// (<see cref="LlmsTxtSettings.MaxLlmsFullSizeKb"/>,
-/// <see cref="LlmsTxtSettings.LlmsTxtBuilder"/>, etc.) read from here.
+/// (<see cref="AiVisibilitySettings.MaxLlmsFullSizeKb"/>,
+/// <see cref="AiVisibilitySettings.LlmsTxtBuilder"/>, etc.) read from here.
 /// </param>
 public sealed record ResolvedLlmsSettings(
     string? SiteName,
     string? SiteSummary,
     IReadOnlyCollection<string> ExcludedDoctypeAliases,
-    LlmsTxtSettings BaseSettings);
+    AiVisibilitySettings BaseSettings);

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Umbraco.Community.AiVisibility.Caching;
 using LlmsTxt.Umbraco.Composers;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,14 +28,14 @@ public class SettingsComposerTests
 
         composer.Compose(builder);
 
-        var descriptor = services.Single(d => d.ServiceType == typeof(ILlmsSettingsResolver));
+        var descriptor = services.Single(d => d.ServiceType == typeof(ISettingsResolver));
         Assert.Multiple(() =>
         {
             Assert.That(descriptor.Lifetime, Is.EqualTo(ServiceLifetime.Scoped),
-                "ILlmsSettingsResolver must be Scoped — Singleton would form a captive "
+                "ISettingsResolver must be Scoped — Singleton would form a captive "
                 + "dependency on IUmbracoContextAccessor (Story 3.1 AC7).");
-            Assert.That(descriptor.ImplementationType, Is.EqualTo(typeof(DefaultLlmsSettingsResolver)),
-                "default implementation is DefaultLlmsSettingsResolver");
+            Assert.That(descriptor.ImplementationType, Is.EqualTo(typeof(DefaultSettingsResolver)),
+                "default implementation is DefaultSettingsResolver");
         });
     }
 
@@ -116,19 +116,19 @@ public class SettingsComposerTests
         // Mirrors BuildersComposerTests.AdopterOverride_PreRegisteredBeforeComposer_DefaultDoesNotReplace
         // verbatim (Story 2.1 pattern).
         var (composer, builder, services) = BuildComposer(skipDoctype: false);
-        services.AddScoped<ILlmsSettingsResolver, NoOpAdopterResolver>();
+        services.AddScoped<ISettingsResolver, NoOpAdopterResolver>();
 
         composer.Compose(builder);
 
         var registrations = services
-            .Where(d => d.ServiceType == typeof(ILlmsSettingsResolver))
+            .Where(d => d.ServiceType == typeof(ISettingsResolver))
             .ToArray();
         Assert.Multiple(() =>
         {
             Assert.That(registrations, Has.Length.EqualTo(1),
                 "TryAdd* must not stack a duplicate registration");
             Assert.That(registrations[0].ImplementationType, Is.EqualTo(typeof(NoOpAdopterResolver)),
-                "adopter's pre-registration wins; DefaultLlmsSettingsResolver is NOT registered");
+                "adopter's pre-registration wins; DefaultSettingsResolver is NOT registered");
         });
     }
 
@@ -140,15 +140,15 @@ public class SettingsComposerTests
         var (composer, builder, services) = BuildComposer(skipDoctype: false);
         composer.Compose(builder);
 
-        services.AddScoped<ILlmsSettingsResolver, NoOpAdopterResolver>();
+        services.AddScoped<ISettingsResolver, NoOpAdopterResolver>();
 
-        // Stub dep graph for DefaultLlmsSettingsResolver so the framework can
+        // Stub dep graph for DefaultSettingsResolver so the framework can
         // build it if it wants; the assertion is about which type comes out.
         StubResolverDependencies(services);
 
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
-        var resolved = scope.ServiceProvider.GetRequiredService<ILlmsSettingsResolver>();
+        var resolved = scope.ServiceProvider.GetRequiredService<ISettingsResolver>();
 
         Assert.That(resolved, Is.InstanceOf<NoOpAdopterResolver>(),
             "last-registration-wins: adopter's post-composer registration is what GetService returns");
@@ -179,7 +179,7 @@ public class SettingsComposerTests
             });
             // Resolver is Scoped — must resolve from a child scope, not root.
             using var scope = provider.CreateScope();
-            var resolved = scope.ServiceProvider.GetRequiredService<ILlmsSettingsResolver>();
+            var resolved = scope.ServiceProvider.GetRequiredService<ISettingsResolver>();
             Assert.That(resolved, Is.Not.Null);
         }, "validation must succeed — Scoped lifetime keeps the dep graph captive-free");
     }
@@ -207,10 +207,10 @@ public class SettingsComposerTests
 
     private static void StubResolverDependencies(IServiceCollection services)
     {
-        // DefaultLlmsSettingsResolver ctor: IOptionsMonitor<LlmsTxtSettings>,
+        // DefaultSettingsResolver ctor: IOptionsMonitor<AiVisibilitySettings>,
         // IUmbracoContextAccessor, IDocumentNavigationQueryService, AppCaches,
-        // ILogger<DefaultLlmsSettingsResolver>.
-        services.AddSingleton(_ => Substitute.For<IOptionsMonitor<LlmsTxtSettings>>());
+        // ILogger<DefaultSettingsResolver>.
+        services.AddSingleton(_ => Substitute.For<IOptionsMonitor<AiVisibilitySettings>>());
         services.AddSingleton(_ => Substitute.For<IUmbracoContextAccessor>());
         services.AddSingleton(_ => Substitute.For<IDocumentNavigationQueryService>());
         services.AddSingleton(_ => new AppCaches(
@@ -220,13 +220,13 @@ public class SettingsComposerTests
         services.AddLogging();
     }
 
-    private sealed class NoOpAdopterResolver : ILlmsSettingsResolver
+    private sealed class NoOpAdopterResolver : ISettingsResolver
     {
         public Task<ResolvedLlmsSettings> ResolveAsync(string? hostname, string? culture, CancellationToken cancellationToken)
             => Task.FromResult(new ResolvedLlmsSettings(
                 SiteName: "OVERRIDDEN",
                 SiteSummary: null,
                 ExcludedDoctypeAliases: new HashSet<string>(),
-                BaseSettings: new LlmsTxtSettings()));
+                BaseSettings: new AiVisibilitySettings()));
     }
 }

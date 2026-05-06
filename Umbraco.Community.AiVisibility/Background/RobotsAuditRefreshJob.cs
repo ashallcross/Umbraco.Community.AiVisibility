@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -61,7 +61,7 @@ public sealed class RobotsAuditRefreshJob : IDistributedBackgroundJob
         "Robots audit refresh job RUN — InstanceId={InstanceId} CycleStart={CycleStart}";
 
     private readonly IServiceProvider _services;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly ILogger<RobotsAuditRefreshJob> _logger;
     private readonly TimeProvider _timeProvider;
 
@@ -72,7 +72,7 @@ public sealed class RobotsAuditRefreshJob : IDistributedBackgroundJob
 
     public RobotsAuditRefreshJob(
         IServiceProvider services,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         ILogger<RobotsAuditRefreshJob> logger,
         TimeProvider? timeProvider = null)
     {

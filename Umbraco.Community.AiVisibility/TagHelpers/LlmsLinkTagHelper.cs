@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -23,14 +23,14 @@ namespace LlmsTxt.Umbraco.TagHelpers;
 /// namespaces don't auto-register as adopter-facing TagHelpers. No DI registration needed —
 /// <see cref="ITagHelperFactory"/> constructs the helper per-render via the
 /// request scope, which is when the constructor's
-/// <see cref="ILlmsExclusionEvaluator"/> dep (Scoped) is resolvable.
+/// <see cref="IExclusionEvaluator"/> dep (Scoped) is resolvable.
 /// </para>
 /// </summary>
 [HtmlTargetElement("llms-link", TagStructure = TagStructure.WithoutEndTag)]
 public sealed class LlmsLinkTagHelper : TagHelper
 {
     private readonly IPublishedUrlProvider _urlProvider;
-    private readonly ILlmsExclusionEvaluator _exclusion;
+    private readonly IExclusionEvaluator _exclusion;
     private readonly ILogger<LlmsLinkTagHelper> _logger;
 
     [ViewContext]
@@ -39,7 +39,7 @@ public sealed class LlmsLinkTagHelper : TagHelper
 
     public LlmsLinkTagHelper(
         IPublishedUrlProvider urlProvider,
-        ILlmsExclusionEvaluator exclusion,
+        IExclusionEvaluator exclusion,
         ILogger<LlmsLinkTagHelper> logger)
     {
         _urlProvider = urlProvider;

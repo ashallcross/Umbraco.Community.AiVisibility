@@ -1,5 +1,5 @@
 using System.Threading.Channels;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -48,7 +48,7 @@ public sealed class DefaultRequestLog : IRequestLog
     private long _droppedSinceLastLog;
 
     public DefaultRequestLog(
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         ILogger<DefaultRequestLog> logger,
         TimeProvider timeProvider)
     {

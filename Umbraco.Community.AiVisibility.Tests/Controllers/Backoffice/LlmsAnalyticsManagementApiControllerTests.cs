@@ -1,7 +1,7 @@
 using System.Reflection;
 using Asp.Versioning;
 using LlmsTxt.Umbraco;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers.Backoffice;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
@@ -30,10 +30,10 @@ public class LlmsAnalyticsManagementApiControllerTests
 {
     private static readonly DateTime FixedNowUtc = new DateTime(2026, 5, 4, 12, 0, 0, DateTimeKind.Utc);
 
-    private static IOptionsMonitor<LlmsTxtSettings> SettingsMonitor(LlmsTxtSettings? value = null)
+    private static IOptionsMonitor<AiVisibilitySettings> SettingsMonitor(AiVisibilitySettings? value = null)
     {
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        monitor.CurrentValue.Returns(value ?? new LlmsTxtSettings());
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        monitor.CurrentValue.Returns(value ?? new AiVisibilitySettings());
         return monitor;
     }
 
@@ -54,7 +54,7 @@ public class LlmsAnalyticsManagementApiControllerTests
         new(new DateTimeOffset(FixedNowUtc, TimeSpan.Zero));
 
     private static (LlmsAnalyticsManagementApiController controller, IAnalyticsReader reader, FixedTimeProvider clock) NewController(
-        LlmsTxtSettings? settings = null,
+        AiVisibilitySettings? settings = null,
         IAnalyticsReader? reader = null)
     {
         var readerSub = reader ?? Substitute.For<IAnalyticsReader>();
@@ -319,7 +319,7 @@ public class LlmsAnalyticsManagementApiControllerTests
         reader.ReadRequestsPage(default, default, default!, default, default)
             .ReturnsForAnyArgs(BuildPage(Array.Empty<RequestLogEntry>(), 0, 200));
 
-        var settings = new LlmsTxtSettings { Analytics = new AnalyticsSettings { MaxPageSize = 200 } };
+        var settings = new AiVisibilitySettings { Analytics = new AnalyticsSettings { MaxPageSize = 200 } };
         var (controller, capturedReader, _) = NewController(settings, reader);
         var result = controller.GetRequests(null, null, null, 1, 10000, CancellationToken.None);
 
@@ -534,7 +534,7 @@ public class LlmsAnalyticsManagementApiControllerTests
     [Test]
     public void GetRetention_ReadsFromOptionsMonitor()
     {
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LogRetention = new LogRetentionSettings { DurationDays = 30 },
         };

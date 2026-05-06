@@ -9,15 +9,15 @@ using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Web;
 using Umbraco.Extensions;
 
-namespace LlmsTxt.Umbraco.Configuration;
+namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
-/// Story 3.1 — built-in <see cref="ILlmsSettingsResolver"/>. Walks
+/// Story 3.1 — built-in <see cref="ISettingsResolver"/>. Walks
 /// <see cref="IDocumentNavigationQueryService.TryGetRootKeys"/> to find the
 /// first <c>llmsSettings</c>-doctype root content node, reads its
 /// <c>siteName</c> / <c>siteSummary</c> / <c>excludedDoctypeAliases</c>
 /// properties, and overlays them onto the current
-/// <see cref="LlmsTxtSettings"/> snapshot.
+/// <see cref="AiVisibilitySettings"/> snapshot.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -49,11 +49,11 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// <b>Race trade-off:</b> a Settings-node edit that arrives mid-factory
 /// returns the OLD value to callers parked on the factory delegate, which then
 /// gets cached for the full TTL. Bounded staleness window equal to
-/// <see cref="LlmsTxtSettings.SettingsResolverCachePolicySeconds"/>; same
+/// <see cref="AiVisibilitySettings.SettingsResolverCachePolicySeconds"/>; same
 /// shape as Stories 2.1 / 2.3 deferred D6.
 /// </para>
 /// </remarks>
-internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
+internal sealed class DefaultSettingsResolver : ISettingsResolver
 {
     private const string SettingsDoctypeAlias = "llmsSettings";
     private const string SiteNameAlias = "siteName";
@@ -62,11 +62,11 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
     private const int SiteSummaryMaxChars = 500;
     private static readonly char[] AliasSeparators = { '\n', '\r', ',', ';' };
 
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IUmbracoContextAccessor _umbracoContextAccessor;
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly AppCaches _appCaches;
-    private readonly ILogger<DefaultLlmsSettingsResolver> _logger;
+    private readonly ILogger<DefaultSettingsResolver> _logger;
 
     // Process-wide first-seen guard so cache rebuilds after TTL expiry don't
     // re-flood the log on adopters with no Settings node configured. STATIC
@@ -91,12 +91,12 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
         _summaryTruncationLogged.Clear();
     }
 
-    public DefaultLlmsSettingsResolver(
-        IOptionsMonitor<LlmsTxtSettings> settings,
+    public DefaultSettingsResolver(
+        IOptionsMonitor<AiVisibilitySettings> settings,
         IUmbracoContextAccessor umbracoContextAccessor,
         IDocumentNavigationQueryService navigation,
         AppCaches appCaches,
-        ILogger<DefaultLlmsSettingsResolver> logger)
+        ILogger<DefaultSettingsResolver> logger)
     {
         _settings = settings;
         _umbracoContextAccessor = umbracoContextAccessor;
@@ -148,7 +148,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
     /// Returns the appsettings snapshot verbatim when no Settings node exists
     /// or no <see cref="IUmbracoContext"/> is ambient.
     /// </summary>
-    private ResolvedLlmsSettings BuildSnapshot(string? hostname, string? culture, LlmsTxtSettings settings)
+    private ResolvedLlmsSettings BuildSnapshot(string? hostname, string? culture, AiVisibilitySettings settings)
     {
         var normalisedHost = AiVisibilityCacheKeys.NormaliseHost(hostname);
         var normalisedCulture = AiVisibilityCacheKeys.NormaliseCulture(culture);
@@ -158,7 +158,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
             // Background scenario (no ambient HttpContext / UmbracoContext);
             // can't walk the published cache. Return appsettings verbatim.
             _logger.LogTrace(
-                "ILlmsSettingsResolver — no ambient UmbracoContext for {Host} {Culture}; returning appsettings snapshot",
+                "ISettingsResolver — no ambient UmbracoContext for {Host} {Culture}; returning appsettings snapshot",
                 normalisedHost,
                 normalisedCulture);
             return BuildAppsettingsOnly(settings);
@@ -168,7 +168,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
         if (publishedSnapshot is null)
         {
             _logger.LogTrace(
-                "ILlmsSettingsResolver — UmbracoContext.Content is null for {Host} {Culture}; returning appsettings snapshot",
+                "ISettingsResolver — UmbracoContext.Content is null for {Host} {Culture}; returning appsettings snapshot",
                 normalisedHost,
                 normalisedCulture);
             return BuildAppsettingsOnly(settings);
@@ -177,7 +177,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
         if (!_navigation.TryGetRootKeys(out var rootKeys))
         {
             _logger.LogTrace(
-                "ILlmsSettingsResolver — IDocumentNavigationQueryService.TryGetRootKeys returned false for {Host} {Culture}; returning appsettings snapshot",
+                "ISettingsResolver — IDocumentNavigationQueryService.TryGetRootKeys returned false for {Host} {Culture}; returning appsettings snapshot",
                 normalisedHost,
                 normalisedCulture);
             return BuildAppsettingsOnly(settings);
@@ -206,7 +206,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
             if (_missingNodeLogged.TryAdd(normalisedCulture, true))
             {
                 _logger.LogInformation(
-                    "ILlmsSettingsResolver — no llmsSettings root node found for {Culture}; using appsettings values (logged once per process per culture)",
+                    "ISettingsResolver — no llmsSettings root node found for {Culture}; using appsettings values (logged once per process per culture)",
                     normalisedCulture);
             }
             return BuildAppsettingsOnly(settings);
@@ -258,7 +258,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
     /// Build a resolved record carrying only the appsettings values — used on
     /// every fallback path (no UmbracoContext, no settings node, etc.).
     /// </summary>
-    private static ResolvedLlmsSettings BuildAppsettingsOnly(LlmsTxtSettings settings)
+    private static ResolvedLlmsSettings BuildAppsettingsOnly(AiVisibilitySettings settings)
     {
         var excludedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var alias in settings.ExcludedDoctypeAliases ?? Array.Empty<string>())
@@ -321,7 +321,7 @@ internal sealed class DefaultLlmsSettingsResolver : ILlmsSettingsResolver
         if (_summaryTruncationLogged.TryAdd(normalisedCulture, true))
         {
             _logger.LogWarning(
-                "ILlmsSettingsResolver — siteSummary for {Culture} exceeds {Max} chars; truncating (logged once per process per culture)",
+                "ISettingsResolver — siteSummary for {Culture} exceeds {Max} chars; truncating (logged once per process per culture)",
                 normalisedCulture,
                 SiteSummaryMaxChars);
         }

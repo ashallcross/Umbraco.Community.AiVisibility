@@ -1,7 +1,7 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Configuration;
 
-namespace LlmsTxt.Umbraco.Tests.Configuration;
+namespace Umbraco.Community.AiVisibility.Tests.Configuration;
 
 /// <summary>
 /// Story 4.1 AC9 — pins the appsettings binding contract for
@@ -34,9 +34,9 @@ public class ContentSignalSettingsTests
             .Build();
 
         var bound = configuration
-            .GetSection(LlmsTxtSettings.SectionName)
-            .Get<LlmsTxtSettings>()
-            ?? new LlmsTxtSettings();
+            .GetSection(AiVisibilitySettings.SectionName)
+            .Get<AiVisibilitySettings>()
+            ?? new AiVisibilitySettings();
 
         Assert.That(bound.ContentSignal.Default, Is.EqualTo("ai-train=no, search=yes, ai-input=yes"));
         Assert.That(bound.ContentSignal.PerDocTypeAlias.Count, Is.EqualTo(0));
@@ -58,9 +58,9 @@ public class ContentSignalSettingsTests
             .Build();
 
         var bound = configuration
-            .GetSection(LlmsTxtSettings.SectionName)
-            .Get<LlmsTxtSettings>()
-            ?? new LlmsTxtSettings();
+            .GetSection(AiVisibilitySettings.SectionName)
+            .Get<AiVisibilitySettings>()
+            ?? new AiVisibilitySettings();
 
         Assert.That(bound.ContentSignal.PerDocTypeAlias.Count, Is.EqualTo(2));
 

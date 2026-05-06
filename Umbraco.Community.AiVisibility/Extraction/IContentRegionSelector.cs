@@ -11,7 +11,7 @@ namespace LlmsTxt.Umbraco.Extraction;
 /// This is the <b>light</b> override seam — adopters whose templates have an unusual
 /// "main content" wrapper that the package's default chain does not catch
 /// (<c>[data-llms-content]</c> → <c>&lt;main&gt;</c> → <c>&lt;article&gt;</c> →
-/// <see cref="Configuration.LlmsTxtSettings.MainContentSelectors"/>) can replace just
+/// <see cref="Configuration.AiVisibilitySettings.MainContentSelectors"/>) can replace just
 /// this step. AngleSharp parse, strip-inside-region, URL absolutify, ReverseMarkdown
 /// convert, and frontmatter prepend continue to run from the package default
 /// <see cref="DefaultMarkdownContentExtractor"/>. Adopters who need to change those
@@ -59,7 +59,7 @@ public interface IContentRegionSelector
     /// The parsed HTML document to select from.
     /// </param>
     /// <param name="configuredSelectors">
-    /// CSS selector list from <see cref="Configuration.LlmsTxtSettings.MainContentSelectors"/>
+    /// CSS selector list from <see cref="Configuration.AiVisibilitySettings.MainContentSelectors"/>
     /// (sourced from <c>appsettings.json</c> under <c>LlmsTxt:MainContentSelectors</c>).
     /// Adopters' implementations may honour or ignore this list as they see fit;
     /// the package's default selector consults it after the built-in

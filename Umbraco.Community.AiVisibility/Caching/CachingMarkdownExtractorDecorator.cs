@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -35,7 +35,7 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
     private readonly AppCaches _appCaches;
     private readonly ICacheKeyIndex _index;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly ILogger<CachingMarkdownExtractorDecorator> _logger;
 
     public CachingMarkdownExtractorDecorator(
@@ -43,7 +43,7 @@ internal sealed class CachingMarkdownExtractorDecorator : IMarkdownContentExtrac
         AppCaches appCaches,
         ICacheKeyIndex index,
         IHttpContextAccessor httpContextAccessor,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         ILogger<CachingMarkdownExtractorDecorator> logger)
     {
         _inner = inner;

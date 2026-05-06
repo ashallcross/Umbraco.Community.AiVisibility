@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Cache;
@@ -61,7 +61,7 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly AppCaches _appCaches;
     private readonly AiBotList _aiBotList;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly ILogger<DefaultRobotsAuditor> _logger;
     private readonly TimeProvider _timeProvider;
 
@@ -69,7 +69,7 @@ public sealed class DefaultRobotsAuditor : IRobotsAuditor
         IHttpClientFactory httpClientFactory,
         AppCaches appCaches,
         AiBotList aiBotList,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         ILogger<DefaultRobotsAuditor> logger,
         TimeProvider? timeProvider = null)
     {

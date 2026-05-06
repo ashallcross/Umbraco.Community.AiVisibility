@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,7 +17,7 @@ namespace LlmsTxt.Umbraco.Routing;
 /// <c>/index.html.md</c> self-requests) → kill switch
 /// (<see cref="DiscoverabilityHeaderSettings.Enabled"/>) → route
 /// (<see cref="UmbracoRouteValues.PublishedRequest"/> resolved) → exclusion
-/// (<see cref="ILlmsExclusionEvaluator"/>) → URL provider success
+/// (<see cref="IExclusionEvaluator"/>) → URL provider success
 /// (non-null/non-<c>#</c> response).
 /// </para>
 /// <para>
@@ -32,14 +32,14 @@ namespace LlmsTxt.Umbraco.Routing;
 /// </summary>
 internal sealed class DiscoverabilityHeaderMiddleware : IMiddleware
 {
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
-    private readonly ILlmsExclusionEvaluator _exclusion;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
+    private readonly IExclusionEvaluator _exclusion;
     private readonly IPublishedUrlProvider _urlProvider;
     private readonly ILogger<DiscoverabilityHeaderMiddleware> _logger;
 
     public DiscoverabilityHeaderMiddleware(
-        IOptionsMonitor<LlmsTxtSettings> settings,
-        ILlmsExclusionEvaluator exclusion,
+        IOptionsMonitor<AiVisibilitySettings> settings,
+        IExclusionEvaluator exclusion,
         IPublishedUrlProvider urlProvider,
         ILogger<DiscoverabilityHeaderMiddleware> logger)
     {

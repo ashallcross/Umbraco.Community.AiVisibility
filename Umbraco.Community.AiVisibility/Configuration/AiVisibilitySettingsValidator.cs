@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
 
-namespace LlmsTxt.Umbraco.Configuration;
+namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
 /// Story 5.2 code-review P11 — startup validator for the
-/// <see cref="LlmsTxtSettings.Analytics"/> sub-block. Surfaces operator
+/// <see cref="AiVisibilitySettings.Analytics"/> sub-block. Surfaces operator
 /// typos (e.g. <c>DefaultPageSize: 0</c>, <c>MaxPageSize: -10</c>) at first
 /// configuration read instead of letting the controller's <c>Math.Max</c>
 /// defences silently coerce the values.
@@ -27,9 +27,9 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// will silently be clamped — worth surfacing.
 /// </para>
 /// </remarks>
-internal sealed class LlmsTxtSettingsValidator : IValidateOptions<LlmsTxtSettings>
+internal sealed class AiVisibilitySettingsValidator : IValidateOptions<AiVisibilitySettings>
 {
-    public ValidateOptionsResult Validate(string? name, LlmsTxtSettings options)
+    public ValidateOptionsResult Validate(string? name, AiVisibilitySettings options)
     {
         var failures = new List<string>();
         var a = options.Analytics;

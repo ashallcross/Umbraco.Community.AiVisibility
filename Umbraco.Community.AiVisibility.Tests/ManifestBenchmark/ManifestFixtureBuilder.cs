@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using NSubstitute;
@@ -20,7 +20,7 @@ internal sealed class ManifestFixtureBuilder
 {
     public IPublishedUrlProvider UrlProvider { get; }
     public IMarkdownContentExtractor Extractor { get; }
-    public LlmsTxtSettings Settings { get; }
+    public AiVisibilitySettings Settings { get; }
     public IPublishedContent Root { get; }
     public IReadOnlyList<IPublishedContent> Pages { get; }
     public IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? HreflangVariants { get; }
@@ -30,7 +30,7 @@ internal sealed class ManifestFixtureBuilder
     private ManifestFixtureBuilder(
         IPublishedUrlProvider urlProvider,
         IMarkdownContentExtractor extractor,
-        LlmsTxtSettings settings,
+        AiVisibilitySettings settings,
         IPublishedContent root,
         IReadOnlyList<IPublishedContent> pages,
         IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? hreflangVariants,
@@ -55,7 +55,7 @@ internal sealed class ManifestFixtureBuilder
         var urlProvider = Substitute.For<IPublishedUrlProvider>();
         var extractor = Substitute.For<IMarkdownContentExtractor>();
 
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             SiteName = fixture.Settings.SiteName,
             SiteSummary = fixture.Settings.SiteSummary,

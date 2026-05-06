@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -19,8 +19,8 @@ public class DefaultRobotsAuditorParserTests
 {
     private static DefaultRobotsAuditor BuildAuditor(IReadOnlyList<string> tokens)
     {
-        var settings = new LlmsTxtSettings();
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        var settings = new AiVisibilitySettings();
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         monitor.CurrentValue.Returns(settings);
         var caches = new AppCaches(
             new ObjectCacheAppCache(),

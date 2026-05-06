@@ -1,5 +1,5 @@
 using System.Text;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Routing;
@@ -238,24 +238,24 @@ public class AcceptHeaderNegotiationMiddlewareTests
         ctx.Response.Body = new MemoryStream();
 
         var extractor = new StubExtractor(BuildFound("# never reached"));
-        var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        optionsMonitor.CurrentValue.Returns(new LlmsTxtSettings());
+        var optionsMonitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        optionsMonitor.CurrentValue.Returns(new AiVisibilitySettings());
         var writer = new MarkdownResponseWriter(optionsMonitor);
         var logger = new RecordingLogger<AcceptHeaderNegotiationMiddleware>();
 
         // Resolver returns "redirectPage" in the exclusion set.
-        var settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        var settingsResolver = Substitute.For<ISettingsResolver>();
         settingsResolver
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new ResolvedLlmsSettings(
                 SiteName: null,
                 SiteSummary: null,
                 ExcludedDoctypeAliases: new HashSet<string>(new[] { "redirectPage" }, StringComparer.OrdinalIgnoreCase),
-                BaseSettings: new LlmsTxtSettings())));
+                BaseSettings: new AiVisibilitySettings())));
 
-        var exclusionEvaluator = new DefaultLlmsExclusionEvaluator(
+        var exclusionEvaluator = new DefaultExclusionEvaluator(
             settingsResolver,
-            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+            NullLogger<DefaultExclusionEvaluator>.Instance);
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor, writer, exclusionEvaluator, optionsMonitor,
             Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>(),
@@ -507,18 +507,18 @@ public class AcceptHeaderNegotiationMiddlewareTests
         // Drive .md controller path
         var controllerExtractor = new StubExtractor(sentinel);
         var resolver = new StubMarkdownRouteResolver(content, culture);
-        var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        optionsMonitor.CurrentValue.Returns(new LlmsTxtSettings());
+        var optionsMonitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        optionsMonitor.CurrentValue.Returns(new AiVisibilitySettings());
         var writer = new MarkdownResponseWriter(optionsMonitor);
         // Story 3.1 — settings resolver substitute returns appsettings-only
         // overlay so this Story-1.3 test stays green without exclusion impact.
-        var settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        var settingsResolver = Substitute.For<ISettingsResolver>();
         settingsResolver
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new LlmsTxtSettings().ToResolved()));
-        var controllerExclusion = new DefaultLlmsExclusionEvaluator(
+            .Returns(call => Task.FromResult(new AiVisibilitySettings().ToResolved()));
+        var controllerExclusion = new DefaultExclusionEvaluator(
             settingsResolver,
-            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+            NullLogger<DefaultExclusionEvaluator>.Instance);
         var controller = new MarkdownController(
             controllerExtractor,
             resolver,
@@ -620,7 +620,7 @@ public class AcceptHeaderNegotiationMiddlewareTests
         string path,
         UmbracoRouteValues? routeValues,
         MarkdownExtractionResult? extractorResult = null,
-        LlmsTxtSettings? settings = null)
+        AiVisibilitySettings? settings = null)
     {
         var ctx = new DefaultHttpContext();
         ctx.Request.Method = method;
@@ -640,25 +640,25 @@ public class AcceptHeaderNegotiationMiddlewareTests
 
         var extractor = new StubExtractor(extractorResult ?? BuildFound("# Body\n"));
 
-        var resolvedSettings = settings ?? new LlmsTxtSettings();
-        var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        var resolvedSettings = settings ?? new AiVisibilitySettings();
+        var optionsMonitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         optionsMonitor.CurrentValue.Returns(resolvedSettings);
         var writer = new MarkdownResponseWriter(optionsMonitor);
 
         var logger = new RecordingLogger<AcceptHeaderNegotiationMiddleware>();
 
-        // Story 3.1 — middleware now consults ILlmsSettingsResolver on the
+        // Story 3.1 — middleware now consults ISettingsResolver on the
         // divert path so excluded pages return 404 (Failure & Edge Cases line
         // 463). Default substitute returns an empty exclusion list and treats
         // the page as not-excluded — Story-1.3-era tests stay green.
-        var settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        var settingsResolver = Substitute.For<ISettingsResolver>();
         settingsResolver
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new LlmsTxtSettings().ToResolved()));
+            .Returns(call => Task.FromResult(new AiVisibilitySettings().ToResolved()));
 
-        var exclusionEvaluator = new DefaultLlmsExclusionEvaluator(
+        var exclusionEvaluator = new DefaultExclusionEvaluator(
             settingsResolver,
-            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+            NullLogger<DefaultExclusionEvaluator>.Instance);
         var publisher = Substitute.For<LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher>();
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor,

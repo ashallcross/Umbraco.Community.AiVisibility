@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Background;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using LlmsTxt.Umbraco.Notifications;
 using Umbraco.Community.AiVisibility.Persistence;
@@ -67,7 +67,7 @@ public sealed class NotificationsComposer : IComposer
         // settings sub-block. Surfaces operator typos at first config read
         // instead of letting Math.Max defences silently coerce values.
         builder.Services.TryAddEnumerable(ServiceDescriptor
-            .Singleton<IValidateOptions<LlmsTxtSettings>, LlmsTxtSettingsValidator>());
+            .Singleton<IValidateOptions<AiVisibilitySettings>, AiVisibilitySettingsValidator>());
 
         builder.Services.AddHostedService<LlmsRequestLogDrainHostedService>();
         builder.Services.AddSingleton<IDistributedBackgroundJob, LogRetentionJob>();

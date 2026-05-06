@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -31,7 +31,7 @@ namespace LlmsTxt.Umbraco.TagHelpers;
 public sealed class LlmsHintTagHelper : TagHelper
 {
     private readonly IPublishedUrlProvider _urlProvider;
-    private readonly ILlmsExclusionEvaluator _exclusion;
+    private readonly IExclusionEvaluator _exclusion;
     private readonly ILogger<LlmsHintTagHelper> _logger;
 
     [ViewContext]
@@ -40,7 +40,7 @@ public sealed class LlmsHintTagHelper : TagHelper
 
     public LlmsHintTagHelper(
         IPublishedUrlProvider urlProvider,
-        ILlmsExclusionEvaluator exclusion,
+        IExclusionEvaluator exclusion,
         ILogger<LlmsHintTagHelper> logger)
     {
         _urlProvider = urlProvider;

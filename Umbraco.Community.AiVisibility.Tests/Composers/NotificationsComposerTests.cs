@@ -1,6 +1,6 @@
 using LlmsTxt.Umbraco.Background;
 using LlmsTxt.Umbraco.Composers;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using LlmsTxt.Umbraco.Notifications;
 using Umbraco.Community.AiVisibility.Persistence;
@@ -171,8 +171,8 @@ public class NotificationsComposerTests
     {
         services.AddSingleton(_ =>
         {
-            var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-            monitor.CurrentValue.Returns(new LlmsTxtSettings());
+            var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+            monitor.CurrentValue.Returns(new AiVisibilitySettings());
             return monitor;
         });
         services.AddSingleton(_ => Substitute.For<IServerRoleAccessor>());

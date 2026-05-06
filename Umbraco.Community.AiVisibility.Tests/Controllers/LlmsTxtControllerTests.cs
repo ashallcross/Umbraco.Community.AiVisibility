@@ -1,7 +1,7 @@
 using System.Text;
 using LlmsTxt.Umbraco.Builders;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;
@@ -27,12 +27,12 @@ public class LlmsTxtControllerTests
     private ILlmsTxtBuilder _builder = null!;
     private IHostnameRootResolver _resolver = null!;
     private IHreflangVariantsResolver _hreflangResolver = null!;
-    private ILlmsSettingsResolver _settingsResolver = null!;
+    private ISettingsResolver _settingsResolver = null!;
     private IUmbracoContextFactory _umbracoContextFactory = null!;
     private IDocumentNavigationQueryService _navigation = null!;
     private AppCaches _appCaches = null!;
-    private IOptionsMonitor<LlmsTxtSettings> _settings = null!;
-    private LlmsTxtSettings _currentSettings = null!;
+    private IOptionsMonitor<AiVisibilitySettings> _settings = null!;
+    private AiVisibilitySettings _currentSettings = null!;
     private IUmbracoContext _umbracoContext = null!;
     private IPublishedContentCache _publishedSnapshot = null!;
 
@@ -57,17 +57,17 @@ public class LlmsTxtControllerTests
             Substitute.For<IRequestCache>(),
             new IsolatedCaches(_ => new ObjectCacheAppCache()));
 
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
         };
-        _settings = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        _settings = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         _settings.CurrentValue.Returns(_ => _currentSettings);
 
         // Story 3.1 — default resolver substitute returns appsettings-only
-        // overlay (matches DefaultLlmsSettingsResolver's no-Settings-node path).
+        // overlay (matches DefaultSettingsResolver's no-Settings-node path).
         // Per-test classes override via local Returns() when needed.
-        _settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        _settingsResolver = Substitute.For<ISettingsResolver>();
         _settingsResolver
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(_currentSettings.ToResolved()));
@@ -426,7 +426,7 @@ public class LlmsTxtControllerTests
     public async Task Render_HreflangEnabled_ResolvesAndPassesVariantsToBuilder()
     {
         var root = StubContent("Acme");
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
             Hreflang = new HreflangSettings { Enabled = true },
@@ -486,7 +486,7 @@ public class LlmsTxtControllerTests
     public async Task Render_HreflangResolverThrows_LogsWarningAndContinues()
     {
         var root = StubContent("Acme");
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
             Hreflang = new HreflangSettings { Enabled = true },
@@ -530,7 +530,7 @@ public class LlmsTxtControllerTests
 
         // Run 1 — flag ON, resolver returns empty dictionary.
         var rootOn = StubContent("Acme");
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
             Hreflang = new HreflangSettings { Enabled = true },
@@ -557,7 +557,7 @@ public class LlmsTxtControllerTests
         // Run 2 — flag OFF, resolver not invoked. Force a fresh cache miss with
         // a distinct hostname so the previous entry doesn't satisfy this run.
         var rootOff = StubContent("Acme");
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
             Hreflang = new HreflangSettings { Enabled = false },
@@ -717,7 +717,7 @@ public class LlmsTxtControllerTests
     {
         // Story 3.1 AC3 — resolver overlay's SiteName/SiteSummary reach the builder
         // via LlmsTxtBuilderContext.Settings (ResolvedLlmsSettings).
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             SiteName = "Default Acme",
             SiteSummary = "Default summary",
@@ -762,7 +762,7 @@ public class LlmsTxtControllerTests
         // Story 3.1 — resolver-throw graceful degradation. Same shape as Story 2.3
         // hreflang resolver-throw. Manifest STILL builds, using the appsettings
         // snapshot only (no doctype overlay, no exclusion list).
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             SiteName = "Fallback Acme",
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
@@ -913,13 +913,13 @@ public class LlmsTxtControllerTests
     public async Task Render_CachePolicySecondsZero_BypassesCache_BuilderInvokedEachRequest()
     {
         // Story 6.0a AC3 — CachePolicySeconds = 0 disables the manifest cache
-        // entirely (matches the LlmsTxtSettings.CachePolicySeconds xmldoc — "0
+        // entirely (matches the AiVisibilitySettings.CachePolicySeconds xmldoc — "0
         // effectively disables caching"). Builder is invoked on every request;
         // cache stays empty. Mirrors LlmsFullTxtControllerTests of the same
         // shape.
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 0 },
         };
@@ -944,7 +944,7 @@ public class LlmsTxtControllerTests
         // LlmsFullTxtController's "negative → 0 + Warning" defensive policy.
         var root = StubContent("Acme");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = -10 },
         };

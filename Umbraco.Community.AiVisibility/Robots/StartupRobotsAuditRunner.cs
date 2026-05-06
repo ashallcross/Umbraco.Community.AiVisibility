@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,7 +10,7 @@ namespace Umbraco.Community.AiVisibility.Robots;
 
 /// <summary>
 /// Story 4.2 — fires the robots audit once per bound hostname during host
-/// startup, gated on <see cref="LlmsTxtSettings.RobotsAuditOnStartup"/>.
+/// startup, gated on <see cref="AiVisibilitySettings.RobotsAuditOnStartup"/>.
 /// Defensively gated on <see cref="IServerRoleAccessor"/> so multi-instance
 /// front-end servers don't all hammer their own <c>/robots.txt</c> at boot;
 /// the canonical exactly-once guarantee for the recurring refresh remains
@@ -20,13 +20,13 @@ namespace Umbraco.Community.AiVisibility.Robots;
 public sealed class StartupRobotsAuditRunner : IHostedService
 {
     private readonly IServiceProvider _services;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IServerRoleAccessor _serverRoleAccessor;
     private readonly ILogger<StartupRobotsAuditRunner> _logger;
 
     public StartupRobotsAuditRunner(
         IServiceProvider services,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         IServerRoleAccessor serverRoleAccessor,
         ILogger<StartupRobotsAuditRunner> logger)
     {

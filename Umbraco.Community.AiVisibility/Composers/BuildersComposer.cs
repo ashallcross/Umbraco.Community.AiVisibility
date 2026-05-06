@@ -14,7 +14,7 @@ namespace LlmsTxt.Umbraco.Composers;
 /// captive-dependency rationale on <see cref="ILlmsTxtBuilder"/> applies
 /// identically (the default builder pulls
 /// <see cref="Extraction.IMarkdownContentExtractor"/> whose decorator factory
-/// pulls scoped <c>IOptionsSnapshot&lt;LlmsTxtSettings&gt;</c>).</item>
+/// pulls scoped <c>IOptionsSnapshot&lt;AiVisibilitySettings&gt;</c>).</item>
 /// <item><see cref="HostnameRootResolver"/> as a singleton helper consumed by both
 /// controllers.</item>
 /// </list>
@@ -45,10 +45,10 @@ public sealed class BuildersComposer : IComposer
     {
         // ILlmsTxtBuilder is logically stateless, but DefaultLlmsTxtBuilder pulls
         // IMarkdownContentExtractor (transient — DefaultMarkdownContentExtractor
-        // depends on scoped IOptionsSnapshot<LlmsTxtSettings>). Registering the
+        // depends on scoped IOptionsSnapshot<AiVisibilitySettings>). Registering the
         // builder as Singleton would capture a transient dependency whose root-
         // scope resolution throws "Cannot resolve … from root provider because
-        // it requires scoped service IOptionsSnapshot<LlmsTxtSettings>". Transient
+        // it requires scoped service IOptionsSnapshot<AiVisibilitySettings>". Transient
         // matches the extractor's lifetime; the builder holds no per-request state
         // of its own. Architecture's "Singleton when stateless and thread-safe"
         // (line 374) doesn't apply when the dependency graph carries scoped state.
@@ -56,7 +56,7 @@ public sealed class BuildersComposer : IComposer
 
         // Story 2.2 — same captive-dependency reasoning as ILlmsTxtBuilder.
         // DefaultLlmsFullBuilder pulls IMarkdownContentExtractor (transient) whose
-        // decorator factory pulls scoped IOptionsSnapshot<LlmsTxtSettings>.
+        // decorator factory pulls scoped IOptionsSnapshot<AiVisibilitySettings>.
         // Singleton would form a captive dependency on the scoped options
         // snapshot; Transient matches the extractor's lifetime.
         builder.Services.TryAddTransient<ILlmsFullBuilder, DefaultLlmsFullBuilder>();

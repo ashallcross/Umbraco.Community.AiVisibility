@@ -1,6 +1,6 @@
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Configuration;
+namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
 /// Story 4.1 — single source of truth for the per-page exclusion check across
@@ -10,7 +10,7 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// <c>&lt;llms-hint /&gt;</c> Razor TagHelpers (Story 4.1).
 /// <para>
 /// <b>Contract:</b> per-page <c>excludeFromLlmExports</c> bool first; if not
-/// excluded by bool, fall through to <see cref="ILlmsSettingsResolver"/> for
+/// excluded by bool, fall through to <see cref="ISettingsResolver"/> for
 /// the resolved doctype-alias exclusion list (case-insensitive). Resolver
 /// throws are caught + logged <c>Warning</c> + treated as not-excluded
 /// (fail-open) — same shape Story 2.3 hreflang resolver established for
@@ -18,12 +18,12 @@ namespace LlmsTxt.Umbraco.Configuration;
 /// </para>
 /// <para>
 /// <b>Lifetime: Scoped.</b> Depends on the request-scoped
-/// <see cref="ILlmsSettingsResolver"/>; Singleton would form a captive
+/// <see cref="ISettingsResolver"/>; Singleton would form a captive
 /// dependency at the root provider. Pinned by
 /// <c>Compose_StartupValidation_DiscoverabilityHeaderMiddleware_NoCaptiveDependency</c>.
 /// </para>
 /// </summary>
-public interface ILlmsExclusionEvaluator
+public interface IExclusionEvaluator
 {
     /// <summary>
     /// Returns <c>true</c> when the page should be omitted from LLM exports

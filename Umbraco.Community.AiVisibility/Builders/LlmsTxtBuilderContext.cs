@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
 namespace LlmsTxt.Umbraco.Builders;
@@ -46,7 +46,7 @@ namespace LlmsTxt.Umbraco.Builders;
 /// <see cref="ResolvedLlmsSettings.BaseSettings"/>.
 /// <para>
 /// <b>Breaking change from Story 2.x:</b> the type changed from
-/// <c>LlmsTxtSettings</c> to <see cref="ResolvedLlmsSettings"/>. Adopter
+/// <c>AiVisibilitySettings</c> to <see cref="ResolvedLlmsSettings"/>. Adopter
 /// implementations of <see cref="ILlmsTxtBuilder"/> that read
 /// <c>context.Settings.LlmsTxtBuilder.SectionGrouping</c> must update to
 /// <c>context.Settings.BaseSettings.LlmsTxtBuilder.SectionGrouping</c>

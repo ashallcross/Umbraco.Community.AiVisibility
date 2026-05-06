@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Notifications;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
@@ -12,7 +12,7 @@ namespace LlmsTxt.Umbraco.Tests.Notifications;
 public class DefaultLlmsRequestLogHandlerTests
 {
     private IRequestLog _requestLog = null!;
-    private IOptionsMonitor<LlmsTxtSettings> _settings = null!;
+    private IOptionsMonitor<AiVisibilitySettings> _settings = null!;
     private TimeProvider _timeProvider = null!;
     private DefaultLlmsRequestLogHandler _handler = null!;
 
@@ -20,8 +20,8 @@ public class DefaultLlmsRequestLogHandlerTests
     public void Setup()
     {
         _requestLog = Substitute.For<IRequestLog>();
-        _settings = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        _settings.CurrentValue.Returns(new LlmsTxtSettings());
+        _settings = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        _settings.CurrentValue.Returns(new AiVisibilitySettings());
         _timeProvider = TimeProvider.System;
         _handler = new DefaultLlmsRequestLogHandler(
             _requestLog,
@@ -99,7 +99,7 @@ public class DefaultLlmsRequestLogHandlerTests
         // AC3 — kill switch decouples the writer; notifications still
         // reach OUR handler (Umbraco dispatched), but our handler
         // short-circuits before calling IRequestLog.
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             RequestLog = new RequestLogSettings { Enabled = false },
         };

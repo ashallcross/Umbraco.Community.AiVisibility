@@ -35,7 +35,7 @@ internal sealed record ManifestPageFixture(
 internal sealed record ManifestVariantFixture(string Culture, string RelativeUrl);
 
 /// <summary>
-/// Subset of <see cref="LlmsTxtSettings"/> needed to drive the manifest
+/// Subset of <see cref="AiVisibilitySettings"/> needed to drive the manifest
 /// builders from a fixture. Optional fields fall back to defaults.
 /// </summary>
 internal sealed record ManifestSettingsFixture(

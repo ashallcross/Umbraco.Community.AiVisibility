@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Headers;
@@ -47,7 +47,7 @@ namespace LlmsTxt.Umbraco.Controllers.Backoffice;
 /// the API-layer enforcement (UX-DR4).
 /// </para>
 /// <para>
-/// <b>Resolver-throw graceful degradation:</b> <see cref="ILlmsSettingsResolver"/>
+/// <b>Resolver-throw graceful degradation:</b> <see cref="ISettingsResolver"/>
 /// throwing on <see cref="GetAsync"/> falls back to the appsettings snapshot +
 /// logs <c>Warning</c>. Same shape as Story 2.3 hreflang resolver-throw
 /// (<c>LlmsTxtController.cs</c>) and Story 3.1 <see cref="MarkdownController"/>.
@@ -72,7 +72,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
     /// Surfaced to the client via <see cref="LlmsSettingsViewModel.SummaryMaxChars"/>
     /// so the form counter reads from one source of truth (no client/server drift).
     /// Matches the resolver's <c>SiteSummaryMaxChars</c> truncation cap at
-    /// <see cref="DefaultLlmsSettingsResolver"/>.
+    /// <see cref="DefaultSettingsResolver"/>.
     /// </summary>
     internal const int SiteSummaryMaxChars = 500;
 
@@ -95,7 +95,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
     /// <summary>
     /// Settings doctype alias matched against root content nodes when the
     /// resolver / controller walks roots. Same constant as
-    /// <c>DefaultLlmsSettingsResolver.SettingsDoctypeAlias</c> (kept private
+    /// <c>DefaultSettingsResolver.SettingsDoctypeAlias</c> (kept private
     /// there; duplicated here so the controller doesn't take a dependency on
     /// the resolver's internals).
     /// </summary>
@@ -108,14 +108,14 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
     internal const string DefaultSettingsNodeName = "LlmsTxt Settings";
 
     /// <summary>
-    /// Characters that <see cref="DefaultLlmsSettingsResolver"/> uses as alias
+    /// Characters that <see cref="DefaultSettingsResolver"/> uses as alias
     /// separators when parsing the persisted textarea property. Aliases
     /// containing any of these would round-trip as multiple entries — reject
     /// them at the validation boundary so persisted data stays well-formed.
     /// </summary>
     private static readonly char[] AliasSeparatorChars = { '\n', '\r', ',', ';' };
 
-    private readonly ILlmsSettingsResolver _resolver;
+    private readonly ISettingsResolver _resolver;
     private readonly IContentService _contentService;
     private readonly IContentTypeService _contentTypeService;
     private readonly IUmbracoContextAccessor _umbracoContextAccessor;
@@ -124,7 +124,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
     private readonly ILogger<LlmsSettingsManagementApiController> _logger;
 
     public LlmsSettingsManagementApiController(
-        ILlmsSettingsResolver resolver,
+        ISettingsResolver resolver,
         IContentService contentService,
         IContentTypeService contentTypeService,
         IUmbracoContextAccessor umbracoContextAccessor,
@@ -404,7 +404,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
         catch (OperationCanceledException)
         {
             _logger.LogDebug(
-                "ILlmsSettingsResolver cancelled mid-call for {Host} {Culture}",
+                "ISettingsResolver cancelled mid-call for {Host} {Culture}",
                 host,
                 culture);
             throw;
@@ -413,18 +413,18 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
         {
             _logger.LogWarning(
                 ex,
-                "ILlmsSettingsResolver threw on Settings dashboard call for {Host} {Culture}; falling back to appsettings",
+                "ISettingsResolver threw on Settings dashboard call for {Host} {Culture}; falling back to appsettings",
                 host,
                 culture);
             // Fall back to an empty resolved record — the dashboard will still
-            // render with whatever it last knew. Using new LlmsTxtSettings()
-            // mirrors the BaseSettings shape DefaultLlmsSettingsResolver
+            // render with whatever it last knew. Using new AiVisibilitySettings()
+            // mirrors the BaseSettings shape DefaultSettingsResolver
             // produces on the no-context path.
             return new ResolvedLlmsSettings(
                 SiteName: null,
                 SiteSummary: null,
                 ExcludedDoctypeAliases: Array.Empty<string>(),
-                BaseSettings: new LlmsTxtSettings());
+                BaseSettings: new AiVisibilitySettings());
         }
     }
 
@@ -637,7 +637,7 @@ public sealed class LlmsSettingsManagementApiController : ManagementApiControlle
                     "excludedDoctypeAliases cannot contain empty or whitespace-only entries.");
             }
             // Reject characters the resolver uses as separators
-            // (DefaultLlmsSettingsResolver splits on \n / \r / , / ;) — an
+            // (DefaultSettingsResolver splits on \n / \r / , / ;) — an
             // unescaped separator inside an alias would round-trip as multiple
             // entries (or zero, when the entry is the separator itself).
             if (alias.IndexOfAny(AliasSeparatorChars) >= 0)

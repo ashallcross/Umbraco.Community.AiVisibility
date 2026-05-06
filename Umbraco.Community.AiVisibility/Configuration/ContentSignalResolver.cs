@@ -1,4 +1,4 @@
-namespace LlmsTxt.Umbraco.Configuration;
+namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
 /// Story 4.1 — resolves the effective Cloudflare <c>Content-Signal</c> header
@@ -22,9 +22,9 @@ internal static class ContentSignalResolver
     /// "no doctype context"). Returned value is trimmed; null/whitespace
     /// inputs short-circuit to <c>null</c>.
     /// </summary>
-    public static string? Resolve(LlmsTxtSettings settings, string? doctypeAlias)
+    public static string? Resolve(AiVisibilitySettings settings, string? doctypeAlias)
     {
-        // Both LlmsTxtSettings.ContentSignal and ContentSignalSettings.PerDocTypeAlias
+        // Both AiVisibilitySettings.ContentSignal and ContentSignalSettings.PerDocTypeAlias
         // default to non-null instances, but `init`-set properties permit explicit null
         // from adopters constructing settings manually or from binder edge cases. Defend
         // against NRE here rather than crash the request pipeline.

@@ -85,7 +85,7 @@ public sealed record LlmsAnalyticsSummaryViewModel(
 /// <summary>
 /// Story 5.2 — view model returned by
 /// <c>GET /umbraco/management/api/v1/llmstxt/analytics/retention</c>.
-/// One-shot read of <c>IOptionsMonitor&lt;LlmsTxtSettings&gt;.CurrentValue.LogRetention.DurationDays</c>
+/// One-shot read of <c>IOptionsMonitor&lt;AiVisibilitySettings&gt;.CurrentValue.LogRetention.DurationDays</c>
 /// so the dashboard can render AC9's retention-aware empty-state hint without
 /// duplicating the config-binding logic on the TypeScript side.
 /// </summary>

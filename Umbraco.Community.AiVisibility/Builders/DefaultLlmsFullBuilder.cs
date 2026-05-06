@@ -1,6 +1,6 @@
 using System.Text;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models.PublishedContent;
@@ -16,7 +16,7 @@ namespace LlmsTxt.Umbraco.Builders;
 /// YAML frontmatter, prefixes each section with
 /// <c># {Title}\n\n_Source: {absolute URL}_\n\n</c>, joins with
 /// <c>\n\n---\n\n</c> separators, and enforces
-/// <see cref="LlmsTxtSettings.MaxLlmsFullSizeKb"/> with a stable truncation footer
+/// <see cref="AiVisibilitySettings.MaxLlmsFullSizeKb"/> with a stable truncation footer
 /// when the cap is hit.
 /// <para>
 /// Logically stateless across calls (per-request state lives in

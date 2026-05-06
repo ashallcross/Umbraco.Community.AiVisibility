@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
 namespace LlmsTxt.Umbraco.Builders;
@@ -46,7 +46,7 @@ namespace LlmsTxt.Umbraco.Builders;
 /// controller before the page list reaches the builder.
 /// <para>
 /// <b>Breaking change from Story 2.x:</b> the type changed from
-/// <c>LlmsTxtSettings</c> to <see cref="ResolvedLlmsSettings"/>. Adopter
+/// <c>AiVisibilitySettings</c> to <see cref="ResolvedLlmsSettings"/>. Adopter
 /// implementations of <see cref="ILlmsFullBuilder"/> that read
 /// <c>context.Settings.MaxLlmsFullSizeKb</c> must update to
 /// <c>context.Settings.BaseSettings.MaxLlmsFullSizeKb</c>. Documented in the

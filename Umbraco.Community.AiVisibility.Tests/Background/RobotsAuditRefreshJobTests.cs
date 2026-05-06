@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Background;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -156,7 +156,7 @@ public class RobotsAuditRefreshJobTests
     private static (RobotsAuditRefreshJob Job, IRobotsAuditor Auditor, IServiceProvider Services)
         BuildJob(int refreshIntervalHours, int? secondsOverride = null, IReadOnlyList<string>? domainNames = null)
     {
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             RobotsAuditor = new RobotsAuditorSettings
             {
@@ -164,7 +164,7 @@ public class RobotsAuditRefreshJobTests
                 RefreshIntervalSecondsOverride = secondsOverride,
             },
         };
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         monitor.CurrentValue.Returns(settings);
 
         var auditor = Substitute.For<IRobotsAuditor>();

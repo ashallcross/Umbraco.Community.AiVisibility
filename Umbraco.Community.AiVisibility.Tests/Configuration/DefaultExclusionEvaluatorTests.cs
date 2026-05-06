@@ -1,10 +1,10 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
-namespace LlmsTxt.Umbraco.Tests.Configuration;
+namespace Umbraco.Community.AiVisibility.Tests.Configuration;
 
 /// <summary>
 /// Story 4.1 Task 4 — pins the per-page-bool-then-resolver-throw-fail-open
@@ -49,15 +49,15 @@ public class DefaultLlmsExclusionEvaluatorTests
             SiteName: null,
             SiteSummary: null,
             ExcludedDoctypeAliases: set,
-            BaseSettings: new LlmsTxtSettings());
+            BaseSettings: new AiVisibilitySettings());
     }
 
     [Test]
     public async Task IsExcludedAsync_PerPageBoolTrue_ReturnsTrue_WithoutCallingResolver()
     {
         var content = StubPage("articlePage", excludeFromLlmExports: true);
-        var resolver = Substitute.For<ILlmsSettingsResolver>();
-        var evaluator = new DefaultLlmsExclusionEvaluator(resolver, NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+        var resolver = Substitute.For<ISettingsResolver>();
+        var evaluator = new DefaultExclusionEvaluator(resolver, NullLogger<DefaultExclusionEvaluator>.Instance);
 
         var excluded = await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None);
 
@@ -69,10 +69,10 @@ public class DefaultLlmsExclusionEvaluatorTests
     public async Task IsExcludedAsync_DoctypeAliasInResolverList_CaseInsensitive_ReturnsTrue()
     {
         var content = StubPage("articlePage");
-        var resolver = Substitute.For<ILlmsSettingsResolver>();
+        var resolver = Substitute.For<ISettingsResolver>();
         resolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ResolvedWith("ARTICLEPAGE"));
-        var evaluator = new DefaultLlmsExclusionEvaluator(resolver, NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+        var evaluator = new DefaultExclusionEvaluator(resolver, NullLogger<DefaultExclusionEvaluator>.Instance);
 
         var excluded = await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None);
 
@@ -83,10 +83,10 @@ public class DefaultLlmsExclusionEvaluatorTests
     public async Task IsExcludedAsync_NotInResolverList_AndNoBool_ReturnsFalse()
     {
         var content = StubPage("articlePage");
-        var resolver = Substitute.For<ILlmsSettingsResolver>();
+        var resolver = Substitute.For<ISettingsResolver>();
         resolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ResolvedWith("homePage"));
-        var evaluator = new DefaultLlmsExclusionEvaluator(resolver, NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+        var evaluator = new DefaultExclusionEvaluator(resolver, NullLogger<DefaultExclusionEvaluator>.Instance);
 
         var excluded = await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None);
 
@@ -97,10 +97,10 @@ public class DefaultLlmsExclusionEvaluatorTests
     public async Task IsExcludedAsync_ResolverThrows_FailsOpen_ReturnsFalse()
     {
         var content = StubPage("articlePage");
-        var resolver = Substitute.For<ILlmsSettingsResolver>();
+        var resolver = Substitute.For<ISettingsResolver>();
         resolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("resolver glitch"));
-        var evaluator = new DefaultLlmsExclusionEvaluator(resolver, NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+        var evaluator = new DefaultExclusionEvaluator(resolver, NullLogger<DefaultExclusionEvaluator>.Instance);
 
         var excluded = await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None);
 
@@ -111,10 +111,10 @@ public class DefaultLlmsExclusionEvaluatorTests
     public void IsExcludedAsync_ResolverThrowsOperationCancelled_Propagates()
     {
         var content = StubPage("articlePage");
-        var resolver = Substitute.For<ILlmsSettingsResolver>();
+        var resolver = Substitute.For<ISettingsResolver>();
         resolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Throws(new OperationCanceledException());
-        var evaluator = new DefaultLlmsExclusionEvaluator(resolver, NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+        var evaluator = new DefaultExclusionEvaluator(resolver, NullLogger<DefaultExclusionEvaluator>.Instance);
 
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None));

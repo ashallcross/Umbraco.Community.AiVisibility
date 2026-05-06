@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -16,8 +16,8 @@ public class DefaultMarkdownContentExtractorTests
     [SetUp]
     public void Setup()
     {
-        var settings = new LlmsTxtSettings { MainContentSelectors = Array.Empty<string>() };
-        var optionsSnapshot = new StubOptionsSnapshot<LlmsTxtSettings>(settings);
+        var settings = new AiVisibilitySettings { MainContentSelectors = Array.Empty<string>() };
+        var optionsSnapshot = new StubOptionsSnapshot<AiVisibilitySettings>(settings);
 
         // The internal `ExtractFromHtmlAsync` seam exercised by these tests does not
         // touch `_pageRenderer`, `_publishedUrlProvider`, or `_httpContextAccessor` —
@@ -562,14 +562,14 @@ public class DefaultMarkdownContentExtractorTests
         urlProvider.GetUrl(content, UrlMode.Absolute, "en-GB", Arg.Any<Uri?>())
             .Returns("https://example.com/about/");
 
-        var settings = new LlmsTxtSettings { MainContentSelectors = Array.Empty<string>() };
+        var settings = new AiVisibilitySettings { MainContentSelectors = Array.Empty<string>() };
         var extractor = new DefaultMarkdownContentExtractor(
             pageRenderer: null!,
             regionSelector: new DefaultContentRegionSelector(NullLogger<DefaultContentRegionSelector>.Instance),
             converter: new MarkdownConverter(),
             publishedUrlProvider: urlProvider,
             httpContextAccessor: null!,
-            settings: new StubOptionsSnapshot<LlmsTxtSettings>(settings),
+            settings: new StubOptionsSnapshot<AiVisibilitySettings>(settings),
             logger: NullLogger<DefaultMarkdownContentExtractor>.Instance);
 
         var requestUri = new Uri("https://example.fr/about/");

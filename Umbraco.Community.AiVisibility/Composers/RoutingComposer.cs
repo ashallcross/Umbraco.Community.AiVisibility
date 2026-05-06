@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
@@ -26,8 +26,8 @@ public sealed class RoutingComposer : IComposer
     {
         // Strongly-typed appsettings binding.
         builder.Services
-            .AddOptions<LlmsTxtSettings>()
-            .Bind(builder.Config.GetSection(LlmsTxtSettings.SectionName));
+            .AddOptions<AiVisibilitySettings>()
+            .Bind(builder.Config.GetSection(AiVisibilitySettings.SectionName));
 
         // Pipeline filter — registers the .md endpoint via UmbracoPipelineFilter.Endpoints.
         builder.Services.Configure<UmbracoPipelineOptions>(opts =>
@@ -59,8 +59,8 @@ public sealed class RoutingComposer : IComposer
         // then-resolver-throw-fail-open shape out of MarkdownController +
         // AcceptHeaderNegotiationMiddleware so the new DiscoverabilityHeaderMiddleware
         // and TagHelpers consume the same rule set. Scoped — depends on the
-        // Scoped ILlmsSettingsResolver.
-        builder.Services.TryAddScoped<ILlmsExclusionEvaluator, DefaultLlmsExclusionEvaluator>();
+        // Scoped ISettingsResolver.
+        builder.Services.TryAddScoped<IExclusionEvaluator, DefaultExclusionEvaluator>();
 
         // Story 1.3 — factory-activated middleware (IMiddleware). Transient because
         // it depends on the transient IMarkdownContentExtractor; one instance per
@@ -68,7 +68,7 @@ public sealed class RoutingComposer : IComposer
         builder.Services.AddTransient<AcceptHeaderNegotiationMiddleware>();
 
         // Story 4.1 — factory-activated discoverability middleware. Transient
-        // for the same reason: depends on Scoped ILlmsExclusionEvaluator via
+        // for the same reason: depends on Scoped IExclusionEvaluator via
         // request scope. Wired into LlmsPipelineFilter.MapPostRouting in front
         // of the Accept-header negotiation middleware.
         builder.Services.AddTransient<DiscoverabilityHeaderMiddleware>();

@@ -1,5 +1,5 @@
 using System.Data;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
@@ -58,7 +58,7 @@ public sealed class LogRetentionJob : IDistributedBackgroundJob
     private const string RunLogTemplate =
         "LlmsTxt log retention job RUN — InstanceId={InstanceId} CycleStart={CycleStart} RowsDeleted={RowsDeleted}";
 
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IScopeProvider _scopeProvider;
     private readonly ILogger<LogRetentionJob> _logger;
     private readonly TimeProvider _timeProvider;
@@ -66,7 +66,7 @@ public sealed class LogRetentionJob : IDistributedBackgroundJob
     private int _cycleInFlight;
 
     public LogRetentionJob(
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         IScopeProvider scopeProvider,
         ILogger<LogRetentionJob> logger,
         TimeProvider? timeProvider = null)

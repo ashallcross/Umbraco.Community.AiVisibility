@@ -12,7 +12,7 @@
 //   4. Hand-diff the produced `expected.md` against the captured live output and
 //      curate as documented in `Fixtures/Extraction/README.md`.
 
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -45,8 +45,8 @@ public class FixtureCaptureHelper
 
         var html = await File.ReadAllTextAsync(inputPath);
 
-        var settings = new LlmsTxtSettings { MainContentSelectors = Array.Empty<string>() };
-        var options = new StubOptions<LlmsTxtSettings>(settings);
+        var settings = new AiVisibilitySettings { MainContentSelectors = Array.Empty<string>() };
+        var options = new StubOptions<AiVisibilitySettings>(settings);
 
         var extractor = new DefaultMarkdownContentExtractor(
             pageRenderer: null!,

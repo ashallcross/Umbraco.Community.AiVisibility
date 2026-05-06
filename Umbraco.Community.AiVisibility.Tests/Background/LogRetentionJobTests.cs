@@ -1,6 +1,6 @@
 using System.Data;
 using LlmsTxt.Umbraco.Background;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -13,15 +13,15 @@ namespace LlmsTxt.Umbraco.Tests.Background;
 [TestFixture]
 public class LogRetentionJobTests
 {
-    private static IOptionsMonitor<LlmsTxtSettings> SettingsMonitor(LlmsTxtSettings? value = null)
+    private static IOptionsMonitor<AiVisibilitySettings> SettingsMonitor(AiVisibilitySettings? value = null)
     {
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        monitor.CurrentValue.Returns(value ?? new LlmsTxtSettings());
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        monitor.CurrentValue.Returns(value ?? new AiVisibilitySettings());
         return monitor;
     }
 
     private static LogRetentionJob NewJob(
-        LlmsTxtSettings? settings = null,
+        AiVisibilitySettings? settings = null,
         IScopeProvider? scope = null,
         ILogger<LogRetentionJob>? logger = null) =>
         new(
@@ -42,7 +42,7 @@ public class LogRetentionJobTests
     {
         // Story 4.2 chunk-3 P2 ratification — InfiniteTimeSpan, NOT
         // TimeSpan.Zero (which causes Umbraco runner hot-loop).
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LogRetention = new LogRetentionSettings { DurationDays = 0 },
         };
@@ -55,7 +55,7 @@ public class LogRetentionJobTests
     [Test]
     public void Period_RunIntervalHoursZero_ReturnsInfiniteTimeSpan()
     {
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LogRetention = new LogRetentionSettings { DurationDays = 30, RunIntervalHours = 0 },
         };
@@ -71,7 +71,7 @@ public class LogRetentionJobTests
         // Architect-A5 escape hatch — seconds override lets the manual
         // gate verify exactly-once across instances in minutes rather
         // than days.
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LogRetention = new LogRetentionSettings
             {
@@ -90,7 +90,7 @@ public class LogRetentionJobTests
     public void Period_RunIntervalHoursAboveCap_ClampsToYear()
     {
         // Operator typo: 1_000_000 hours would overflow TimeSpan.FromHours.
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LogRetention = new LogRetentionSettings
             {
@@ -107,7 +107,7 @@ public class LogRetentionJobTests
     [Test]
     public async Task ExecuteAsync_DurationDaysDisabled_ShortCircuits()
     {
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LogRetention = new LogRetentionSettings { DurationDays = 0 },
         };

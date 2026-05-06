@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers.Backoffice;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -32,7 +32,7 @@ public class LlmsSettingsApiControllerCompositionTests
         var services = new ServiceCollection();
 
         // Resolver — Scoped (matches SettingsComposer's TryAddScoped).
-        services.AddScoped<ILlmsSettingsResolver>(_ => Substitute.For<ILlmsSettingsResolver>());
+        services.AddScoped<ISettingsResolver>(_ => Substitute.For<ISettingsResolver>());
 
         // Cross-Umbraco services — match the lifetimes Umbraco itself uses.
         services.AddScoped(_ => Substitute.For<IContentService>());
@@ -40,7 +40,7 @@ public class LlmsSettingsApiControllerCompositionTests
         services.AddScoped(_ => Substitute.For<IUmbracoContextAccessor>());
         services.AddScoped(_ => Substitute.For<IDocumentNavigationQueryService>());
         services.AddScoped(_ => Substitute.For<IPublishedUrlProvider>());
-        services.AddSingleton(_ => Substitute.For<IOptionsMonitor<LlmsTxtSettings>>());
+        services.AddSingleton(_ => Substitute.For<IOptionsMonitor<AiVisibilitySettings>>());
         services.AddSingleton(new AppCaches(
             new ObjectCacheAppCache(),
             Substitute.For<IRequestCache>(),

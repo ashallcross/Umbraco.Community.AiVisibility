@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
@@ -253,7 +253,7 @@ public class MarkdownResponseWriterTests
     [Test]
     public async Task WriteAsync_CachePolicySeconds_Zero_StillEmitsCacheControl_MaxAge0()
     {
-        var (writer, ctx, _) = NewHarness(settings: new LlmsTxtSettings { CachePolicySeconds = 0 });
+        var (writer, ctx, _) = NewHarness(settings: new AiVisibilitySettings { CachePolicySeconds = 0 });
 
         await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
@@ -264,7 +264,7 @@ public class MarkdownResponseWriterTests
     [Test]
     public async Task WriteAsync_CachePolicySeconds_Negative_ClampedToZero()
     {
-        var (writer, ctx, _) = NewHarness(settings: new LlmsTxtSettings { CachePolicySeconds = -10 });
+        var (writer, ctx, _) = NewHarness(settings: new AiVisibilitySettings { CachePolicySeconds = -10 });
 
         await writer.WriteAsync(BuildFound("# x\n"), "/home", "en-GB", contentSignal: null, ctx);
 
@@ -440,11 +440,11 @@ public class MarkdownResponseWriterTests
         return ctx.Response.Headers["ETag"].ToString();
     }
 
-    private static (MarkdownResponseWriter Writer, HttpContext Ctx, LlmsTxtSettings Settings)
-        NewHarness(LlmsTxtSettings? settings = null, MemoryStream? body = null)
+    private static (MarkdownResponseWriter Writer, HttpContext Ctx, AiVisibilitySettings Settings)
+        NewHarness(AiVisibilitySettings? settings = null, MemoryStream? body = null)
     {
-        var resolvedSettings = settings ?? new LlmsTxtSettings();
-        var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        var resolvedSettings = settings ?? new AiVisibilitySettings();
+        var optionsMonitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         optionsMonitor.CurrentValue.Returns(resolvedSettings);
 
         var ctx = new DefaultHttpContext();

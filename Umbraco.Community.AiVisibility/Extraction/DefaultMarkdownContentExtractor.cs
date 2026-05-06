@@ -1,7 +1,7 @@
 using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -51,7 +51,7 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
     private readonly MarkdownConverter _converter;
     private readonly IPublishedUrlProvider _publishedUrlProvider;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IOptionsSnapshot<LlmsTxtSettings> _settings;
+    private readonly IOptionsSnapshot<AiVisibilitySettings> _settings;
     private readonly ILogger<DefaultMarkdownContentExtractor> _logger;
 
     public DefaultMarkdownContentExtractor(
@@ -60,7 +60,7 @@ internal sealed class DefaultMarkdownContentExtractor : IMarkdownContentExtracto
         MarkdownConverter converter,
         IPublishedUrlProvider publishedUrlProvider,
         IHttpContextAccessor httpContextAccessor,
-        IOptionsSnapshot<LlmsTxtSettings> settings,
+        IOptionsSnapshot<AiVisibilitySettings> settings,
         ILogger<DefaultMarkdownContentExtractor> logger)
     {
         _pageRenderer = pageRenderer;

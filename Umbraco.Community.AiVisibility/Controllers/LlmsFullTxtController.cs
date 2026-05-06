@@ -1,7 +1,7 @@
 using System.Text;
 using LlmsTxt.Umbraco.Builders;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -42,22 +42,22 @@ public sealed class LlmsFullTxtController : Controller
 
     private readonly ILlmsFullBuilder _builder;
     private readonly IHostnameRootResolver _hostnameResolver;
-    private readonly ILlmsSettingsResolver _settingsResolver;
+    private readonly ISettingsResolver _settingsResolver;
     private readonly IUmbracoContextFactory _umbracoContextFactory;
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly AppCaches _appCaches;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly Notifications.ILlmsNotificationPublisher _notificationPublisher;
     private readonly ILogger<LlmsFullTxtController> _logger;
 
     public LlmsFullTxtController(
         ILlmsFullBuilder builder,
         IHostnameRootResolver hostnameResolver,
-        ILlmsSettingsResolver settingsResolver,
+        ISettingsResolver settingsResolver,
         IUmbracoContextFactory umbracoContextFactory,
         IDocumentNavigationQueryService navigation,
         AppCaches appCaches,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         Notifications.ILlmsNotificationPublisher notificationPublisher,
         ILogger<LlmsFullTxtController> logger)
     {
@@ -116,7 +116,7 @@ public sealed class LlmsFullTxtController : Controller
             {
                 _logger.LogWarning(
                     ex,
-                    "/llms-full.txt — ILlmsSettingsResolver threw for {Host} {Culture}; falling back to appsettings",
+                    "/llms-full.txt — ISettingsResolver threw for {Host} {Culture}; falling back to appsettings",
                     host,
                     resolution.Culture);
                 resolvedSettings = BuildAppsettingsFallback(settingsSnapshot);
@@ -140,7 +140,7 @@ public sealed class LlmsFullTxtController : Controller
         var cacheKey = AiVisibilityCacheKeys.LlmsFull(host, culture);
 
         // CachePolicySeconds policy: 0 disables the manifest cache entirely (matches
-        // LlmsTxtSettings.CachePolicySeconds xmldoc — "0 effectively disables
+        // AiVisibilitySettings.CachePolicySeconds xmldoc — "0 effectively disables
         // caching"). Negative values are an operator typo — log Warning, treat as 0
         // (mirrors MaxLlmsFullSizeKb's "≤ 0 → unlimited + Warning" defensive policy).
         var policySeconds = settingsSnapshot.LlmsFullBuilder.CachePolicySeconds;
@@ -453,11 +453,11 @@ public sealed class LlmsFullTxtController : Controller
     /// <summary>
     /// Story 3.1 — build a <see cref="ResolvedLlmsSettings"/> from the
     /// appsettings snapshot only (resolver-throw graceful-degradation path).
-    /// Mirrors the shape <see cref="DefaultLlmsSettingsResolver"/> produces
+    /// Mirrors the shape <see cref="DefaultSettingsResolver"/> produces
     /// internally; pure duplication is acceptable here because the resolver's
     /// build helper is private.
     /// </summary>
-    private static ResolvedLlmsSettings BuildAppsettingsFallback(LlmsTxtSettings settings)
+    private static ResolvedLlmsSettings BuildAppsettingsFallback(AiVisibilitySettings settings)
     {
         var excludedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var alias in settings.ExcludedDoctypeAliases ?? Array.Empty<string>())

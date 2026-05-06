@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -154,8 +154,8 @@ public class ExtractionQualityBenchmarkTests
 
     private static DefaultMarkdownContentExtractor BuildExtractor()
     {
-        var settings = new LlmsTxtSettings { MainContentSelectors = Array.Empty<string>() };
-        var options = new StubOptionsSnapshot<LlmsTxtSettings>(settings);
+        var settings = new AiVisibilitySettings { MainContentSelectors = Array.Empty<string>() };
+        var options = new StubOptionsSnapshot<AiVisibilitySettings>(settings);
 
         return new DefaultMarkdownContentExtractor(
             pageRenderer: null!, // exercised via the public path; benchmark uses the internal seam

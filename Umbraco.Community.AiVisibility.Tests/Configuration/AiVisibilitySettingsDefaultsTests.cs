@@ -1,7 +1,7 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Configuration;
 
-namespace LlmsTxt.Umbraco.Tests.Configuration;
+namespace Umbraco.Community.AiVisibility.Tests.Configuration;
 
 /// <summary>
 /// Story 3.3 — drift-detection gate for the in-code defaults that adopters
@@ -23,7 +23,7 @@ namespace LlmsTxt.Umbraco.Tests.Configuration;
 /// — an empty <see cref="IConfiguration"/> with no <c>LlmsTxt:</c> section.
 /// Pins the AC1 contract: a host with no <c>LlmsTxt:</c> entry in its
 /// <c>appsettings.json</c> still gets the in-code defaults via the
-/// <c>configuration.GetSection(...).Get&lt;LlmsTxtSettings&gt;() ?? new()</c>
+/// <c>configuration.GetSection(...).Get&lt;AiVisibilitySettings&gt;() ?? new()</c>
 /// composer pattern.
 /// </description></item>
 /// <item><description>
@@ -44,7 +44,7 @@ public class LlmsTxtSettingsDefaultsTests
     [Test]
     public void Defaults_NewLlmsTxtSettings_AllFieldsHoldInCodeDefaults()
     {
-        var settings = new LlmsTxtSettings();
+        var settings = new AiVisibilitySettings();
 
         Assert.Multiple(() =>
         {
@@ -165,9 +165,9 @@ public class LlmsTxtSettingsDefaultsTests
             .Build();
 
         var bound = configuration
-            .GetSection(LlmsTxtSettings.SectionName)
-            .Get<LlmsTxtSettings>()
-            ?? new LlmsTxtSettings();
+            .GetSection(AiVisibilitySettings.SectionName)
+            .Get<AiVisibilitySettings>()
+            ?? new AiVisibilitySettings();
 
         Assert.Multiple(() =>
         {
@@ -210,9 +210,9 @@ public class LlmsTxtSettingsDefaultsTests
             .Build();
 
         var bound = configuration
-            .GetSection(LlmsTxtSettings.SectionName)
-            .Get<LlmsTxtSettings>()
-            ?? new LlmsTxtSettings();
+            .GetSection(AiVisibilitySettings.SectionName)
+            .Get<AiVisibilitySettings>()
+            ?? new AiVisibilitySettings();
 
         Assert.Multiple(() =>
         {
@@ -244,7 +244,7 @@ public class LlmsTxtSettingsDefaultsTests
         // initialiser are version-sensitive; this test makes the
         // behaviour explicit. If the binder ever starts replacing the
         // initialiser with null, this test fails immediately and the
-        // fix lives in LlmsTxtSettings (single source of truth) rather
+        // fix lives in AiVisibilitySettings (single source of truth) rather
         // than scattered defensive `?? Array.Empty<string>()` at every
         // call site.
         var configuration = new ConfigurationBuilder()
@@ -257,9 +257,9 @@ public class LlmsTxtSettingsDefaultsTests
             .Build();
 
         var bound = configuration
-            .GetSection(LlmsTxtSettings.SectionName)
-            .Get<LlmsTxtSettings>()
-            ?? new LlmsTxtSettings();
+            .GetSection(AiVisibilitySettings.SectionName)
+            .Get<AiVisibilitySettings>()
+            ?? new AiVisibilitySettings();
 
         Assert.Multiple(() =>
         {

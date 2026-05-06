@@ -9,7 +9,7 @@ namespace LlmsTxt.Umbraco.Extraction;
 /// <item><c>[data-llms-content]</c> — adopter-controlled boundary, the killer feature</item>
 /// <item><c>&lt;main&gt;</c></item>
 /// <item><c>&lt;article&gt;</c></item>
-/// <item>each selector in <c>LlmsTxtSettings.MainContentSelectors</c> (Story 3.1 fills this)</item>
+/// <item>each selector in <c>AiVisibilitySettings.MainContentSelectors</c> (Story 3.1 fills this)</item>
 /// </list>
 /// Returns null when nothing matches → caller falls through to SmartReader.
 /// </summary>

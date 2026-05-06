@@ -21,7 +21,7 @@ namespace LlmsTxt.Umbraco.Extraction;
 /// (HTML parser, Markdown converter, frontmatter shape, etc.). Adopters who only need
 /// to change the content-region boundary (e.g. their templates have an unusual
 /// "main content" wrapper not covered by <c>data-llms-content</c> / <c>&lt;main&gt;</c>
-/// / <c>&lt;article&gt;</c> / <see cref="Configuration.LlmsTxtSettings.MainContentSelectors"/>)
+/// / <c>&lt;article&gt;</c> / <see cref="Configuration.AiVisibilitySettings.MainContentSelectors"/>)
 /// should override the lighter <see cref="IContentRegionSelector"/> instead.
 /// </para>
 ///

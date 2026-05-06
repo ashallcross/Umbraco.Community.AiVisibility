@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging;
@@ -45,13 +45,13 @@ public sealed class DefaultLlmsRequestLogHandler :
     INotificationAsyncHandler<LlmsFullTxtRequestedNotification>
 {
     private readonly IRequestLog _requestLog;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<DefaultLlmsRequestLogHandler> _logger;
 
     public DefaultLlmsRequestLogHandler(
         IRequestLog requestLog,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         TimeProvider timeProvider,
         ILogger<DefaultLlmsRequestLogHandler> logger)
     {

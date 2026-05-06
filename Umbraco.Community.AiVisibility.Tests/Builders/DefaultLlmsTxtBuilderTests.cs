@@ -1,5 +1,5 @@
 using LlmsTxt.Umbraco.Builders;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.Extensions.Logging;
@@ -64,7 +64,7 @@ public class DefaultLlmsTxtBuilderTests
     public async Task BuildAsync_SiteNameAndSummaryFromSettings_OverridesDefaults()
     {
         var root = StubPage("RootName", "homePage", "/", relativeUrl: "/");
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             SiteName = "Acme Docs",
             SiteSummary = "Acme product documentation",
@@ -149,7 +149,7 @@ public class DefaultLlmsTxtBuilderTests
 
     /// <summary>
     /// Story 3.3 AC6 (layer-3 only) — explicit empty
-    /// <see cref="LlmsTxtSettings.SiteName"/> (the "editor cleared the field"
+    /// <see cref="AiVisibilitySettings.SiteName"/> (the "editor cleared the field"
     /// path) falls through the IsNullOrWhiteSpace check at
     /// <c>DefaultLlmsTxtBuilder.cs:106</c> and emits the root content node's
     /// <see cref="IPublishedContent.Name"/>. The layer-4 fallback to the
@@ -160,7 +160,7 @@ public class DefaultLlmsTxtBuilderTests
     public async Task BuildAsync_SiteNameClearedExplicitly_FallsBackToRootName()
     {
         var root = StubPage("RootName", "homePage", "/", relativeUrl: "/");
-        var settings = new LlmsTxtSettings { SiteName = string.Empty };
+        var settings = new AiVisibilitySettings { SiteName = string.Empty };
         var ctx = MakeContext(root, new[] { root }, settings);
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -179,7 +179,7 @@ public class DefaultLlmsTxtBuilderTests
         var root = StubPage("Acme", "homePage", "/", relativeUrl: "/");
         var article = StubPage("Article 1", "article", "/articles/1", relativeUrl: "/articles/1");
         var doc = StubPage("Doc 1", "docPage", "/docs/1", relativeUrl: "/docs/1");
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings
             {
@@ -214,7 +214,7 @@ public class DefaultLlmsTxtBuilderTests
     {
         var root = StubPage("Acme", "homePage", "/", relativeUrl: "/");
         var article = StubPage("Article 1", "article", "/articles/1", relativeUrl: "/articles/1");
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             LlmsTxtBuilder = new LlmsTxtBuilderSettings
             {
@@ -501,7 +501,7 @@ public class DefaultLlmsTxtBuilderTests
         // (overlay), NOT from BaseSettings.SiteName (appsettings). Pin the
         // contract so a future refactor can't silently revert to reading
         // appsettings directly.
-        var appsettings = new LlmsTxtSettings { SiteName = "Default Acme" };
+        var appsettings = new AiVisibilitySettings { SiteName = "Default Acme" };
         var resolvedRecord = new ResolvedLlmsSettings(
             SiteName: "Acme Docs",            // doctype overlay wins
             SiteSummary: "Doctype summary",
@@ -536,14 +536,14 @@ public class DefaultLlmsTxtBuilderTests
     private LlmsTxtBuilderContext MakeContext(
         IPublishedContent root,
         IReadOnlyList<IPublishedContent> pages,
-        LlmsTxtSettings? settings = null,
+        AiVisibilitySettings? settings = null,
         IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>? hreflangVariants = null)
         => new(
             Hostname: Host,
             Culture: Culture,
             RootContent: root,
             Pages: pages,
-            Settings: (settings ?? new LlmsTxtSettings()).ToResolved(),
+            Settings: (settings ?? new AiVisibilitySettings()).ToResolved(),
             HreflangVariants: hreflangVariants);
 
     private IPublishedContent StubPage(

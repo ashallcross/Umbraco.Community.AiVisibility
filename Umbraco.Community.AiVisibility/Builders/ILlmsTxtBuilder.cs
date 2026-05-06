@@ -27,7 +27,7 @@ namespace LlmsTxt.Umbraco.Builders;
 /// calls (per-request state flows through <see cref="LlmsTxtBuilderContext"/>),
 /// but the default builder pulls <see cref="Extraction.IMarkdownContentExtractor"/>
 /// (transient) whose decorator factory pulls scoped
-/// <c>IOptionsSnapshot&lt;LlmsTxtSettings&gt;</c>. A Singleton builder would form
+/// <c>IOptionsSnapshot&lt;AiVisibilitySettings&gt;</c>. A Singleton builder would form
 /// a captive dependency on the scoped options snapshot — registering as Transient
 /// matches the extractor's lifetime. See <see cref="Composers.BuildersComposer"/>
 /// for the full rationale (and Story 2.1 Spec Drift Note #7 — this is a

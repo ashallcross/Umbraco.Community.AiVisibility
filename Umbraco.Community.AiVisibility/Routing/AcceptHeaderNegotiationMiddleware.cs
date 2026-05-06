@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Notifications;
 using Microsoft.AspNetCore.Http;
@@ -28,16 +28,16 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
 
     private readonly IMarkdownContentExtractor _extractor;
     private readonly IMarkdownResponseWriter _writer;
-    private readonly ILlmsExclusionEvaluator _exclusionEvaluator;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IExclusionEvaluator _exclusionEvaluator;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly ILlmsNotificationPublisher _notificationPublisher;
     private readonly ILogger<AcceptHeaderNegotiationMiddleware> _logger;
 
     public AcceptHeaderNegotiationMiddleware(
         IMarkdownContentExtractor extractor,
         IMarkdownResponseWriter writer,
-        ILlmsExclusionEvaluator exclusionEvaluator,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IExclusionEvaluator exclusionEvaluator,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         ILlmsNotificationPublisher notificationPublisher,
         ILogger<AcceptHeaderNegotiationMiddleware> logger)
     {
@@ -98,7 +98,7 @@ internal sealed class AcceptHeaderNegotiationMiddleware : IMiddleware
 
         // Story 3.1 § Failure & Edge Cases line 463 — exclusion check on the
         // negotiation path. Story 4.1 lifted the per-page-bool-then-resolver
-        // shape into ILlmsExclusionEvaluator so the controller, this middleware,
+        // shape into IExclusionEvaluator so the controller, this middleware,
         // the discoverability header middleware, and the TagHelpers all consume
         // the same rule set.
         var host = context.Request.Host.HasValue ? context.Request.Host.Host : null;

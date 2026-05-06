@@ -3,7 +3,7 @@ namespace LlmsTxt.Umbraco.Controllers.Backoffice;
 /// <summary>
 /// Story 3.2 — view model returned by <c>GET /umbraco/management/api/v1/llmstxt/settings/</c>
 /// (and the round-trip body of <c>PUT /</c>). Carries the per-field
-/// resolver overlay <see cref="Configuration.ILlmsSettingsResolver.ResolveAsync"/>
+/// resolver overlay <see cref="Configuration.ISettingsResolver.ResolveAsync"/>
 /// produces, plus the live <c>llmsSettings</c> content node key so the dashboard
 /// can deep-link into the standard Umbraco content tree if the editor wants to
 /// edit related properties (e.g. add the per-page composition to a doctype).
@@ -55,7 +55,7 @@ public sealed record LlmsSettingsViewModel(
 /// New exclusion list. Server validates: no whitespace-only entries, no case-insensitive
 /// duplicates. Persisted as newline-separated text into the Settings doctype's
 /// <c>excludedDoctypeAliases</c> textarea (matches the resolver's parser at
-/// <see cref="Configuration.DefaultLlmsSettingsResolver"/>). Empty list clears all
+/// <see cref="Configuration.DefaultSettingsResolver"/>). Empty list clears all
 /// doctype-level exclusions; the appsettings list (if any) still applies.
 /// </param>
 public sealed record LlmsSettingsUpdateRequest(

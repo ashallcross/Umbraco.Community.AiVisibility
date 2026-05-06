@@ -1,5 +1,5 @@
 using System.Text;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Routing;
@@ -191,7 +191,7 @@ public class MarkdownControllerTests
             new StubExtractor(BuildFound("# x\n")),
             MakeStubResolver(content: BuildContent(), culture: null),
             "GET", "https", "example.test", "/home.md",
-            settings: new LlmsTxtSettings { CachePolicySeconds = 120 });
+            settings: new AiVisibilitySettings { CachePolicySeconds = 120 });
 
         await controller.Render(path: "/home.md", CancellationToken.None);
 
@@ -358,7 +358,7 @@ public class MarkdownControllerTests
             new StubExtractor(BuildFound("# x\n")),
             MakeStubResolver(content: BuildContent(), culture: null),
             "GET", "https", "example.test", "/home.md",
-            settings: new LlmsTxtSettings { CachePolicySeconds = 0 });
+            settings: new AiVisibilitySettings { CachePolicySeconds = 0 });
 
         await controller.Render(path: "/home.md", CancellationToken.None);
 
@@ -461,13 +461,13 @@ public class MarkdownControllerTests
     [Test]
     public async Task Render_ResolverThrows_FailsOpenAndExtracts()
     {
-        // Story 3.1 § Failure & Edge Cases — `ILlmsSettingsResolver.ResolveAsync`
+        // Story 3.1 § Failure & Edge Cases — `ISettingsResolver.ResolveAsync`
         // throwing must NOT 500 the route. MarkdownController catches and treats
         // the page as not-excluded (fail-open) so a transient resolver fault
         // doesn't blackhole every Markdown request.
         var extractor = new StubExtractor(BuildFound("# Home\n"));
         var resolver = MakeStubResolver(content: BuildContent(contentTypeAlias: "homePage"), culture: "en-GB");
-        var throwingResolver = Substitute.For<ILlmsSettingsResolver>();
+        var throwingResolver = Substitute.For<ISettingsResolver>();
         throwingResolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns<Task<ResolvedLlmsSettings>>(_ => throw new InvalidOperationException("simulated resolver fault"));
         var controller = MakeController(extractor, resolver, "GET", "https", "example.test", "/home.md",
@@ -658,22 +658,22 @@ public class MarkdownControllerTests
     private static StubResolver StubResolverNotFound()
         => new(MarkdownRouteResolution.NotFound());
 
-    private static ILlmsSettingsResolver BuildDefaultSettingsResolver(LlmsTxtSettings settings)
+    private static ISettingsResolver BuildDefaultSettingsResolver(AiVisibilitySettings settings)
     {
-        var sub = Substitute.For<ILlmsSettingsResolver>();
+        var sub = Substitute.For<ISettingsResolver>();
         sub.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(settings.ToResolved()));
         return sub;
     }
 
-    private static ILlmsSettingsResolver BuildSettingsResolverWithExcludedAliases(params string[] aliases)
+    private static ISettingsResolver BuildSettingsResolverWithExcludedAliases(params string[] aliases)
     {
         var resolved = new ResolvedLlmsSettings(
             SiteName: null,
             SiteSummary: null,
             ExcludedDoctypeAliases: new HashSet<string>(aliases, StringComparer.OrdinalIgnoreCase),
-            BaseSettings: new LlmsTxtSettings());
-        var sub = Substitute.For<ILlmsSettingsResolver>();
+            BaseSettings: new AiVisibilitySettings());
+        var sub = Substitute.For<ISettingsResolver>();
         sub.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(resolved));
         return sub;
@@ -686,9 +686,9 @@ public class MarkdownControllerTests
         string scheme,
         string host,
         string path,
-        LlmsTxtSettings? settings = null,
+        AiVisibilitySettings? settings = null,
         MemoryStream? body = null,
-        ILlmsSettingsResolver? settingsResolverOverride = null,
+        ISettingsResolver? settingsResolverOverride = null,
         LlmsTxt.Umbraco.Notifications.ILlmsNotificationPublisher? notificationPublisher = null)
     {
         var httpContext = new DefaultHttpContext();
@@ -701,8 +701,8 @@ public class MarkdownControllerTests
             httpContext.Response.Body = body;
         }
 
-        var resolvedSettings = settings ?? new LlmsTxtSettings();
-        var optionsMonitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        var resolvedSettings = settings ?? new AiVisibilitySettings();
+        var optionsMonitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         optionsMonitor.CurrentValue.Returns(resolvedSettings);
         // Real writer — Story 1.3 keeps the .md route + Accept-negotiation paths in
         // sync by routing both through the same response writer; controller tests
@@ -717,9 +717,9 @@ public class MarkdownControllerTests
         // Story 4.1 — controller now consumes the shared exclusion evaluator
         // (which wraps the resolver). Construct it here so existing tests that
         // override the resolver continue exercising the same exclusion path.
-        var exclusionEvaluator = new DefaultLlmsExclusionEvaluator(
+        var exclusionEvaluator = new DefaultExclusionEvaluator(
             settingsResolver,
-            NullLogger<DefaultLlmsExclusionEvaluator>.Instance);
+            NullLogger<DefaultExclusionEvaluator>.Instance);
 
         var controller = new MarkdownController(
             extractor,

@@ -17,7 +17,7 @@ namespace LlmsTxt.Umbraco.Builders;
 /// per-page YAML frontmatter, prefixes each section with
 /// <c># {Title}\n\n_Source: {absolute URL}_\n\n</c>, joins with
 /// <c>\n\n---\n\n</c> separators, and enforces
-/// <see cref="Configuration.LlmsTxtSettings.MaxLlmsFullSizeKb"/> with a stable
+/// <see cref="Configuration.AiVisibilitySettings.MaxLlmsFullSizeKb"/> with a stable
 /// truncation footer when the cap is hit.
 /// </para>
 /// <para>
@@ -31,7 +31,7 @@ namespace LlmsTxt.Umbraco.Builders;
 /// calls (per-request state flows through <see cref="LlmsFullBuilderContext"/>),
 /// but the default builder pulls <see cref="Extraction.IMarkdownContentExtractor"/>
 /// (transient) whose decorator factory pulls scoped
-/// <c>IOptionsSnapshot&lt;LlmsTxtSettings&gt;</c>. A Singleton builder would form
+/// <c>IOptionsSnapshot&lt;AiVisibilitySettings&gt;</c>. A Singleton builder would form
 /// a captive dependency on the scoped options snapshot — registering as Transient
 /// matches the extractor's lifetime. See <see cref="Composers.BuildersComposer"/>
 /// for the full rationale (and Story 2.1 Spec Drift Note #7 — this is a deliberate

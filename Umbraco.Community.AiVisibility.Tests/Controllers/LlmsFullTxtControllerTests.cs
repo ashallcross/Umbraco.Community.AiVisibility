@@ -1,7 +1,7 @@
 using System.Text;
 using LlmsTxt.Umbraco.Builders;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.AspNetCore.Http;
@@ -26,12 +26,12 @@ public class LlmsFullTxtControllerTests
 
     private ILlmsFullBuilder _builder = null!;
     private IHostnameRootResolver _resolver = null!;
-    private ILlmsSettingsResolver _settingsResolver = null!;
+    private ISettingsResolver _settingsResolver = null!;
     private IUmbracoContextFactory _umbracoContextFactory = null!;
     private IDocumentNavigationQueryService _navigation = null!;
     private AppCaches _appCaches = null!;
-    private IOptionsMonitor<LlmsTxtSettings> _settings = null!;
-    private LlmsTxtSettings _currentSettings = null!;
+    private IOptionsMonitor<AiVisibilitySettings> _settings = null!;
+    private AiVisibilitySettings _currentSettings = null!;
     private IUmbracoContext _umbracoContext = null!;
     private IPublishedContentCache _publishedSnapshot = null!;
 
@@ -47,15 +47,15 @@ public class LlmsFullTxtControllerTests
             Substitute.For<IRequestCache>(),
             new IsolatedCaches(_ => new ObjectCacheAppCache()));
 
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = 300 },
         };
-        _settings = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        _settings = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         _settings.CurrentValue.Returns(_ => _currentSettings);
 
         // Story 3.1 — default resolver substitute returns appsettings-only overlay.
-        _settingsResolver = Substitute.For<ILlmsSettingsResolver>();
+        _settingsResolver = Substitute.For<ISettingsResolver>();
         _settingsResolver
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(_currentSettings.ToResolved()));
@@ -309,11 +309,11 @@ public class LlmsFullTxtControllerTests
     public async Task Render_CachePolicySecondsZero_BypassesCache_BuilderInvokedEachRequest()
     {
         // CachePolicySeconds = 0 disables the manifest cache entirely (matches the
-        // LlmsTxtSettings.CachePolicySeconds xmldoc — "0 effectively disables
+        // AiVisibilitySettings.CachePolicySeconds xmldoc — "0 effectively disables
         // caching"). Builder is invoked on every request; cache stays empty.
         var root = StubContent("Acme", "homePage");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = 0 },
         };
@@ -338,7 +338,7 @@ public class LlmsFullTxtControllerTests
         // unlimited + Warning" defensive policy (consistent settings policy).
         var root = StubContent("Acme", "homePage");
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = -10 },
         };
@@ -390,7 +390,7 @@ public class LlmsFullTxtControllerTests
         SeedDescendants(root.Key, blogLanding, blogPost1, aboutPage);
         SeedDescendants(blogLanding.Key, blogPost1);
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = _currentSettings.LlmsFullBuilder,
             LlmsFullScope = new LlmsFullScopeSettings { RootContentTypeAlias = "blogLanding" },
@@ -414,7 +414,7 @@ public class LlmsFullTxtControllerTests
         var blog = StubContent("Blog", "blogPost");
         SeedDescendants(root.Key, blog);
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = _currentSettings.LlmsFullBuilder,
             LlmsFullScope = new LlmsFullScopeSettings { RootContentTypeAlias = "nonExistent" },
@@ -442,7 +442,7 @@ public class LlmsFullTxtControllerTests
         var blog = StubContent("Blog", "blogPost");
         SeedDescendants(root.Key, blog);
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = _currentSettings.LlmsFullBuilder,
             LlmsFullScope = new LlmsFullScopeSettings { RootContentTypeAlias = "   " },
@@ -467,7 +467,7 @@ public class LlmsFullTxtControllerTests
         var about = StubContent("About", "contentPage");
         SeedDescendants(root.Key, blog, about);
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = _currentSettings.LlmsFullBuilder,
             LlmsFullScope = new LlmsFullScopeSettings
@@ -516,7 +516,7 @@ public class LlmsFullTxtControllerTests
         var error = StubContent("404", "errorPage");
         SeedDescendants(root.Key, error);
         _resolver.Resolve(Host, _umbracoContext).Returns(HostnameRootResolution.Found(root, Culture));
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = _currentSettings.LlmsFullBuilder,
             LlmsFullScope = new LlmsFullScopeSettings
@@ -650,7 +650,7 @@ public class LlmsFullTxtControllerTests
             .Returns(Task.FromResult(body));
 
         // Run with Hreflang OFF
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = 300 },
             Hreflang = new HreflangSettings { Enabled = false },
@@ -667,7 +667,7 @@ public class LlmsFullTxtControllerTests
         _appCaches.RuntimeCache.ClearByKey(AiVisibilityCacheKeys.LlmsFull(Host, Culture));
 
         // Run with Hreflang ON
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = 300 },
             Hreflang = new HreflangSettings { Enabled = true },
@@ -694,7 +694,7 @@ public class LlmsFullTxtControllerTests
         // body). Story 2.3 still emits an ETag for the empty body — SHA-256("")
         // is well-defined.
         var root = StubContent("Acme", "homePage");
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = 300 },
             LlmsFullScope = new LlmsFullScopeSettings
@@ -784,7 +784,7 @@ public class LlmsFullTxtControllerTests
 
         // Configure LlmsFullScope to NOT exclude redirectPage so we know the
         // resolver's exclusion list is doing the work (default scope excludes it).
-        _currentSettings = new LlmsTxtSettings
+        _currentSettings = new AiVisibilitySettings
         {
             LlmsFullBuilder = new LlmsFullBuilderSettings { CachePolicySeconds = 300 },
             LlmsFullScope = new LlmsFullScopeSettings

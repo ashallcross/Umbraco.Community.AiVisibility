@@ -2,7 +2,7 @@ using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using LlmsTxt.Umbraco.Composers;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.Extensions.Configuration;
@@ -343,7 +343,7 @@ public class RoutingComposerTests
 
     /// <summary>
     /// Story 4.1 DoD bullet 1 — Architect note A4 (epics.md:1164). Pins that
-    /// <see cref="DiscoverabilityHeaderMiddleware"/> + <see cref="DefaultLlmsExclusionEvaluator"/>
+    /// <see cref="DiscoverabilityHeaderMiddleware"/> + <see cref="DefaultExclusionEvaluator"/>
     /// + their transitive package-side deps resolve under
     /// <c>ValidateScopes = ValidateOnBuild = true</c> without forming a captive
     /// dependency.
@@ -369,18 +369,18 @@ public class RoutingComposerTests
         // Mirror RoutingComposer's lifetime declarations for the new Story 4.1
         // surface only — captive deps would surface at BuildServiceProvider time.
         services.AddTransient<DiscoverabilityHeaderMiddleware>();
-        services.TryAddScoped<ILlmsExclusionEvaluator, DefaultLlmsExclusionEvaluator>();
+        services.TryAddScoped<IExclusionEvaluator, DefaultExclusionEvaluator>();
 
         // Stub the seams the new types depend on. Lifetimes match the
         // production composer (resolver Scoped, options monitor Singleton,
         // URL provider Singleton).
-        services.AddSingleton<IOptionsMonitor<LlmsTxtSettings>>(_ =>
+        services.AddSingleton<IOptionsMonitor<AiVisibilitySettings>>(_ =>
         {
-            var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-            monitor.CurrentValue.Returns(new LlmsTxtSettings());
+            var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+            monitor.CurrentValue.Returns(new AiVisibilitySettings());
             return monitor;
         });
-        services.AddScoped<ILlmsSettingsResolver>(_ => Substitute.For<ILlmsSettingsResolver>());
+        services.AddScoped<ISettingsResolver>(_ => Substitute.For<ISettingsResolver>());
         services.AddSingleton<global::Umbraco.Cms.Core.Routing.IPublishedUrlProvider>(
             Substitute.For<global::Umbraco.Cms.Core.Routing.IPublishedUrlProvider>());
         services.AddSingleton(NullLoggerFactory.Instance);
@@ -397,14 +397,14 @@ public class RoutingComposerTests
 
         using var scope = sp.CreateScope();
         var middleware = scope.ServiceProvider.GetRequiredService<DiscoverabilityHeaderMiddleware>();
-        var evaluator = scope.ServiceProvider.GetRequiredService<ILlmsExclusionEvaluator>();
+        var evaluator = scope.ServiceProvider.GetRequiredService<IExclusionEvaluator>();
 
         Assert.Multiple(() =>
         {
             Assert.That(middleware, Is.Not.Null,
                 "DiscoverabilityHeaderMiddleware must resolve cleanly under ValidateOnBuild");
             Assert.That(evaluator, Is.Not.Null,
-                "ILlmsExclusionEvaluator must resolve cleanly under ValidateOnBuild");
+                "IExclusionEvaluator must resolve cleanly under ValidateOnBuild");
         });
     }
 
@@ -415,7 +415,7 @@ public class RoutingComposerTests
         var builder = Substitute.For<IUmbracoBuilder>();
         builder.Services.Returns(services);
 
-        // RoutingComposer binds LlmsTxtSettings to the LlmsTxt: section. An empty
+        // RoutingComposer binds AiVisibilitySettings to the LlmsTxt: section. An empty
         // configuration is fine — the bind succeeds with default values.
         var config = new ConfigurationBuilder().Build();
         builder.Config.Returns(config);
@@ -425,8 +425,8 @@ public class RoutingComposerTests
 
     private static DefaultMarkdownContentExtractor BuildDefaultExtractor(IContentRegionSelector regionSelector)
     {
-        var settings = new LlmsTxtSettings { MainContentSelectors = Array.Empty<string>() };
-        var optionsSnapshot = new StubOptionsSnapshot<LlmsTxtSettings>(settings);
+        var settings = new AiVisibilitySettings { MainContentSelectors = Array.Empty<string>() };
+        var optionsSnapshot = new StubOptionsSnapshot<AiVisibilitySettings>(settings);
 
         // Pipeline tests exercise the internal ExtractFromHtmlAsync seam — the
         // PageRenderer / IPublishedUrlProvider / IHttpContextAccessor params are not

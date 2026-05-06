@@ -1,6 +1,6 @@
 using LlmsTxt.Umbraco.Builders;
 using LlmsTxt.Umbraco.Composers;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -19,7 +19,7 @@ public class BuildersComposerTests
     {
         // Story 2.1 Spec Drift Note #7 — `ILlmsTxtBuilder` must be Transient, NOT
         // Singleton. The default builder pulls `IMarkdownContentExtractor` (transient)
-        // whose decorator factory pulls scoped `IOptionsSnapshot<LlmsTxtSettings>`.
+        // whose decorator factory pulls scoped `IOptionsSnapshot<AiVisibilitySettings>`.
         // Singleton-holding-transient with scoped sub-deps is a captive dependency
         // — it crashed the first manual-gate hit. This test pins the lifetime so a
         // future change can't silently re-introduce the bug.
@@ -32,7 +32,7 @@ public class BuildersComposerTests
         {
             Assert.That(descriptor.Lifetime, Is.EqualTo(ServiceLifetime.Transient),
                 "ILlmsTxtBuilder must be Transient — Singleton would form a captive "
-                + "dependency on IOptionsSnapshot<LlmsTxtSettings> via the extractor's "
+                + "dependency on IOptionsSnapshot<AiVisibilitySettings> via the extractor's "
                 + "caching decorator (Spec Drift Note #7).");
             Assert.That(descriptor.ImplementationType, Is.EqualTo(typeof(DefaultLlmsTxtBuilder)),
                 "default implementation is DefaultLlmsTxtBuilder");

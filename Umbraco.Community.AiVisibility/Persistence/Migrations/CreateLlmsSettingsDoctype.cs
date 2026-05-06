@@ -136,7 +136,7 @@ public sealed class CreateLlmsSettingsDoctype : AsyncMigrationBase
         {
             Alias = SettingsDoctypeAlias,
             Name = "LlmsTxt Settings",
-            Description = "Settings for the LlmsTxt.Umbraco package — site name, summary, and per-doctype exclusion list. One node per Umbraco install, applied to every site (allowed at root). Adopters needing per-site overrides register a custom ILlmsSettingsResolver — see docs/getting-started.md.",
+            Description = "Settings for the LlmsTxt.Umbraco package — site name, summary, and per-doctype exclusion list. One node per Umbraco install, applied to every site (allowed at root). Adopters needing per-site overrides register a custom ISettingsResolver — see docs/getting-started.md.",
             Icon = "icon-settings color-purple",
             AllowedAsRoot = true,
         };

@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Notifications;
 using LlmsTxt.Umbraco.Routing;
@@ -25,7 +25,7 @@ namespace LlmsTxt.Umbraco.Controllers;
 /// route resolution and extraction: pages whose <c>ContentType.Alias</c> is in the
 /// resolved <c>ExcludedDoctypeAliases</c> OR whose <c>excludeFromLlmExports</c>
 /// composition property is <c>true</c> are returned as 404. Story 4.1 lifted that
-/// rule into the shared <see cref="ILlmsExclusionEvaluator"/> so the discoverability
+/// rule into the shared <see cref="IExclusionEvaluator"/> so the discoverability
 /// header middleware and <c>&lt;llms-link /&gt;</c> / <c>&lt;llms-hint /&gt;</c>
 /// TagHelpers consume the same answer.
 /// </para>
@@ -40,8 +40,8 @@ public sealed class MarkdownController : Controller
     private readonly IMarkdownContentExtractor _extractor;
     private readonly IMarkdownRouteResolver _routeResolver;
     private readonly IMarkdownResponseWriter _responseWriter;
-    private readonly ILlmsExclusionEvaluator _exclusionEvaluator;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IExclusionEvaluator _exclusionEvaluator;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly ILlmsNotificationPublisher _notificationPublisher;
     private readonly ILogger<MarkdownController> _logger;
 
@@ -49,8 +49,8 @@ public sealed class MarkdownController : Controller
         IMarkdownContentExtractor extractor,
         IMarkdownRouteResolver routeResolver,
         IMarkdownResponseWriter responseWriter,
-        ILlmsExclusionEvaluator exclusionEvaluator,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IExclusionEvaluator exclusionEvaluator,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         ILlmsNotificationPublisher notificationPublisher,
         ILogger<MarkdownController> logger)
     {

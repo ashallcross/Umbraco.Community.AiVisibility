@@ -1,5 +1,5 @@
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,7 +21,7 @@ public class CachingMarkdownExtractorDecoratorTests
     private CacheKeyIndex _index = null!;
     private AppCaches _appCaches = null!;
     private IHttpContextAccessor _httpContextAccessor = null!;
-    private IOptionsMonitor<LlmsTxtSettings> _settings = null!;
+    private IOptionsMonitor<AiVisibilitySettings> _settings = null!;
 
     [SetUp]
     public void Setup()
@@ -35,8 +35,8 @@ public class CachingMarkdownExtractorDecoratorTests
         {
             HttpContext = new DefaultHttpContext { Request = { Host = new HostString(TestHost) } },
         };
-        _settings = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        _settings.CurrentValue.Returns(new LlmsTxtSettings { CachePolicySeconds = 60 });
+        _settings = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        _settings.CurrentValue.Returns(new AiVisibilitySettings { CachePolicySeconds = 60 });
     }
 
     [TearDown]
@@ -210,7 +210,7 @@ public class CachingMarkdownExtractorDecoratorTests
         // Umbraco's ObjectCacheAppCache treats TimeSpan.Zero as immediate eviction, so the
         // factory runs on every request — adopters who set 0 get cache-disabled behaviour
         // for free without us shipping a separate "caching disabled" flag.
-        _settings.CurrentValue.Returns(new LlmsTxtSettings { CachePolicySeconds = 0 });
+        _settings.CurrentValue.Returns(new AiVisibilitySettings { CachePolicySeconds = 0 });
         var inner = new CountingExtractor(BuildFound("md"));
         var decorator = MakeDecorator(inner);
         var content = StubContent(NodeA);

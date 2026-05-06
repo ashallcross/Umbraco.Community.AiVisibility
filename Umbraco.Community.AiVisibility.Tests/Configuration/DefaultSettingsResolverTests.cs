@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -9,7 +9,7 @@ using Umbraco.Cms.Core.PublishedCache;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Web;
 
-namespace LlmsTxt.Umbraco.Tests.Configuration;
+namespace Umbraco.Community.AiVisibility.Tests.Configuration;
 
 [TestFixture]
 public class DefaultLlmsSettingsResolverTests
@@ -18,24 +18,24 @@ public class DefaultLlmsSettingsResolverTests
     private const string Culture = "en-gb";
     private static readonly Guid SettingsNodeKey = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private LlmsTxtSettings _appsettings = null!;
-    private IOptionsMonitor<LlmsTxtSettings> _options = null!;
+    private AiVisibilitySettings _appsettings = null!;
+    private IOptionsMonitor<AiVisibilitySettings> _options = null!;
     private IUmbracoContextAccessor _accessor = null!;
     private IUmbracoContext _umbracoContext = null!;
     private IPublishedContentCache _publishedSnapshot = null!;
     private IDocumentNavigationQueryService _navigation = null!;
     private AppCaches _appCaches = null!;
-    private DefaultLlmsSettingsResolver _resolver = null!;
+    private DefaultSettingsResolver _resolver = null!;
 
     [SetUp]
     public void Setup()
     {
         // Reset the static log-once dedup so log-assertion tests see fresh
         // state regardless of fixture/test ordering.
-        DefaultLlmsSettingsResolver.ResetForTestingDedupGuards();
+        DefaultSettingsResolver.ResetForTestingDedupGuards();
 
-        _appsettings = new LlmsTxtSettings();
-        _options = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        _appsettings = new AiVisibilitySettings();
+        _options = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         _options.CurrentValue.Returns(_ => _appsettings);
 
         _accessor = Substitute.For<IUmbracoContextAccessor>();
@@ -60,12 +60,12 @@ public class DefaultLlmsSettingsResolverTests
             Substitute.For<IRequestCache>(),
             new IsolatedCaches(_ => new ObjectCacheAppCache()));
 
-        _resolver = new DefaultLlmsSettingsResolver(
+        _resolver = new DefaultSettingsResolver(
             _options,
             _accessor,
             _navigation,
             _appCaches,
-            NullLogger<DefaultLlmsSettingsResolver>.Instance);
+            NullLogger<DefaultSettingsResolver>.Instance);
     }
 
     /// <summary>
@@ -73,13 +73,13 @@ public class DefaultLlmsSettingsResolverTests
     /// substitute. Returns the substitute so tests can assert on
     /// <c>LogInformation</c> / <c>LogWarning</c> call counts.
     /// </summary>
-    private (DefaultLlmsSettingsResolver resolver, ILogger<DefaultLlmsSettingsResolver> logger) CreateResolverWithCapturedLogger()
+    private (DefaultSettingsResolver resolver, ILogger<DefaultSettingsResolver> logger) CreateResolverWithCapturedLogger()
     {
-        var logger = Substitute.For<ILogger<DefaultLlmsSettingsResolver>>();
+        var logger = Substitute.For<ILogger<DefaultSettingsResolver>>();
         // ILogger.IsEnabled must return true or LoggerExtensions.LogXxx
         // short-circuits before reaching ILogger.Log.
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var resolver = new DefaultLlmsSettingsResolver(
+        var resolver = new DefaultSettingsResolver(
             _options,
             _accessor,
             _navigation,
@@ -101,7 +101,7 @@ public class DefaultLlmsSettingsResolverTests
         // No root content nodes have llmsSettings doctype → fall back to
         // appsettings values verbatim. Information-once log is fire-and-forget;
         // not asserted here (NullLogger drops it).
-        _appsettings = new LlmsTxtSettings
+        _appsettings = new AiVisibilitySettings
         {
             SiteName = "Default Acme",
             SiteSummary = "Default summary",
@@ -122,7 +122,7 @@ public class DefaultLlmsSettingsResolverTests
     [Test]
     public async Task ResolveAsync_SettingsNodeWithSiteName_OverridesAppsettings()
     {
-        _appsettings = new LlmsTxtSettings { SiteName = "Default Acme" };
+        _appsettings = new AiVisibilitySettings { SiteName = "Default Acme" };
         SetupSettingsNode(siteName: "Acme Docs");
 
         var resolved = await _resolver.ResolveAsync(Host, Culture, CancellationToken.None);
@@ -136,7 +136,7 @@ public class DefaultLlmsSettingsResolverTests
     {
         // Per-field fallback (NOT all-or-nothing): empty siteName falls back to
         // appsettings; siteSummary still uses the doctype value.
-        _appsettings = new LlmsTxtSettings { SiteName = "Default Acme" };
+        _appsettings = new AiVisibilitySettings { SiteName = "Default Acme" };
         SetupSettingsNode(siteName: "", siteSummary: "Doctype summary");
 
         var resolved = await _resolver.ResolveAsync(Host, Culture, CancellationToken.None);
@@ -177,7 +177,7 @@ public class DefaultLlmsSettingsResolverTests
         // shape — Scoped lifetime would otherwise reset on every request).
         // Disable resolver cache so every call genuinely hits BuildSnapshot
         // and exercises the dedup guard, not the cache layer's natural dedup.
-        _appsettings = new LlmsTxtSettings { SettingsResolverCachePolicySeconds = 0 };
+        _appsettings = new AiVisibilitySettings { SettingsResolverCachePolicySeconds = 0 };
         var (resolver, logger) = CreateResolverWithCapturedLogger();
 
         _ = await resolver.ResolveAsync(Host, Culture, CancellationToken.None);
@@ -199,7 +199,7 @@ public class DefaultLlmsSettingsResolverTests
         // Spec § AC3 + Failure & Edge Cases — siteSummary truncation must
         // surface as a Warning, deduplicated to fire exactly once per culture.
         // TTL=0 to exercise the dedup guard rather than the cache layer.
-        _appsettings = new LlmsTxtSettings { SettingsResolverCachePolicySeconds = 0 };
+        _appsettings = new AiVisibilitySettings { SettingsResolverCachePolicySeconds = 0 };
         SetupSettingsNode(siteSummary: new string('A', 600));
         var (resolver, logger) = CreateResolverWithCapturedLogger();
 
@@ -217,7 +217,7 @@ public class DefaultLlmsSettingsResolverTests
     [Test]
     public async Task ResolveAsync_ExcludedDoctypeAliases_UnionsAppsettingsAndDoctypeValues()
     {
-        _appsettings = new LlmsTxtSettings
+        _appsettings = new AiVisibilitySettings
         {
             ExcludedDoctypeAliases = new[] { "errorPage", "redirectPage" },
         };

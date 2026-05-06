@@ -1,6 +1,6 @@
 using System.Net;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -207,11 +207,11 @@ public class DefaultRobotsAuditorUrlBuilderTests
         httpFactory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(handler, disposeHandler: false));
         httpFactory.CreateClient().Returns(_ => new HttpClient(handler, disposeHandler: false));
 
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             RobotsAuditor = new RobotsAuditorSettings { DevFetchPort = devFetchPort },
         };
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         monitor.CurrentValue.Returns(settings);
         var caches = new AppCaches(
             new ObjectCacheAppCache(),

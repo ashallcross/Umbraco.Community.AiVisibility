@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Controllers.Backoffice;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -39,7 +39,7 @@ public class LlmsSettingsManagementApiControllerTests
             SiteName: "Appsettings Site",
             SiteSummary: "Appsettings Summary",
             ExcludedDoctypeAliases: new HashSet<string>(StringComparer.OrdinalIgnoreCase),
-            BaseSettings: new LlmsTxtSettings { SiteName = "Appsettings Site", SiteSummary = "Appsettings Summary" }));
+            BaseSettings: new AiVisibilitySettings { SiteName = "Appsettings Site", SiteSummary = "Appsettings Summary" }));
         fixture.WithRoots(/* none — no Settings node */);
 
         var result = await fixture.Controller.GetAsync(CancellationToken.None);
@@ -69,7 +69,7 @@ public class LlmsSettingsManagementApiControllerTests
             SiteName: "Doctype Site",
             SiteSummary: "Doctype Summary",
             ExcludedDoctypeAliases: new HashSet<string>(new[] { "redirectPage", "errorPage" }, StringComparer.OrdinalIgnoreCase),
-            BaseSettings: new LlmsTxtSettings()));
+            BaseSettings: new AiVisibilitySettings()));
         fixture.WithSettingsRootNode();
 
         var result = await fixture.Controller.GetAsync(CancellationToken.None);
@@ -675,7 +675,7 @@ public class LlmsSettingsManagementApiControllerTests
             SiteName: null,
             SiteSummary: null,
             ExcludedDoctypeAliases: new HashSet<string>(StringComparer.OrdinalIgnoreCase),
-            BaseSettings: new LlmsTxtSettings());
+            BaseSettings: new AiVisibilitySettings());
 
     private static IContentType StubContentType(string alias, string name, bool isElement, string? icon)
     {
@@ -735,7 +735,7 @@ public class LlmsSettingsManagementApiControllerTests
     /// </summary>
     private sealed class ControllerFixture
     {
-        public ILlmsSettingsResolver Resolver { get; } = Substitute.For<ILlmsSettingsResolver>();
+        public ISettingsResolver Resolver { get; } = Substitute.For<ISettingsResolver>();
         public IContentService ContentService { get; } = Substitute.For<IContentService>();
         public IContentTypeService ContentTypeService { get; } = Substitute.For<IContentTypeService>();
         public IUmbracoContextAccessor UmbracoContextAccessor { get; } = Substitute.For<IUmbracoContextAccessor>();

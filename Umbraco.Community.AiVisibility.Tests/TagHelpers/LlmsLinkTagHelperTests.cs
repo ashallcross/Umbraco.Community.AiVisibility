@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.TagHelpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -83,9 +83,9 @@ public class LlmsLinkTagHelperTests
         return provider;
     }
 
-    private static ILlmsExclusionEvaluator NotExcluded()
+    private static IExclusionEvaluator NotExcluded()
     {
-        var evaluator = Substitute.For<ILlmsExclusionEvaluator>();
+        var evaluator = Substitute.For<IExclusionEvaluator>();
         evaluator.IsExcludedAsync(
             Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(false);
@@ -153,7 +153,7 @@ public class LlmsLinkTagHelperTests
     [Test]
     public async Task ProcessAsync_PageExcluded_SuppressesOutput()
     {
-        var excluded = Substitute.For<ILlmsExclusionEvaluator>();
+        var excluded = Substitute.For<IExclusionEvaluator>();
         excluded.IsExcludedAsync(
             Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(true);
@@ -281,7 +281,7 @@ public class LlmsLinkTagHelperTests
     [Test]
     public async Task ProcessAsync_PageExcluded_SuppressesOutputCleanly()
     {
-        var excluded = Substitute.For<ILlmsExclusionEvaluator>();
+        var excluded = Substitute.For<IExclusionEvaluator>();
         excluded.IsExcludedAsync(
             Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(true);

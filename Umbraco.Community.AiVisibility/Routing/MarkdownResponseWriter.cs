@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
@@ -16,9 +16,9 @@ namespace LlmsTxt.Umbraco.Routing;
 /// </summary>
 internal sealed class MarkdownResponseWriter : IMarkdownResponseWriter
 {
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
 
-    public MarkdownResponseWriter(IOptionsMonitor<LlmsTxtSettings> settings)
+    public MarkdownResponseWriter(IOptionsMonitor<AiVisibilitySettings> settings)
     {
         _settings = settings;
     }

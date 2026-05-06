@@ -1,6 +1,6 @@
 using LlmsTxt.Umbraco.Builders;
 using Umbraco.Community.AiVisibility.Caching;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Extraction;
 using LlmsTxt.Umbraco.Tests.TestHelpers;
 using Microsoft.Extensions.Logging;
@@ -122,7 +122,7 @@ public class DefaultLlmsFullBuilderTests
             Culture: Culture,
             RootContent: a,
             Pages: new[] { a },
-            Settings: new LlmsTxtSettings().ToResolved());
+            Settings: new AiVisibilitySettings().ToResolved());
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
 
@@ -157,7 +157,7 @@ public class DefaultLlmsFullBuilderTests
         StubExtractorReturnsBody(a, "Body of A.");
         StubExtractorReturnsBody(b, "Body of B.");
         StubExtractorReturnsBody(c, "Body of C.");
-        // MakeContext uses the in-code default LlmsTxtSettings — no override
+        // MakeContext uses the in-code default AiVisibilitySettings — no override
         var ctx = MakeContext(new[] { a, b, c });
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -203,7 +203,7 @@ public class DefaultLlmsFullBuilderTests
         StubExtractorReturnsBody(banana, "x");
         StubExtractorReturnsBody(apple, "x");
         StubExtractorReturnsBody(cherry, "x");
-        var settings = new LlmsTxtSettings { LlmsFullBuilder = new LlmsFullBuilderSettings { Order = LlmsFullOrder.Alphabetical } };
+        var settings = new AiVisibilitySettings { LlmsFullBuilder = new LlmsFullBuilderSettings { Order = LlmsFullOrder.Alphabetical } };
         var ctx = MakeContext(new[] { banana, apple, cherry }, settings);
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -222,7 +222,7 @@ public class DefaultLlmsFullBuilderTests
         StubExtractorReturnsBody(older, "x");
         StubExtractorReturnsBody(newest, "x");
         StubExtractorReturnsBody(middle, "x");
-        var settings = new LlmsTxtSettings { LlmsFullBuilder = new LlmsFullBuilderSettings { Order = LlmsFullOrder.RecentFirst } };
+        var settings = new AiVisibilitySettings { LlmsFullBuilder = new LlmsFullBuilderSettings { Order = LlmsFullOrder.RecentFirst } };
         var ctx = MakeContext(new[] { older, newest, middle }, settings);
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -240,7 +240,7 @@ public class DefaultLlmsFullBuilderTests
         var second = StubPageWithUpdateDate("Second", "/second", sameDate);
         StubExtractorReturnsBody(first, "x");
         StubExtractorReturnsBody(second, "x");
-        var settings = new LlmsTxtSettings { LlmsFullBuilder = new LlmsFullBuilderSettings { Order = LlmsFullOrder.RecentFirst } };
+        var settings = new AiVisibilitySettings { LlmsFullBuilder = new LlmsFullBuilderSettings { Order = LlmsFullOrder.RecentFirst } };
         var ctx = MakeContext(new[] { first, second }, settings);
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -356,7 +356,7 @@ public class DefaultLlmsFullBuilderTests
         var bigBody = new string('x', 600);
         StubExtractorReturnsBody(a, bigBody);
         StubExtractorReturnsBody(b, bigBody);
-        var settings = new LlmsTxtSettings { MaxLlmsFullSizeKb = 1 };
+        var settings = new AiVisibilitySettings { MaxLlmsFullSizeKb = 1 };
         var ctx = MakeContext(new[] { a, b }, settings);
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -377,7 +377,7 @@ public class DefaultLlmsFullBuilderTests
         var b = StubPage("B", "contentPage", "/b", absolute: "https://sitea.example/b", relativeUrl: "/b");
         StubExtractorReturnsBody(a, new string('x', 5000));
         StubExtractorReturnsBody(b, new string('x', 5000));
-        var settings = new LlmsTxtSettings { MaxLlmsFullSizeKb = 0 };
+        var settings = new AiVisibilitySettings { MaxLlmsFullSizeKb = 0 };
         var ctx = MakeContext(new[] { a, b }, settings);
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -401,7 +401,7 @@ public class DefaultLlmsFullBuilderTests
         // pagesEmitted semantics.
         var a = StubPage("A", "contentPage", "/a", absolute: "https://sitea.example/a", relativeUrl: "/a");
         StubExtractorReturnsBody(a, new string('y', 5000));
-        var settings = new LlmsTxtSettings { MaxLlmsFullSizeKb = 1 };
+        var settings = new AiVisibilitySettings { MaxLlmsFullSizeKb = 1 };
         var ctx = MakeContext(new[] { a }, settings);
 
         var manifest = await MakeBuilder().BuildAsync(ctx, CancellationToken.None);
@@ -442,7 +442,7 @@ public class DefaultLlmsFullBuilderTests
 
     private LlmsFullBuilderContext MakeContext(
         IReadOnlyList<IPublishedContent> pages,
-        LlmsTxtSettings? settings = null,
+        AiVisibilitySettings? settings = null,
         IPublishedContent? root = null)
     {
         var rootOrFirst = root
@@ -454,7 +454,7 @@ public class DefaultLlmsFullBuilderTests
             Culture: Culture,
             RootContent: rootOrFirst,
             Pages: pages,
-            Settings: (settings ?? new LlmsTxtSettings()).ToResolved());
+            Settings: (settings ?? new AiVisibilitySettings()).ToResolved());
     }
 
     private IPublishedContent StubPage(

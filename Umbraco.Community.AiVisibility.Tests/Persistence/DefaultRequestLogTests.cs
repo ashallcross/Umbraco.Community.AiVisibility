@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Logging;
@@ -11,10 +11,10 @@ namespace Umbraco.Community.AiVisibility.Tests.Persistence;
 [TestFixture]
 public class DefaultLlmsRequestLogTests
 {
-    private static IOptionsMonitor<LlmsTxtSettings> SettingsMonitor(LlmsTxtSettings? value = null)
+    private static IOptionsMonitor<AiVisibilitySettings> SettingsMonitor(AiVisibilitySettings? value = null)
     {
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        monitor.CurrentValue.Returns(value ?? new LlmsTxtSettings());
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        monitor.CurrentValue.Returns(value ?? new AiVisibilitySettings());
         return monitor;
     }
 
@@ -46,7 +46,7 @@ public class DefaultLlmsRequestLogTests
     {
         // QueueCapacity is clamped to a minimum of 64 — exercise overflow
         // by writing >64 entries and checking the channel never exceeds 64.
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             RequestLog = new RequestLogSettings { QueueCapacity = 64 },
         };
@@ -70,7 +70,7 @@ public class DefaultLlmsRequestLogTests
         // Operator typo: QueueCapacity = 1 should clamp to MinQueueCapacity (64).
         // We confirm by enqueuing 64 entries and checking they all land
         // (a literal-1 queue would drop 63 of them).
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             RequestLog = new RequestLogSettings { QueueCapacity = 1 },
         };

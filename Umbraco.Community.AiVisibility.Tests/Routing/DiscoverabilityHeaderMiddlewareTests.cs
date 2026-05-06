@@ -1,4 +1,4 @@
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using LlmsTxt.Umbraco.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -21,10 +21,10 @@ namespace LlmsTxt.Umbraco.Tests.Routing;
 [TestFixture]
 public class DiscoverabilityHeaderMiddlewareTests
 {
-    private static IOptionsMonitor<LlmsTxtSettings> Options(LlmsTxtSettings? settings = null)
+    private static IOptionsMonitor<AiVisibilitySettings> Options(AiVisibilitySettings? settings = null)
     {
-        var monitor = Substitute.For<IOptionsMonitor<LlmsTxtSettings>>();
-        monitor.CurrentValue.Returns(settings ?? new LlmsTxtSettings());
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        monitor.CurrentValue.Returns(settings ?? new AiVisibilitySettings());
         return monitor;
     }
 
@@ -122,18 +122,18 @@ public class DiscoverabilityHeaderMiddlewareTests
         return provider;
     }
 
-    private static ILlmsExclusionEvaluator NotExcluded()
+    private static IExclusionEvaluator NotExcluded()
     {
-        var evaluator = Substitute.For<ILlmsExclusionEvaluator>();
+        var evaluator = Substitute.For<IExclusionEvaluator>();
         evaluator
             .IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(false);
         return evaluator;
     }
 
-    private static ILlmsExclusionEvaluator Excluded()
+    private static IExclusionEvaluator Excluded()
     {
-        var evaluator = Substitute.For<ILlmsExclusionEvaluator>();
+        var evaluator = Substitute.For<IExclusionEvaluator>();
         evaluator
             .IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(true);
@@ -141,8 +141,8 @@ public class DiscoverabilityHeaderMiddlewareTests
     }
 
     private static DiscoverabilityHeaderMiddleware Build(
-        IOptionsMonitor<LlmsTxtSettings>? settings = null,
-        ILlmsExclusionEvaluator? exclusion = null,
+        IOptionsMonitor<AiVisibilitySettings>? settings = null,
+        IExclusionEvaluator? exclusion = null,
         IPublishedUrlProvider? urlProvider = null)
         => new(
             settings ?? Options(),
@@ -213,7 +213,7 @@ public class DiscoverabilityHeaderMiddlewareTests
     [Test]
     public async Task InvokeAsync_KillSwitchOff_NoLinkOrVary()
     {
-        var settings = new LlmsTxtSettings
+        var settings = new AiVisibilitySettings
         {
             DiscoverabilityHeader = new DiscoverabilityHeaderSettings { Enabled = false },
         };

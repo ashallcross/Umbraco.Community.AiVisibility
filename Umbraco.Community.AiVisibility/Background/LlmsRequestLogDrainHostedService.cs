@@ -1,5 +1,5 @@
 using System.Data;
-using LlmsTxt.Umbraco.Configuration;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Persistence;
 using Umbraco.Community.AiVisibility.Persistence.Entities;
 using Microsoft.Extensions.Hosting;
@@ -72,7 +72,7 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
 
     private readonly IRequestLog _requestLog;
     private readonly IScopeProvider _scopeProvider;
-    private readonly IOptionsMonitor<LlmsTxtSettings> _settings;
+    private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IServerRoleAccessor _serverRoleAccessor;
     private readonly ILogger<LlmsRequestLogDrainHostedService> _logger;
 
@@ -82,7 +82,7 @@ public sealed class LlmsRequestLogDrainHostedService : IHostedService, IAsyncDis
     public LlmsRequestLogDrainHostedService(
         IRequestLog requestLog,
         IScopeProvider scopeProvider,
-        IOptionsMonitor<LlmsTxtSettings> settings,
+        IOptionsMonitor<AiVisibilitySettings> settings,
         IServerRoleAccessor serverRoleAccessor,
         ILogger<LlmsRequestLogDrainHostedService> logger)
     {
