@@ -98,8 +98,8 @@ const ONBOARDING_RESOLVE_TIMEOUT_MS = 2000;
 const ONBOARDING_BODY =
   "LlmsTxt is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
 
-@customElement("llms-settings-dashboard")
-export class LlmsSettingsDashboardElement
+@customElement("aiv-settings-dashboard")
+export class AiVisibilitySettingsDashboardElement
   extends UmbElementMixin(LitElement)
   implements UmbDashboardElement
 {
@@ -736,11 +736,11 @@ export class LlmsSettingsDashboardElement
 
 // Bellissima accepts `default` OR `element` named export from the dynamic
 // import (Spike 0.B locked decision #7). Export both for belt-and-braces.
-export const element = LlmsSettingsDashboardElement;
-export default LlmsSettingsDashboardElement;
+export const element = AiVisibilitySettingsDashboardElement;
+export default AiVisibilitySettingsDashboardElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "llms-settings-dashboard": LlmsSettingsDashboardElement;
+    "aiv-settings-dashboard": AiVisibilitySettingsDashboardElement;
   }
 }

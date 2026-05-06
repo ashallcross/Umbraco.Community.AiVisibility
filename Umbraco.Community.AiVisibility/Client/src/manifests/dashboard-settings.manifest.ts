@@ -1,16 +1,16 @@
 // Story 3.2 — Backoffice Settings dashboard manifest. Follows Spike 0.B locked
-// decision #4: alias `Llms.Dashboard.Settings`, custom element tag
-// `llms-settings-dashboard`, conditioned on the Settings section.
+// decision #4: alias `AiVisibility.Dashboard.Settings`, custom element tag
+// `aiv-settings-dashboard`, conditioned on the Settings section.
 export const manifests: Array<UmbExtensionManifest> = [
   {
     type: "dashboard",
-    alias: "Llms.Dashboard.Settings",
-    name: "LlmsTxt Settings Dashboard",
-    element: () => import("../elements/llms-settings-dashboard.element.js"),
+    alias: "AiVisibility.Dashboard.Settings",
+    name: "AI Visibility Settings Dashboard",
+    element: () => import("../elements/aiv-settings-dashboard.element.js"),
     weight: 100,
     meta: {
-      label: "LlmsTxt",
-      pathname: "llmstxt-settings",
+      label: "AI Visibility",
+      pathname: "aivisibility-settings",
     },
     conditions: [
       {

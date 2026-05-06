@@ -1,6 +1,6 @@
-import { LitElement as E, html as l, nothing as v, css as P, property as O, state as h, customElement as L } from "@umbraco-cms/backoffice/external/lit";
-import { UmbElementMixin as z } from "@umbraco-cms/backoffice/element-api";
-import { UMB_AUTH_CONTEXT as U } from "@umbraco-cms/backoffice/auth";
+import { LitElement as E, html as l, nothing as v, css as P, property as O, state as h, customElement as z } from "@umbraco-cms/backoffice/external/lit";
+import { UmbElementMixin as U } from "@umbraco-cms/backoffice/element-api";
+import { UMB_AUTH_CONTEXT as L } from "@umbraco-cms/backoffice/auth";
 import { UMB_CURRENT_USER_CONTEXT as I } from "@umbraco-cms/backoffice/current-user";
 import { firstValueFrom as M, filter as R } from "@umbraco-cms/backoffice/external/rxjs";
 var F = Object.defineProperty, q = Object.getOwnPropertyDescriptor, y = (e) => {
@@ -9,9 +9,9 @@ var F = Object.defineProperty, q = Object.getOwnPropertyDescriptor, y = (e) => {
   for (var i = a > 1 ? void 0 : a ? q(t, s) : t, n = e.length - 1, m; n >= 0; n--)
     (m = e[n]) && (i = (a ? m(t, s, i) : m(i)) || i);
   return a && i && F(t, s, i), i;
-}, B = (e, t, s) => t.has(e) || y("Cannot " + s), G = (e, t, s) => t.has(e) ? y("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, s), o = (e, t, s) => (B(e, t, "access private method"), s), r, p, _, f, b, x, S, k, T, C, $, D, A;
-const N = "/umbraco/management/api/v1/llmstxt/settings/", H = "/umbraco/management/api/v1/llmstxt/settings/doctypes", j = "/umbraco/management/api/v1/llmstxt/settings/excluded-pages", X = 3e3, w = "llms.onboarding.dismissed.v1.", V = 2e3, J = "LlmsTxt is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
-let u = class extends z(E) {
+}, B = (e, t, s) => t.has(e) || y("Cannot " + s), G = (e, t, s) => t.has(e) ? y("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, s), o = (e, t, s) => (B(e, t, "access private method"), s), r, p, _, f, b, x, S, k, T, C, $, A, D;
+const N = "/umbraco/management/api/v1/llmstxt/settings/", H = "/umbraco/management/api/v1/llmstxt/settings/doctypes", V = "/umbraco/management/api/v1/llmstxt/settings/excluded-pages", j = 3e3, w = "llms.onboarding.dismissed.v1.", X = 2e3, J = "LlmsTxt is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
+let u = class extends U(E) {
   constructor() {
     super(...arguments), G(this, r), this._state = { kind: "loading" }, this._saveState = { kind: "idle" }, this._excludedPages = { kind: "loading" }, this._formState = {
       siteName: "",
@@ -120,7 +120,7 @@ let u = class extends z(E) {
           >
             ${this._saveState.kind === "saving" ? l`<uui-loader></uui-loader>&nbsp;Saving…` : "Save"}
           </uui-button>
-          ${o(this, r, D).call(this)}
+          ${o(this, r, A).call(this)}
         </div>
       </uui-box>
 
@@ -130,7 +130,7 @@ let u = class extends z(E) {
           via the <code>llmsTxtSettingsComposition</code> composition. Toggle
           per-page exclusions in the standard Umbraco content tree.
         </p>
-        ${o(this, r, A).call(this)}
+        ${o(this, r, D).call(this)}
       </uui-box>
     `;
   }
@@ -140,7 +140,7 @@ p = async function(e, t = {}) {
   this._abortController || (this._abortController = new AbortController());
   const s = this._abortController.signal;
   try {
-    const a = await this.getContext(U);
+    const a = await this.getContext(L);
     if (!a)
       return { ok: !1, status: 0, message: "Backoffice auth context unavailable. Please refresh and try again." };
     const i = a.getOpenApiConfiguration(), n = await i.token(), m = `${i.base}${e}`, c = await fetch(m, {
@@ -206,7 +206,7 @@ _ = async function() {
 };
 f = async function() {
   this._excludedPages = { kind: "loading" };
-  const e = await o(this, r, p).call(this, `${j}?skip=0&take=100`);
+  const e = await o(this, r, p).call(this, `${V}?skip=0&take=100`);
   if (this.isConnected) {
     if (!e.ok) {
       if (e.aborted) return;
@@ -245,7 +245,7 @@ b = async function() {
     excludedDoctypeAliases: [...s.excludedDoctypeAliases]
   }, this._state.kind === "ready" && (this._state = { ...this._state, settings: t }), this._saveState = { kind: "success" }, this._saveToastTimer = setTimeout(() => {
     this._saveState = { kind: "idle" }, this._saveToastTimer = null;
-  }, X), o(this, r, f).call(this);
+  }, j), o(this, r, f).call(this);
 };
 x = function(e) {
   const t = e.target;
@@ -270,7 +270,7 @@ T = async function() {
     const t = await Promise.race([
       M(e.unique.pipe(R((i) => !!i))),
       new Promise(
-        (i) => setTimeout(() => i(null), V)
+        (i) => setTimeout(() => i(null), X)
       )
     ]);
     if (!this.isConnected || (this._currentUserUnique = t, !t))
@@ -308,10 +308,10 @@ $ = function() {
       </div>
     `;
 };
-D = function() {
+A = function() {
   return this._saveState.kind === "success" ? l`<span class="save-success">Settings saved.</span>` : this._saveState.kind === "error" ? l`<span class="save-error">${this._saveState.message}</span>` : v;
 };
-A = function() {
+D = function() {
   if (this._excludedPages.kind === "loading")
     return l`<uui-loader-bar></uui-loader-bar>`;
   if (this._excludedPages.kind === "error")
@@ -483,12 +483,12 @@ d([
   h()
 ], u.prototype, "_currentUserUnique", 2);
 u = d([
-  L("llms-settings-dashboard")
+  z("aiv-settings-dashboard")
 ], u);
 const te = u, se = u;
 export {
-  u as LlmsSettingsDashboardElement,
+  u as AiVisibilitySettingsDashboardElement,
   se as default,
   te as element
 };
-//# sourceMappingURL=llms-settings-dashboard.element-BkfV2ssp.js.map
+//# sourceMappingURL=aiv-settings-dashboard.element-D4iVnL7A.js.map

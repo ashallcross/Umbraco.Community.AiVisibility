@@ -39,7 +39,7 @@ public sealed record SettingsViewModel(
 /// <summary>
 /// Story 3.2 — request body of <c>PUT /umbraco/management/api/v1/llmstxt/settings/</c>.
 /// The controller validates the payload server-side (defence-in-depth — the
-/// dashboard's client-side checks in <c>llms-settings-dashboard.element.ts</c>
+/// dashboard's client-side checks in <c>aiv-settings-dashboard.element.ts</c>
 /// catch the same issues earlier) and writes through <c>IContentService</c>.
 /// </summary>
 /// <param name="SiteName">

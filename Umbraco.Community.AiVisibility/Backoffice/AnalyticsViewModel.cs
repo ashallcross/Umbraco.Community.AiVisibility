@@ -23,9 +23,9 @@ public sealed record LlmsAnalyticsRequestViewModel(
     string? ReferrerHost);
 
 /// <summary>
-/// Story 5.2 — paginated wrapper around <see cref="LlmsAnalyticsRequestViewModel"/>.
+/// Story 5.2 — paginated wrapper around <see cref="AnalyticsRequestViewModel"/>.
 /// Maps NPoco's <c>Page&lt;T&gt;</c> 1:1 onto the wire shape consumed by
-/// <c>llms-ai-traffic-dashboard.element.ts</c>.
+/// <c>aiv-ai-traffic-dashboard.element.ts</c>.
 /// </summary>
 /// <param name="Items">Rows for the current page, ordered <c>createdUtc DESC, id DESC</c>.</param>
 /// <param name="Total">Total in-range row count (BEFORE the optional <see cref="TotalCappedAt"/> hint).</param>

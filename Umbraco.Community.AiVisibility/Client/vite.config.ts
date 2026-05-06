@@ -5,9 +5,9 @@ export default defineConfig({
     lib: {
       entry: "src/bundle.manifests.ts", // Bundle registers one or more manifests
       formats: ["es"],
-      fileName: "llms-txt-umbraco",
+      fileName: "umbraco-community-aivisibility",
     },
-    outDir: "../wwwroot/App_Plugins/LlmsTxtUmbraco", // your web component will be saved in this location
+    outDir: "../wwwroot/App_Plugins/UmbracoCommunityAiVisibility", // your web component will be saved in this location
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {

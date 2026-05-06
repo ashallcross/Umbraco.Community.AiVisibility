@@ -15,7 +15,7 @@ namespace Umbraco.Community.AiVisibility.LlmsTxt;
 /// Story 4.1 — adopter-facing Razor TagHelper that emits a visually-hidden
 /// <c>&lt;div role="note"&gt;</c> with text + anchor pointing at the page's
 /// Markdown alternate. Visually-hidden via the <c>llms-hint</c> CSS class
-/// shipped at <c>/llms-txt-umbraco.css</c> (root-served — package csproj sets
+/// shipped at <c>/umbraco-community-aivisibility.css</c> (root-served — package csproj sets
 /// <c>StaticWebAssetBasePath=/</c>, so the standard RCL <c>/_content/{PackageId}/</c>
 /// prefix does NOT apply); the
 /// adopter opts into the stylesheet via a <c>&lt;link rel="stylesheet"&gt;</c>

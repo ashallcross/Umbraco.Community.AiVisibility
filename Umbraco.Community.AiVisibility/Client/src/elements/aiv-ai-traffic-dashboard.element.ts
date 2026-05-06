@@ -123,8 +123,8 @@ function dateInputValueToUtcMidnightIso(yyyymmdd: string): string {
   return new Date(`${yyyymmdd}T00:00:00.000Z`).toISOString();
 }
 
-@customElement("llms-ai-traffic-dashboard")
-export class LlmsAiTrafficDashboardElement
+@customElement("aiv-ai-traffic-dashboard")
+export class AiVisibilityAiTrafficDashboardElement
   extends UmbElementMixin(LitElement)
   implements UmbDashboardElement
 {
@@ -614,11 +614,11 @@ export class LlmsAiTrafficDashboardElement
 
 // Spike 0.B locked decision #7 — dual default + named exports so Bellissima's
 // ElementLoaderExports<UmbDashboardElement> resolves the dynamic import.
-export const element = LlmsAiTrafficDashboardElement;
-export default LlmsAiTrafficDashboardElement;
+export const element = AiVisibilityAiTrafficDashboardElement;
+export default AiVisibilityAiTrafficDashboardElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "llms-ai-traffic-dashboard": LlmsAiTrafficDashboardElement;
+    "aiv-ai-traffic-dashboard": AiVisibilityAiTrafficDashboardElement;
   }
 }

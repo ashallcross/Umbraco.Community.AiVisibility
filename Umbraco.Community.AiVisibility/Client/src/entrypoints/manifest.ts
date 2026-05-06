@@ -1,7 +1,7 @@
 export const manifests: Array<UmbExtensionManifest> = [
   {
-    name: "Llms Txt Umbraco Entrypoint",
-    alias: "LlmsTxt.Umbraco.Entrypoint",
+    name: "Umbraco Community AI Visibility Entrypoint",
+    alias: "Umbraco.Community.AiVisibility.Entrypoint",
     type: "backofficeEntryPoint",
     js: () => import("./entrypoint.js"),
   },

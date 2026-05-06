@@ -34,7 +34,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// <b>Auth pattern (Spike 0.B locked decision #11):</b> the Management API
 /// enforces bearer-token auth via OpenIddict, NOT cookies. Cookie-only
 /// <c>fetch(..., { credentials: "include" })</c> calls return HTTP 401. The
-/// dashboard at <c>llms-settings-dashboard.element.ts</c> uses
+/// dashboard at <c>aiv-settings-dashboard.element.ts</c> uses
 /// <c>UMB_AUTH_CONTEXT.getOpenApiConfiguration()</c> to obtain a bearer token
 /// per call.
 /// </para>

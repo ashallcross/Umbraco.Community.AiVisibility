@@ -1,19 +1,19 @@
-import { LitElement as I, nothing as u, html as o, css as F, property as O, state as g, customElement as L } from "@umbraco-cms/backoffice/external/lit";
-import { UmbElementMixin as M } from "@umbraco-cms/backoffice/element-api";
-import { UMB_AUTH_CONTEXT as H } from "@umbraco-cms/backoffice/auth";
+import { LitElement as I, nothing as u, html as o, css as F, property as O, state as g, customElement as M } from "@umbraco-cms/backoffice/external/lit";
+import { UmbElementMixin as H } from "@umbraco-cms/backoffice/element-api";
+import { UMB_AUTH_CONTEXT as L } from "@umbraco-cms/backoffice/auth";
 var q = Object.defineProperty, N = Object.getOwnPropertyDescriptor, D = (t) => {
   throw TypeError(t);
 }, h = (t, e, a, i) => {
   for (var r = i > 1 ? void 0 : i ? N(e, a) : e, l = t.length - 1, d; l >= 0; l--)
     (d = t[l]) && (r = (i ? d(e, a, r) : d(r)) || r);
   return i && r && q(e, a, r), r;
-}, j = (t, e, a) => e.has(t) || D("Cannot " + a), B = (t, e, a) => e.has(t) ? D("Cannot add the same private member more than once") : e instanceof WeakSet ? e.add(t) : e.set(t, a), n = (t, e, a) => (j(t, e, "access private method"), a), s, C, p, b, T, f, m, A, k, y, v, S, E, U, z;
+}, j = (t, e, a) => e.has(t) || D("Cannot " + a), B = (t, e, a) => e.has(t) ? D("Cannot add the same private member more than once") : e instanceof WeakSet ? e.add(t) : e.set(t, a), n = (t, e, a) => (j(t, e, "access private method"), a), s, C, p, b, A, f, m, T, k, v, y, S, E, U, z;
 class _ extends Error {
   constructor() {
     super(...arguments), this.name = "AuthContextUnavailableError";
   }
 }
-const G = "/umbraco/management/api/v1/llmstxt/analytics/requests", K = "/umbraco/management/api/v1/llmstxt/analytics/classifications", Q = "/umbraco/management/api/v1/llmstxt/analytics/summary", Y = "/umbraco/management/api/v1/llmstxt/analytics/retention", W = 50, Z = 7, V = 200;
+const G = "/umbraco/management/api/v1/llmstxt/analytics/requests", K = "/umbraco/management/api/v1/llmstxt/analytics/classifications", Q = "/umbraco/management/api/v1/llmstxt/analytics/summary", V = "/umbraco/management/api/v1/llmstxt/analytics/retention", Y = 50, W = 7, Z = 200;
 function R(t) {
   switch (t) {
     case "AiTraining":
@@ -35,12 +35,12 @@ function X() {
 function x(t) {
   return (/* @__PURE__ */ new Date(`${t}T00:00:00.000Z`)).toISOString();
 }
-let c = class extends M(I) {
+let c = class extends H(I) {
   constructor() {
     super(...arguments), B(this, s), this._state = { kind: "loading" }, this._filter = n(this, s, C).call(this), this._retentionDays = null, this._lastClassifications = [], this._dateRangeError = null, this._inflight = null;
   }
   connectedCallback() {
-    super.connectedCallback(), n(this, s, T).call(this), n(this, s, f).call(this);
+    super.connectedCallback(), n(this, s, A).call(this), n(this, s, f).call(this);
   }
   disconnectedCallback() {
     this._inflight?.abort(), this._inflight = null, super.disconnectedCallback();
@@ -84,15 +84,15 @@ s = /* @__PURE__ */ new WeakSet();
 C = function() {
   const t = /* @__PURE__ */ new Date(), e = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()), a = new Date(e + 864e5);
   return {
-    fromDate: new Date(e - Z * 864e5).toISOString().slice(0, 10),
+    fromDate: new Date(e - W * 864e5).toISOString().slice(0, 10),
     toDate: a.toISOString().slice(0, 10),
     selectedClasses: /* @__PURE__ */ new Set(),
     page: 1,
-    pageSize: W
+    pageSize: Y
   };
 };
 p = async function(t, e) {
-  const a = await this.getContext(H);
+  const a = await this.getContext(L);
   if (!a)
     throw new _("Auth context unavailable");
   const i = a.getOpenApiConfiguration();
@@ -122,9 +122,9 @@ b = function(t) {
   }
   return `?${i.toString()}`;
 };
-T = async function() {
+A = async function() {
   try {
-    const t = new AbortController(), e = await n(this, s, p).call(this, Y, t.signal);
+    const t = new AbortController(), e = await n(this, s, p).call(this, V, t.signal);
     if (!e.ok) return;
     const a = await e.json();
     this._retentionDays = a.durationDays;
@@ -187,22 +187,22 @@ m = async function(t) {
     return `HTTP ${t.status}`;
   }
 };
-A = function(t) {
+T = function(t) {
   const e = t.target.value;
-  this._filter = { ...this._filter, fromDate: e, page: 1 }, n(this, s, y).call(this);
+  this._filter = { ...this._filter, fromDate: e, page: 1 }, n(this, s, v).call(this);
 };
 k = function(t) {
   const e = t.target.value;
-  this._filter = { ...this._filter, toDate: e, page: 1 }, n(this, s, y).call(this);
+  this._filter = { ...this._filter, toDate: e, page: 1 }, n(this, s, v).call(this);
 };
-y = function() {
+v = function() {
   if (this._filter.fromDate && this._filter.toDate && this._filter.fromDate > this._filter.toDate) {
     this._dateRangeError = "From date cannot be after To date";
     return;
   }
   this._dateRangeError = null, n(this, s, f).call(this);
 };
-v = function(t) {
+y = function(t) {
   const e = new Set(this._filter.selectedClasses);
   e.has(t) ? e.delete(t) : e.add(t), this._filter = { ...this._filter, selectedClasses: e, page: 1 }, n(this, s, f).call(this);
 };
@@ -221,7 +221,7 @@ E = function() {
             .value=${this._filter.fromDate}
             min="2020-01-01"
             max=${r}
-            @change=${n(this, s, A)}
+            @change=${n(this, s, T)}
           />
         </label>
         <label
@@ -255,9 +255,9 @@ U = function() {
               aria-pressed=${a ? "true" : "false"}
               look=${i}
               color=${r}
-              @click=${() => n(this, s, v).call(this, e.class)}
+              @click=${() => n(this, s, y).call(this, e.class)}
               @keydown=${(l) => {
-      (l.key === "Enter" || l.key === " ") && (l.preventDefault(), n(this, s, v).call(this, e.class));
+      (l.key === "Enter" || l.key === " ") && (l.preventDefault(), n(this, s, y).call(this, e.class));
     }}
             >
               ${e.class} (${e.count.toLocaleString()})
@@ -321,7 +321,7 @@ z = function() {
           ` : u}
       ${t.totalPages > 1 ? o`
             <uui-pagination
-              total=${Math.min(t.totalPages, V)}
+              total=${Math.min(t.totalPages, Z)}
               current=${t.page}
               @change=${n(this, s, S)}
             ></uui-pagination>
@@ -425,12 +425,12 @@ h([
   g()
 ], c.prototype, "_dateRangeError", 2);
 c = h([
-  L("llms-ai-traffic-dashboard")
+  M("aiv-ai-traffic-dashboard")
 ], c);
 const at = c, it = c;
 export {
-  c as LlmsAiTrafficDashboardElement,
+  c as AiVisibilityAiTrafficDashboardElement,
   it as default,
   at as element
 };
-//# sourceMappingURL=llms-ai-traffic-dashboard.element-C3obrJpd.js.map
+//# sourceMappingURL=aiv-ai-traffic-dashboard.element-DOcmx-Q7.js.map

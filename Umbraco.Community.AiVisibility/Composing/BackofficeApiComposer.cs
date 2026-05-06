@@ -44,11 +44,11 @@ namespace Umbraco.Community.AiVisibility.Composing
 
                 // Enable Umbraco authentication for the "Example" Swagger document
                 // PR: https://github.com/umbraco/Umbraco-CMS/pull/15699
-                opt.OperationFilter<LlmsTxtUmbracoOperationSecurityFilter>();
+                opt.OperationFilter<BackofficeOperationSecurityFilter>();
             });
         }
 
-        public class LlmsTxtUmbracoOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
+        public class BackofficeOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
         {
             protected override string ApiName => Constants.ApiName;
         }
