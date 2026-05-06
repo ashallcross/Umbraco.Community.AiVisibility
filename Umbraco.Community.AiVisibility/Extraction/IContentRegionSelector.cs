@@ -26,7 +26,7 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// default first. Example:
 /// </para>
 /// <code>
-/// [ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composers.RoutingComposer))]
+/// [ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composing.RoutingComposer))]
 /// public sealed class AcmeRegionSelectorComposer : IComposer
 /// {
 ///     public void Compose(IUmbracoBuilder builder) =>

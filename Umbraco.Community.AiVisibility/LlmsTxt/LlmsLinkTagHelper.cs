@@ -17,9 +17,9 @@ namespace Umbraco.Community.AiVisibility.LlmsTxt;
 /// <see cref="UmbracoRouteValues"/> from the active <see cref="ViewContext.HttpContext"/>
 /// to resolve the canonical page; out-of-Umbraco-context renders nothing.
 /// <para>
-/// Auto-discovered when adopters add <c>@addTagHelper Umbraco.Community.AiVisibility.TagHelpers.*, LlmsTxt.Umbraco</c>
+/// Auto-discovered when adopters add <c>@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility</c>
 /// to their <c>_ViewImports.cshtml</c>. The namespace scope (rather than wildcard
-/// <c>*, LlmsTxt.Umbraco</c>) is deliberate so future internal types in other
+/// <c>*, Umbraco.Community.AiVisibility</c>) is deliberate so future internal types in other
 /// namespaces don't auto-register as adopter-facing TagHelpers. No DI registration needed —
 /// <see cref="ITagHelperFactory"/> constructs the helper per-render via the
 /// request scope, which is when the constructor's

@@ -1,6 +1,5 @@
 using System.Reflection;
 using Asp.Versioning;
-using LlmsTxt.Umbraco;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Backoffice;
 using Umbraco.Community.AiVisibility.Persistence;

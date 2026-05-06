@@ -34,7 +34,7 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// </para>
 /// <code>
 /// // Adopter composer — runs after RoutingComposer (preferred for clarity).
-/// [ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composers.RoutingComposer))]
+/// [ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composing.RoutingComposer))]
 /// public sealed class AcmeExtractorComposer : IComposer
 /// {
 ///     public void Compose(IUmbracoBuilder builder) =>
@@ -43,7 +43,7 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// </code>
 /// <para>
 /// <c>[ComposeAfter]</c> is recommended but not strictly required: when adopter composers
-/// run before <see cref="Composers.RoutingComposer"/>, our <c>TryAddTransient</c> is a
+/// run before <see cref="Composing.RoutingComposer"/>, our <c>TryAddTransient</c> is a
 /// no-op against the existing adopter registration — the adopter still wins.
 /// </para>
 ///
@@ -63,7 +63,7 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// <see cref="Composers.CachingComposer"/> runs its detection. To guarantee the log
 /// fires, decorate the adopter composer with
 /// <c>[ComposeBefore(typeof(Umbraco.Community.AiVisibility.Composers.CachingComposer))]</c> in addition
-/// to <c>[ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composers.RoutingComposer))]</c>. Without
+/// to <c>[ComposeAfter(typeof(Umbraco.Community.AiVisibility.Composing.RoutingComposer))]</c>. Without
 /// the <c>ComposeBefore</c>, override behaviour is unaffected — only the observability
 /// log is.
 /// </para>

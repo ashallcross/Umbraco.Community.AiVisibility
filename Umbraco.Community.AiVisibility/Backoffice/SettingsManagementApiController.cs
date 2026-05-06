@@ -17,7 +17,6 @@ using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Web;
 using Umbraco.Cms.Web.Common.Authorization;
 
-using LlmsTxt.Umbraco;
 
 namespace Umbraco.Community.AiVisibility.Backoffice;
 

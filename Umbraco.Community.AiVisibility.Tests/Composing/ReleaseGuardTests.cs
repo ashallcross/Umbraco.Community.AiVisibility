@@ -1,5 +1,4 @@
 using System.Reflection;
-using LlmsTxt.Umbraco;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 

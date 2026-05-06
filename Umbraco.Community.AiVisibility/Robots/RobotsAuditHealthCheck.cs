@@ -1,7 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using LlmsTxt.Umbraco;
 using Umbraco.Cms.Core.HealthChecks;
 using Umbraco.Cms.Core.Services;
 

@@ -62,7 +62,7 @@ public sealed class AiVisibilityPipelineFilter : UmbracoPipelineFilter
 
     /// <summary>
     /// Pure-function predicate exposed for unit testing (and reuse from
-    /// <see cref="Composers.RoutingComposer"/> when composing
+    /// <see cref="Composing.RoutingComposer"/> when composing
     /// <c>UmbracoRequestOptions.HandleAsServerSideRequest</c>).
     /// </summary>
     internal static bool IsMarkdownPath(PathString path)

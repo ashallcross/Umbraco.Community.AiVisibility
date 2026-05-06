@@ -12,7 +12,6 @@ using Umbraco.Cms.Api.Management.Controllers;
 using Umbraco.Cms.Api.Management.Routing;
 using Umbraco.Cms.Web.Common.Authorization;
 
-using LlmsTxt.Umbraco;
 
 namespace Umbraco.Community.AiVisibility.Backoffice;
 
