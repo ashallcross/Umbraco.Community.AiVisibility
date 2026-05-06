@@ -72,7 +72,7 @@ public static class Constants
         /// <see cref="RobotsAuditGuidParseSentinel"/> guarantees a typo here
         /// fails at type-init rather than silently shipping a different ID.
         /// </summary>
-        public const string RobotsAuditGuid = "1f8a2c4d-7b3e-4f9d-9c0a-2e6b5d8f1a42";
+        public const string RobotsAuditGuid = "1c840ef7-4f3b-4aa3-9732-dddb375814d9";
 
         /// <summary>
         /// Health Check group label shared between the

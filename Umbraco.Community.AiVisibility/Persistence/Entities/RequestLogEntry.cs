@@ -4,7 +4,9 @@ using Umbraco.Cms.Infrastructure.Persistence.DatabaseAnnotations;
 namespace Umbraco.Community.AiVisibility.Persistence.Entities;
 
 /// <summary>
-/// Story 5.1 — NPoco entity backing the <c>llmsTxtRequestLog</c> table.
+/// Story 5.1 — NPoco entity backing the <c>aiVisibilityRequestLog</c> table
+/// (renamed from <c>llmsTxtRequestLog</c> in Story 6.0c via
+/// <see cref="Migrations.RenameRequestLogTable_2_0"/>).
 /// One row per successfully served Markdown / <c>/llms.txt</c> /
 /// <c>/llms-full.txt</c> response.
 /// </summary>
@@ -23,7 +25,7 @@ namespace Umbraco.Community.AiVisibility.Persistence.Entities;
 /// session IDs, query strings, full referrer paths are NEVER persisted.
 /// </para>
 /// </remarks>
-[TableName("llmsTxtRequestLog")]
+[TableName("aiVisibilityRequestLog")]
 [PrimaryKey("id", AutoIncrement = true)]
 [ExplicitColumns]
 public sealed class RequestLogEntry
@@ -33,7 +35,7 @@ public sealed class RequestLogEntry
     public int Id { get; set; }
 
     [Column("createdUtc")]
-    [Index(IndexTypes.NonClustered, Name = "IX_llmsTxtRequestLog_createdUtc")]
+    [Index(IndexTypes.NonClustered, Name = "IX_aiVisibilityRequestLog_createdUtc")]
     public DateTime CreatedUtc { get; set; }
 
     [Column("path")]
@@ -42,7 +44,7 @@ public sealed class RequestLogEntry
 
     [Column("contentKey")]
     [NullSetting(NullSetting = NullSettings.Null)]
-    [Index(IndexTypes.NonClustered, Name = "IX_llmsTxtRequestLog_contentKey")]
+    [Index(IndexTypes.NonClustered, Name = "IX_aiVisibilityRequestLog_contentKey")]
     public Guid? ContentKey { get; set; }
 
     /// <summary>

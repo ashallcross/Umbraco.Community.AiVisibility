@@ -33,7 +33,13 @@ namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 /// <para>
 /// <b>Immutable once shipped (AR7).</b> Future schema changes go in a new
 /// <c>AddXxx_1_1</c> migration class chained into
-/// <see cref="LlmsTxtSettingsMigrationPlan"/>.
+/// <see cref="AiVisibilityPackageMigrationPlan"/>. Story 6.0c (2026-05-06)
+/// kept <see cref="TableName"/>'s value <c>llmsTxtRequestLog</c> verbatim
+/// per project-context.md immutability; the entity's <c>[TableName]</c>
+/// binding flipped to <c>aiVisibilityRequestLog</c> in lockstep with
+/// <see cref="RenameRequestLogTable_2_0"/> so the actual schema
+/// landed by <c>Create.Table&lt;RequestLogEntry&gt;()</c> reflects the
+/// post-rename name on fresh installs.
 /// </para>
 /// </remarks>
 public sealed class AddRequestLogTable_1_0 : AsyncMigrationBase

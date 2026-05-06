@@ -139,7 +139,7 @@ public class LogRetentionJobTests
         scopeProvider.Received(1).CreateScope(IsolationLevel.ReadCommitted);
         database.Received(1).Execute(
             Arg.Is<string>(sql => sql.Contains("DELETE", StringComparison.OrdinalIgnoreCase)
-                                  && sql.Contains("llmsTxtRequestLog")),
+                                  && sql.Contains("aiVisibilityRequestLog")),
             Arg.Any<object[]>());
         scope.Received(1).Complete();
         // RUN log line emission — architect-A5 manual gate Step 13's

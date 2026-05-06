@@ -16,7 +16,7 @@ public class AddRequestLogTable_1_0Tests
     // migration test harness with an in-memory DB or (b) NSubstitute
     // against DatabaseSchemaCreator — the latter fails because the type's
     // public ctor signature is not Castle DynamicProxy-friendly (5+ deps,
-    // some non-virtual). Story 3.1's CreateLlmsSettingsDoctypeTests
+    // some non-virtual). Story 3.1's CreateAiVisibilitySettingsDoctypeTests
     // works because IContentTypeService is an interface; DDL migrations
     // don't have an equivalent service-mediated seam.
     //

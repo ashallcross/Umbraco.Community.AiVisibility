@@ -12,7 +12,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 /// <see cref="Channel{T}"/> of <see cref="RequestLogEntry"/>; the
 /// background <c>RequestLogDrainHostedService</c> reads from
 /// <see cref="Reader"/> and batch-writes to
-/// <c>llmsTxtRequestLog</c>.
+/// <c>aiVisibilityRequestLog</c>.
 /// </summary>
 /// <remarks>
 /// <para>

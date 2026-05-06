@@ -14,7 +14,7 @@ namespace Umbraco.Community.AiVisibility.Configuration;
 /// <summary>
 /// Story 3.1 — built-in <see cref="ISettingsResolver"/>. Walks
 /// <see cref="IDocumentNavigationQueryService.TryGetRootKeys"/> to find the
-/// first <c>llmsSettings</c>-doctype root content node, reads its
+/// first <c>aiVisibilitySettings</c>-doctype root content node, reads its
 /// <c>siteName</c> / <c>siteSummary</c> / <c>excludedDoctypeAliases</c>
 /// properties, and overlays them onto the current
 /// <see cref="AiVisibilitySettings"/> snapshot.
@@ -55,7 +55,7 @@ namespace Umbraco.Community.AiVisibility.Configuration;
 /// </remarks>
 internal sealed class DefaultSettingsResolver : ISettingsResolver
 {
-    private const string SettingsDoctypeAlias = "llmsSettings";
+    private const string SettingsDoctypeAlias = "aiVisibilitySettings";
     private const string SiteNameAlias = "siteName";
     private const string SiteSummaryAlias = "siteSummary";
     private const string ExcludedAliasesAlias = "excludedDoctypeAliases";
@@ -143,7 +143,7 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
     }
 
     /// <summary>
-    /// Walk the published cache for the matching <c>llmsSettings</c> root
+    /// Walk the published cache for the matching <c>aiVisibilitySettings</c> root
     /// content node and overlay its values onto the appsettings snapshot.
     /// Returns the appsettings snapshot verbatim when no Settings node exists
     /// or no <see cref="IUmbracoContext"/> is ambient.
@@ -206,13 +206,13 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
             if (_missingNodeLogged.TryAdd(normalisedCulture, true))
             {
                 _logger.LogInformation(
-                    "ISettingsResolver — no llmsSettings root node found for {Culture}; using appsettings values (logged once per process per culture)",
+                    "ISettingsResolver — no aiVisibilitySettings root node found for {Culture}; using appsettings values (logged once per process per culture)",
                     normalisedCulture);
             }
             return BuildAppsettingsOnly(settings);
         }
 
-        // The llmsSettings doctype is invariant (Variations: Nothing) — reads
+        // The aiVisibilitySettings doctype is invariant (Variations: Nothing) — reads
         // MUST pass culture: null. Passing the request culture causes
         // IPublishedProperty.HasValue("en-gb") to return false on invariant
         // properties (Umbraco treats it as "no culture-variant value found"),

@@ -12,7 +12,7 @@ namespace Umbraco.Community.AiVisibility.Telemetry;
 
 /// <summary>
 /// Story 5.1 — drains <see cref="DefaultRequestLog"/>'s bounded channel
-/// to <c>llmsTxtRequestLog</c> in batches. Singleton lifetime via
+/// to <c>aiVisibilityRequestLog</c> in batches. Singleton lifetime via
 /// <c>services.AddHostedService&lt;T&gt;()</c>.
 /// </summary>
 /// <remarks>
@@ -30,7 +30,7 @@ namespace Umbraco.Community.AiVisibility.Telemetry;
 /// shed traffic via <c>DropOldest</c> on a channel no other process could
 /// reach; the AI traffic dashboard then under-reported (or appeared empty)
 /// in load-balanced topologies. Each instance's channel is process-local;
-/// the host DB's identity column on <c>llmsTxtRequestLog</c> guarantees
+/// the host DB's identity column on <c>aiVisibilityRequestLog</c> guarantees
 /// distinct rows across concurrent inserts, so per-instance drainers do
 /// not need cross-instance coordination. Singleton scheduling for
 /// cluster-wide jobs (<c>LogRetentionJob</c>,

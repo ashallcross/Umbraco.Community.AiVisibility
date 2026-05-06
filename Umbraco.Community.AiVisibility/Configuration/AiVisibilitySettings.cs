@@ -303,7 +303,7 @@ public sealed class RequestLogSettings
 public sealed class LogRetentionSettings
 {
     /// <summary>
-    /// Number of days to retain rows in <c>llmsTxtRequestLog</c>. Rows
+    /// Number of days to retain rows in <c>aiVisibilityRequestLog</c>. Rows
     /// with <c>createdUtc &lt; UtcNow - DurationDays</c> are deleted by
     /// <c>LogRetentionJob</c> on every cycle. Set to <c>0</c> or negative
     /// to disable retention (<c>Period</c> returns
@@ -512,7 +512,7 @@ public sealed class MigrationsSettings
 {
     /// <summary>
     /// When <c>true</c>, <c>SettingsComposer</c> does NOT register
-    /// <c>LlmsTxtSettingsMigrationPlan</c> with the Umbraco package-migration
+    /// <c>AiVisibilityPackageMigrationPlan</c> with the Umbraco package-migration
     /// pipeline — the Settings doctype + per-page-exclusion composition are
     /// NOT created on first boot. Default <c>false</c>.
     /// <para>

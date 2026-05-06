@@ -8,31 +8,34 @@ using Umbraco.Cms.Infrastructure.Migrations;
 namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 
 /// <summary>
-/// Story 3.1 — creates the <c>llmsSettings</c> doctype + the
+/// Story 3.1 — creates the <c>aiVisibilitySettings</c> doctype + the
 /// <c>llmsTxtSettingsComposition</c> element type imperatively via
 /// <see cref="IContentTypeService"/>. Idempotent: re-runs are no-ops.
+/// Story 6.0c (2026-05-06) — pre-1.0 in-place rename of the doctype alias
+/// (project-context.md immutability rule applies once shipped to NuGet;
+/// pre-1.0 alpha = treat as if not yet shipped).
 /// </summary>
 /// <remarks>
 /// Pattern source: AgentRun's <c>AddAgentRunSectionToAdminGroup</c> uses
 /// the same <see cref="AsyncMigrationBase"/> + service-injection shape.
 /// </remarks>
-public sealed class CreateLlmsSettingsDoctype : AsyncMigrationBase
+public sealed class CreateAiVisibilitySettingsDoctype : AsyncMigrationBase
 {
-    internal const string SettingsDoctypeAlias = "llmsSettings";
+    internal const string SettingsDoctypeAlias = "aiVisibilitySettings";
     internal const string CompositionAlias = "llmsTxtSettingsComposition";
     internal const string ExcludeBoolAlias = "excludeFromLlmExports";
 
     private readonly IContentTypeService _contentTypeService;
     private readonly IDataTypeService _dataTypeService;
     private readonly IShortStringHelper _shortStringHelper;
-    private readonly ILogger<CreateLlmsSettingsDoctype> _logger;
+    private readonly ILogger<CreateAiVisibilitySettingsDoctype> _logger;
 
-    public CreateLlmsSettingsDoctype(
+    public CreateAiVisibilitySettingsDoctype(
         IMigrationContext context,
         IContentTypeService contentTypeService,
         IDataTypeService dataTypeService,
         IShortStringHelper shortStringHelper,
-        ILogger<CreateLlmsSettingsDoctype> logger)
+        ILogger<CreateAiVisibilitySettingsDoctype> logger)
         : base(context)
     {
         _contentTypeService = contentTypeService;

@@ -23,8 +23,8 @@ namespace Umbraco.Community.AiVisibility.Composing;
 /// <c>collection.Add(IEnumerable&lt;Type&gt;)</c> with all types derived from
 /// <see cref="Umbraco.Cms.Core.Packaging.PackageMigrationPlan"/> discovered by
 /// <c>TypeLoader.GetPackageMigrationPlans</c>. Our composer therefore inverts
-/// the obvious shape: it does NOT call <c>Add&lt;LlmsTxtSettingsMigrationPlan&gt;()</c>
-/// (the framework already does); it calls <c>Remove&lt;LlmsTxtSettingsMigrationPlan&gt;()</c>
+/// the obvious shape: it does NOT call <c>Add&lt;AiVisibilityPackageMigrationPlan&gt;()</c>
+/// (the framework already does); it calls <c>Remove&lt;AiVisibilityPackageMigrationPlan&gt;()</c>
 /// when <see cref="MigrationsSettings.SkipSettingsDoctype"/> is <c>true</c>.
 /// </para>
 /// <para>
@@ -63,7 +63,7 @@ public sealed class SettingsComposer : IComposer
 
         if (skipDoctype)
         {
-            builder.PackageMigrationPlans().Remove<LlmsTxtSettingsMigrationPlan>();
+            builder.PackageMigrationPlans().Remove<AiVisibilityPackageMigrationPlan>();
         }
     }
 }

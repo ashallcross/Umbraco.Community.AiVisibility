@@ -36,7 +36,7 @@ public interface ISettingsResolver
     /// <summary>
     /// Resolves the effective settings for the given (hostname, culture) pair.
     /// The first call per cache key walks the published cache for the matching
-    /// <c>llmsSettings</c> root content node and overlays its values onto the
+    /// <c>aiVisibilitySettings</c> root content node and overlays its values onto the
     /// current <see cref="AiVisibilitySettings"/> snapshot; subsequent calls within
     /// <see cref="AiVisibilitySettings.SettingsResolverCachePolicySeconds"/> return
     /// the cached record without re-walking.

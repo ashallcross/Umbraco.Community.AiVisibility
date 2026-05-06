@@ -63,7 +63,7 @@ public class SettingsComposerTests
     public void Compose_AccessesPackageMigrationPlans_WhenSkipFlagTrue()
     {
         // When SkipSettingsDoctype is true (uSync coexistence path), the composer
-        // MUST call PackageMigrationPlans().Remove<LlmsTxtSettingsMigrationPlan>().
+        // MUST call PackageMigrationPlans().Remove<AiVisibilityPackageMigrationPlan>().
         // Verifying the exact Remove<T> call requires a real
         // PackageMigrationPlanCollectionBuilder (which requires a real
         // IUmbracoBuilder in the test). This test covers the OBSERVABLE-via-NSubstitute

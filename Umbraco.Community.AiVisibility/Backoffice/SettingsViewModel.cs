@@ -4,7 +4,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// Story 3.2 — view model returned by <c>GET /umbraco/management/api/v1/llmstxt/settings/</c>
 /// (and the round-trip body of <c>PUT /</c>). Carries the per-field
 /// resolver overlay <see cref="Configuration.ISettingsResolver.ResolveAsync"/>
-/// produces, plus the live <c>llmsSettings</c> content node key so the dashboard
+/// produces, plus the live <c>aiVisibilitySettings</c> content node key so the dashboard
 /// can deep-link into the standard Umbraco content tree if the editor wants to
 /// edit related properties (e.g. add the per-page composition to a doctype).
 /// </summary>
@@ -26,7 +26,7 @@ namespace Umbraco.Community.AiVisibility.Backoffice;
 /// to the client so the form's character counter reads from one source of truth.
 /// </param>
 /// <param name="SettingsNodeKey">
-/// The <c>llmsSettings</c> root content node's <see cref="System.Guid"/>, or <c>null</c>
+/// The <c>aiVisibilitySettings</c> root content node's <see cref="System.Guid"/>, or <c>null</c>
 /// when no Settings node exists yet (uSync-coexistence path / pre-creation state).
 /// </param>
 public sealed record SettingsViewModel(

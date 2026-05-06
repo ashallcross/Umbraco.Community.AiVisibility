@@ -3,7 +3,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 /// <summary>
 /// Story 5.1 — extension point that classifies an HTTP <c>User-Agent</c>
 /// header into one of the <see cref="UserAgentClass"/> buckets surfaced on
-/// the package's three notifications and the <c>llmsTxtRequestLog</c>
+/// the package's three notifications and the <c>aiVisibilityRequestLog</c>
 /// <c>userAgentClass</c> column.
 /// </summary>
 /// <remarks>

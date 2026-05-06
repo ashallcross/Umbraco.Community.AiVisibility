@@ -98,7 +98,7 @@ public class DefaultLlmsSettingsResolverTests
     [Test]
     public async Task ResolveAsync_NoSettingsNode_ReturnsAppsettingsVerbatim()
     {
-        // No root content nodes have llmsSettings doctype → fall back to
+        // No root content nodes have aiVisibilitySettings doctype → fall back to
         // appsettings values verbatim. Information-once log is fire-and-forget;
         // not asserted here (NullLogger drops it).
         _appsettings = new AiVisibilitySettings
@@ -271,7 +271,7 @@ public class DefaultLlmsSettingsResolverTests
         var settingsNode = Substitute.For<IPublishedContent>();
         settingsNode.Key.Returns(SettingsNodeKey);
         var contentType = Substitute.For<IPublishedContentType>();
-        contentType.Alias.Returns("llmsSettings");
+        contentType.Alias.Returns("aiVisibilitySettings");
         settingsNode.ContentType.Returns(contentType);
 
         StubProperty(settingsNode, "siteName", siteName);

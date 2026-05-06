@@ -9,7 +9,7 @@ namespace Umbraco.Community.AiVisibility.Telemetry;
 
 /// <summary>
 /// Story 5.1 — recurring distributed background job that deletes
-/// <c>llmsTxtRequestLog</c> rows older than
+/// <c>aiVisibilityRequestLog</c> rows older than
 /// <see cref="LogRetentionSettings.DurationDays"/> on every cycle.
 /// </summary>
 /// <remarks>
@@ -47,7 +47,7 @@ namespace Umbraco.Community.AiVisibility.Telemetry;
 /// </remarks>
 public sealed class LogRetentionJob : IDistributedBackgroundJob
 {
-    internal const string TableName = "llmsTxtRequestLog";
+    internal const string TableName = "aiVisibilityRequestLog";
     internal const int MinDurationDays = 1;
     internal const int MaxDurationDays = 3650;
     internal const int MinRunIntervalHours = 1;

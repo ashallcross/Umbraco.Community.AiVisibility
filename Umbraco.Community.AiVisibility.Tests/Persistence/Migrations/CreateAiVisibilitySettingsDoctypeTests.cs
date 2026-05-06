@@ -9,7 +9,7 @@ using Umbraco.Cms.Infrastructure.Migrations;
 namespace Umbraco.Community.AiVisibility.Tests.Persistence.Migrations;
 
 [TestFixture]
-public class CreateLlmsSettingsDoctypeTests
+public class CreateAiVisibilitySettingsDoctypeTests
 {
     private IContentTypeService _contentTypeService = null!;
     private IDataTypeService _dataTypeService = null!;
@@ -59,12 +59,12 @@ public class CreateLlmsSettingsDoctypeTests
     {
         // Idempotent re-run — second boot must not create duplicates.
         var existingComposition = Substitute.For<IContentType>();
-        existingComposition.Alias.Returns(CreateLlmsSettingsDoctype.CompositionAlias);
+        existingComposition.Alias.Returns(CreateAiVisibilitySettingsDoctype.CompositionAlias);
         var existingSettings = Substitute.For<IContentType>();
-        existingSettings.Alias.Returns(CreateLlmsSettingsDoctype.SettingsDoctypeAlias);
+        existingSettings.Alias.Returns(CreateAiVisibilitySettingsDoctype.SettingsDoctypeAlias);
 
-        _contentTypeService.Get(CreateLlmsSettingsDoctype.CompositionAlias).Returns(existingComposition);
-        _contentTypeService.Get(CreateLlmsSettingsDoctype.SettingsDoctypeAlias).Returns(existingSettings);
+        _contentTypeService.Get(CreateAiVisibilitySettingsDoctype.CompositionAlias).Returns(existingComposition);
+        _contentTypeService.Get(CreateAiVisibilitySettingsDoctype.SettingsDoctypeAlias).Returns(existingSettings);
 
         var migration = MakeMigration();
         await migration.RunAsync();
@@ -72,13 +72,13 @@ public class CreateLlmsSettingsDoctypeTests
         _contentTypeService.DidNotReceive().Save(Arg.Any<IContentType>(), Arg.Any<int>());
     }
 
-    private CreateLlmsSettingsDoctype MakeMigration()
+    private CreateAiVisibilitySettingsDoctype MakeMigration()
         => new(
             _context,
             _contentTypeService,
             _dataTypeService,
             _shortStringHelper,
-            NullLogger<CreateLlmsSettingsDoctype>.Instance);
+            NullLogger<CreateAiVisibilitySettingsDoctype>.Instance);
 
     private static IDataType StubDataType()
     {

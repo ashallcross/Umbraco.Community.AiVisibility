@@ -30,7 +30,7 @@ public class LlmsSettingsManagementApiControllerTests
     [Test]
     public async Task Get_NoSettingsNode_ReturnsAppsettingsSnapshot_WithNullSettingsNodeKey()
     {
-        // AC1 — when no llmsSettings root content node exists, the controller
+        // AC1 — when no aiVisibilitySettings root content node exists, the controller
         // returns the appsettings overlay (whatever the resolver produces) and
         // SettingsNodeKey is null so the dashboard knows the doctype hasn't
         // been initialised yet.
@@ -53,7 +53,7 @@ public class LlmsSettingsManagementApiControllerTests
             Assert.That(view!.SiteName, Is.EqualTo("Appsettings Site"));
             Assert.That(view.SiteSummary, Is.EqualTo("Appsettings Summary"));
             Assert.That(view.SummaryMaxChars, Is.EqualTo(500));
-            Assert.That(view.SettingsNodeKey, Is.Null, "no llmsSettings node → SettingsNodeKey null");
+            Assert.That(view.SettingsNodeKey, Is.Null, "no aiVisibilitySettings node → SettingsNodeKey null");
             Assert.That(view.ExcludedDoctypeAliases, Is.Empty);
         });
     }
@@ -169,11 +169,11 @@ public class LlmsSettingsManagementApiControllerTests
         fixture.WithResolverReturning(EmptyResolved());
         fixture.WithRoots(/* none initially */);
         var contentType = Substitute.For<IContentType>();
-        contentType.Alias.Returns("llmsSettings");
-        fixture.ContentTypeService.Get("llmsSettings").Returns(contentType);
+        contentType.Alias.Returns("aiVisibilitySettings");
+        fixture.ContentTypeService.Get("aiVisibilitySettings").Returns(contentType);
         var newContent = Substitute.For<IContent>();
         newContent.Key.Returns(SettingsNodeKey);
-        fixture.ContentService.Create("LlmsTxt Settings", parentId: -1, "llmsSettings")
+        fixture.ContentService.Create("LlmsTxt Settings", parentId: -1, "aiVisibilitySettings")
             .Returns(newContent);
         fixture.ContentService.Publish(Arg.Any<IContent>(), Arg.Any<string[]>())
             .Returns(SuccessfulPublishResult(newContent));
@@ -186,7 +186,7 @@ public class LlmsSettingsManagementApiControllerTests
         var result = await fixture.Controller.PutAsync(request, CancellationToken.None);
 
         Assert.That(result, Is.InstanceOf<OkObjectResult>());
-        fixture.ContentService.Received(1).Create("LlmsTxt Settings", -1, "llmsSettings");
+        fixture.ContentService.Received(1).Create("LlmsTxt Settings", -1, "aiVisibilitySettings");
         fixture.ContentService.Received(1).Save(newContent);
         fixture.ContentService.Received(1).Publish(newContent, Arg.Any<string[]>());
     }
@@ -200,7 +200,7 @@ public class LlmsSettingsManagementApiControllerTests
         var fixture = new ControllerFixture();
         fixture.WithResolverReturning(EmptyResolved());
         fixture.WithRoots(/* none */);
-        fixture.ContentTypeService.Get("llmsSettings").Returns((IContentType?)null);
+        fixture.ContentTypeService.Get("aiVisibilitySettings").Returns((IContentType?)null);
 
         var request = new LlmsSettingsUpdateRequest("x", null, Array.Empty<string>());
 
@@ -412,7 +412,7 @@ public class LlmsSettingsManagementApiControllerTests
         var fixture = new ControllerFixture();
         var blog = StubContentType("blogPost", "Blog Post", isElement: false, "icon-document");
         var home = StubContentType("homePage", "Home Page", isElement: false, "icon-home");
-        var settingsCt = StubContentType("llmsSettings", "LlmsTxt Settings", isElement: false, null);
+        var settingsCt = StubContentType("aiVisibilitySettings", "LlmsTxt Settings", isElement: false, null);
         var composition = StubContentType("llmsTxtSettingsComposition", "LlmsTxt Exclusion", isElement: true, null);
         fixture.ContentTypeService.GetAll().Returns(new[] { settingsCt, blog, composition, home });
 
@@ -820,7 +820,7 @@ public class LlmsSettingsManagementApiControllerTests
             settingsNode.Key.Returns(SettingsNodeKey);
             settingsNode.Name.Returns("LlmsTxt Settings");
             var ct = Substitute.For<IPublishedContentType>();
-            ct.Alias.Returns("llmsSettings");
+            ct.Alias.Returns("aiVisibilitySettings");
             settingsNode.ContentType.Returns(ct);
             settingsNode.GetProperty(Arg.Any<string>()).Returns((IPublishedProperty?)null);
             WithRoots(settingsNode);

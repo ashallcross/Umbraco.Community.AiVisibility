@@ -8,7 +8,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 
 /// <summary>
 /// Story 5.2 — default <see cref="IAnalyticsReader"/> implementation
-/// reading directly from the host DB's <c>llmsTxtRequestLog</c> table
+/// reading directly from the host DB's <c>aiVisibilityRequestLog</c> table
 /// via Infrastructure-flavour <see cref="IScopeProvider"/> + NPoco.
 /// </summary>
 /// <remarks>
@@ -20,7 +20,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 /// </remarks>
 internal sealed class DefaultAnalyticsReader : IAnalyticsReader
 {
-    internal const string TableName = "llmsTxtRequestLog";
+    internal const string TableName = "aiVisibilityRequestLog";
 
     private readonly IScopeProvider _scopeProvider;
 

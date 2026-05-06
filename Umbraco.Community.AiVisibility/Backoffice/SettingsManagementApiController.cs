@@ -100,7 +100,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     /// there; duplicated here so the controller doesn't take a dependency on
     /// the resolver's internals).
     /// </summary>
-    internal const string SettingsDoctypeAlias = "llmsSettings";
+    internal const string SettingsDoctypeAlias = "aiVisibilitySettings";
 
     internal const string SiteNameAlias = "siteName";
     internal const string SiteSummaryAlias = "siteSummary";
@@ -144,7 +144,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
 
     /// <summary>
     /// Returns the resolver's effective settings overlay plus the live
-    /// <c>llmsSettings</c> content-node key (or <c>null</c> when no Settings
+    /// <c>aiVisibilitySettings</c> content-node key (or <c>null</c> when no Settings
     /// node exists yet). Resolver throws are caught and surfaced as the
     /// appsettings-only fallback (see <see cref="ResolveSafelyAsync"/>).
     /// </summary>
@@ -239,7 +239,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     /// Returns the host's content-type alias list filtered to publish-eligible
     /// doctypes — used by the dashboard's <c>excludedDoctypeAliases</c>
     /// multi-select. Element types (compositions like
-    /// <c>llmsTxtSettingsComposition</c>) and the <c>llmsSettings</c> doctype
+    /// <c>llmsTxtSettingsComposition</c>) and the <c>aiVisibilitySettings</c> doctype
     /// itself are excluded — the form is for choosing pages to omit, not for
     /// listing the settings doctype.
     /// </summary>
@@ -481,7 +481,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     ///         duplicate root nodes on every PUT).</item>
     ///   <item>Create at root — only when neither cache nor draft scan
     ///         finds an existing node. Parent <c>-1</c> is intentional: the
-    ///         <c>llmsSettings</c> doctype is by-design global per Umbraco
+    ///         <c>aiVisibilitySettings</c> doctype is by-design global per Umbraco
     ///         install, gated by <see cref="AuthorizationPolicies.SectionAccessSettings"/>;
     ///         editor content-tree start-node restrictions are not the right
     ///         gate for a section-level configuration node.</item>
@@ -525,7 +525,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
 
     /// <summary>
     /// Pages root-level content (parent <c>-1</c>) and returns the first node
-    /// whose content-type alias is <c>llmsSettings</c>. Catches drafts that
+    /// whose content-type alias is <c>aiVisibilitySettings</c>. Catches drafts that
     /// the published cache cannot see. Bounded by site root-fan-out
     /// (<c>RootChildPageSize</c> per page; most installs have &lt; 200 root
     /// children).

@@ -6,7 +6,7 @@ namespace Umbraco.Community.AiVisibility.Persistence;
 /// <see cref="Umbraco.Community.AiVisibility.Notifications.LlmsTxtRequestedNotification"/>, and
 /// <see cref="Umbraco.Community.AiVisibility.Notifications.LlmsFullTxtRequestedNotification"/>
 /// and persisted as the <c>userAgentClass</c> column on the
-/// <c>llmsTxtRequestLog</c> table.
+/// <c>aiVisibilityRequestLog</c> table.
 /// </summary>
 /// <remarks>
 /// <para>
