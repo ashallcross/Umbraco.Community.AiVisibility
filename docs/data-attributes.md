@@ -1,11 +1,11 @@
 # Data attributes, discoverability headers, and Razor TagHelpers
 
-This page documents the adopter-facing markup hooks that LlmsTxt.Umbraco ships:
+This page documents the adopter-facing markup hooks that Umbraco.Community.AiVisibility ships:
 
 - **`data-llms-content` / `data-llms-ignore`** — extraction-region opt-in / opt-out attributes (Stories 1.1 + 1.4).
-- **HTTP `Link` discoverability header** — auto-emitted on every opted-in HTML response (Story 4.1).
-- **`<llms-link />` and `<llms-hint />` Razor TagHelpers** — optional body-side discoverability markup (Story 4.1).
-- **Cloudflare "Markdown for Agents" alignment** — `X-Markdown-Tokens` and `Content-Signal` response headers (Story 4.1).
+- **HTTP `Link` discoverability header** — auto-emitted on every opted-in HTML response.
+- **`<llms-link />` and `<llms-hint />` Razor TagHelpers** — optional body-side discoverability markup.
+- **Cloudflare "Markdown for Agents" alignment** — `X-Markdown-Tokens` and `Content-Signal` response headers.
 
 ---
 
@@ -49,7 +49,7 @@ The `href` is computed by a single rule: trailing-slash URLs (`/blog/`) get `/in
 
 - Non-content responses (404 / 5xx, static assets, Backoffice URLs, surface controllers, MVC routes that don't resolve to `IPublishedContent`).
 - `.md` and `/index.html.md` self-requests (the response IS the Markdown body).
-- Pages excluded via the per-page `excludeFromLlmExports` toggle (Story 3.1) OR pages whose doctype alias is in the resolved `AiVisibility:ExcludedDoctypeAliases` list. The exclusion list is configurable in `appsettings.json` (see [Getting Started § Settings doctype + Backoffice](getting-started.md) for the resolution overlay) — top-level scope applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
+- Pages excluded via the per-page `excludeFromLlmExports` toggle OR pages whose doctype alias is in the resolved `AiVisibility:ExcludedDoctypeAliases` list. The exclusion list is configurable in `appsettings.json` (see [Getting Started § Settings doctype + Backoffice](getting-started.md) for the resolution overlay) — top-level scope applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
 - When `AiVisibility:DiscoverabilityHeader:Enabled` is set to `false` (kill switch — see below).
 
 ### Kill switch
@@ -290,7 +290,7 @@ curl -I -H 'Accept: text/markdown' https://your-site.com/home
 curl -I -H 'If-None-Match: "<etag-from-previous-call>"' https://your-site.com/home.md
 ```
 
-If `Link: rel="alternate"` is missing from the HTML response, walk the gating contract: check the kill switch, the Story 3.1 exclusion settings, and confirm the page IS resolved by Umbraco (try `curl -I https://your-site.com/home.md` — if that returns 404, the issue is route resolution, not discoverability).
+If `Link: rel="alternate"` is missing from the HTML response, walk the gating contract: check the kill switch, the package's exclusion settings, and confirm the page IS resolved by Umbraco (try `curl -I https://your-site.com/home.md` — if that returns 404, the issue is route resolution, not discoverability).
 
 ---
 
@@ -305,4 +305,4 @@ The following [`isitagentready.com`](https://isitagentready.com) scanner expecta
 - Web Bot Auth (HTTP Message Signatures)
 - Commerce protocols (ACP, UCP, MPP, x402)
 
-These are wrong-layer for a content-rendering middleware. Adopters who need them ship them at the application layer — the rationale: MCP server cards, Agent Skills, WebMCP, OAuth discovery, web-bot-auth, and commerce protocols are concerns of the *application* (what services it offers, who the agent is, how transactions clear), not the *content layer* (where the Markdown lives). LlmsTxt.Umbraco is a Markdown-discoverability package; conflating the two layers would create an extension surface adopters could not opt out of cleanly.
+These are wrong-layer for a content-rendering middleware. Adopters who need them ship them at the application layer — the rationale: MCP server cards, Agent Skills, WebMCP, OAuth discovery, web-bot-auth, and commerce protocols are concerns of the *application* (what services it offers, who the agent is, how transactions clear), not the *content layer* (where the Markdown lives). Umbraco.Community.AiVisibility is a Markdown-discoverability package; conflating the two layers would create an extension surface adopters could not opt out of cleanly.

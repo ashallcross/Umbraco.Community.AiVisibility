@@ -1,19 +1,20 @@
-import { LitElement as E, html as l, nothing as v, css as P, property as O, state as h, customElement as z } from "@umbraco-cms/backoffice/external/lit";
+import { LitElement as w, html as l, nothing as _, css as E, property as P, state as d, customElement as O } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin as U } from "@umbraco-cms/backoffice/element-api";
-import { UMB_AUTH_CONTEXT as I } from "@umbraco-cms/backoffice/auth";
-import { UMB_CURRENT_USER_CONTEXT as L } from "@umbraco-cms/backoffice/current-user";
-import { firstValueFrom as M, filter as R } from "@umbraco-cms/backoffice/external/rxjs";
-var F = Object.defineProperty, q = Object.getOwnPropertyDescriptor, y = (e) => {
+import { UMB_AUTH_CONTEXT as z } from "@umbraco-cms/backoffice/auth";
+import { UMB_CURRENT_USER_CONTEXT as I } from "@umbraco-cms/backoffice/current-user";
+import { firstValueFrom as L, filter as M } from "@umbraco-cms/backoffice/external/rxjs";
+import { a as R, A as F } from "./authenticated-fetch-Dotc30dn.js";
+var q = Object.defineProperty, V = Object.getOwnPropertyDescriptor, v = (e) => {
   throw TypeError(e);
-}, d = (e, t, s, i) => {
-  for (var a = i > 1 ? void 0 : i ? q(t, s) : t, n = e.length - 1, m; n >= 0; n--)
-    (m = e[n]) && (a = (i ? m(t, s, a) : m(a)) || a);
-  return i && a && F(t, s, a), a;
-}, V = (e, t, s) => t.has(e) || y("Cannot " + s), B = (e, t, s) => t.has(e) ? y("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, s), o = (e, t, s) => (V(e, t, "access private method"), s), r, p, _, f, b, x, S, k, T, C, A, $, D;
-const N = "/umbraco/management/api/v1/aivisibility/settings/", G = "/umbraco/management/api/v1/aivisibility/settings/doctypes", H = "/umbraco/management/api/v1/aivisibility/settings/excluded-pages", j = 3e3, w = "aivisibility.onboarding.dismissed.v1.", X = 2e3, J = "AI Visibility is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
-let u = class extends U(E) {
+}, c = (e, t, i, s) => {
+  for (var r = s > 1 ? void 0 : s ? V(t, i) : t, o = e.length - 1, m; o >= 0; o--)
+    (m = e[o]) && (r = (s ? m(t, i, r) : m(r)) || r);
+  return s && r && q(t, i, r), r;
+}, B = (e, t, i) => t.has(e) || v("Cannot " + i), H = (e, t, i) => t.has(e) ? v("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, i), n = (e, t, i) => (B(e, t, "access private method"), i), a, h, g, p, y, b, x, S, k, T, C, A, D;
+const $ = "/umbraco/management/api/v1/aivisibility/settings/", G = "/umbraco/management/api/v1/aivisibility/settings/doctypes", X = "/umbraco/management/api/v1/aivisibility/settings/excluded-pages", j = 3e3, N = "aivisibility.onboarding.dismissed.v1.", W = 2e3, Y = "AI Visibility is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
+let u = class extends U(w) {
   constructor() {
-    super(...arguments), B(this, r), this._state = { kind: "loading" }, this._saveState = { kind: "idle" }, this._excludedPages = { kind: "loading" }, this._formState = {
+    super(...arguments), H(this, a), this._state = { kind: "loading" }, this._saveState = { kind: "idle" }, this._excludedPages = { kind: "loading" }, this._formState = {
       siteName: "",
       siteSummary: "",
       excludedDoctypeAliases: []
@@ -24,7 +25,7 @@ let u = class extends U(E) {
     }, this._saveToastTimer = null, this._abortController = null;
   }
   connectedCallback() {
-    super.connectedCallback(), o(this, r, T).call(this), !(this._state.kind === "ready" && this._hasChanges()) && o(this, r, _).call(this);
+    super.connectedCallback(), n(this, a, k).call(this), !(this._state.kind === "ready" && this._hasChanges()) && n(this, a, g).call(this);
   }
   disconnectedCallback() {
     this._saveToastTimer && (clearTimeout(this._saveToastTimer), this._saveToastTimer = null), this._abortController && (this._abortController.abort(), this._abortController = null), super.disconnectedCallback();
@@ -34,9 +35,9 @@ let u = class extends U(E) {
   }
   _hasChanges() {
     if (this._formState.siteName !== this._initialFormState.siteName || this._formState.siteSummary !== this._initialFormState.siteSummary || this._formState.excludedDoctypeAliases.length !== this._initialFormState.excludedDoctypeAliases.length) return !0;
-    const e = (i, a) => i.toLowerCase().localeCompare(a.toLowerCase()), t = [...this._formState.excludedDoctypeAliases].sort(e), s = [...this._initialFormState.excludedDoctypeAliases].sort(e);
-    for (let i = 0; i < t.length; i += 1)
-      if (t[i] !== s[i]) return !0;
+    const e = (s, r) => s.toLowerCase().localeCompare(r.toLowerCase()), t = [...this._formState.excludedDoctypeAliases].sort(e), i = [...this._initialFormState.excludedDoctypeAliases].sort(e);
+    for (let s = 0; s < t.length; s += 1)
+      if (t[s] !== i[s]) return !0;
     return !1;
   }
   // ────────────────────────────────────────────────────────────────────────
@@ -52,12 +53,12 @@ let u = class extends U(E) {
       return l`<uui-box headline="AI Visibility — Settings">
         <p class="error">Failed to load: ${this._state.message}</p>
         <uui-button look="secondary" @click=${() => {
-        o(this, r, _).call(this);
+        n(this, a, g).call(this);
       }}>Retry</uui-button>
       </uui-box>`;
-    const { settings: e, doctypes: t } = this._state, s = this._formState.siteSummary.length, i = s > e.summaryMaxChars, a = this._canSave();
+    const { settings: e, doctypes: t } = this._state, i = this._formState.siteSummary.length, s = i > e.summaryMaxChars, r = this._canSave();
     return l`
-      ${o(this, r, A).call(this)}
+      ${n(this, a, C).call(this)}
       <uui-box headline="AI Visibility — Settings">
         <p class="intro">
           Configure the package's site name, site summary, and the list of
@@ -70,7 +71,7 @@ let u = class extends U(E) {
           <uui-input
             id="siteName"
             .value=${this._formState.siteName}
-            @input=${(n) => o(this, r, x).call(this, n)}
+            @input=${(o) => n(this, a, b).call(this, o)}
             placeholder="Override the H1 / site name on /llms.txt"
           ></uui-input>
         </div>
@@ -80,30 +81,30 @@ let u = class extends U(E) {
           <uui-textarea
             id="siteSummary"
             .value=${this._formState.siteSummary}
-            @input=${(n) => o(this, r, S).call(this, n)}
+            @input=${(o) => n(this, a, x).call(this, o)}
             placeholder="One-paragraph summary emitted as the blockquote under the H1"
           ></uui-textarea>
-          <div class="counter ${i ? "over" : ""}">
-            ${s} / ${e.summaryMaxChars}
+          <div class="counter ${s ? "over" : ""}">
+            ${i} / ${e.summaryMaxChars}
           </div>
-          ${i ? l`<div class="validation">Site summary cannot exceed ${e.summaryMaxChars} characters.</div>` : v}
+          ${s ? l`<div class="validation">Site summary cannot exceed ${e.summaryMaxChars} characters.</div>` : _}
         </div>
 
         <div class="field">
           <label>Excluded content types</label>
           ${t.length === 0 ? l`<p class="muted">No content types are configured yet.</p>` : l`<div class="alias-list">
-                ${t.map((n) => {
+                ${t.map((o) => {
       const m = this._formState.excludedDoctypeAliases.some(
-        (c) => c.toLowerCase() === n.alias.toLowerCase()
+        (f) => f.toLowerCase() === o.alias.toLowerCase()
       );
       return l`<label class="alias-row">
                     <input
                       type="checkbox"
                       .checked=${m}
-                      @change=${(c) => o(this, r, k).call(this, n.alias, c.target.checked)}
+                      @change=${(f) => n(this, a, S).call(this, o.alias, f.target.checked)}
                     />
-                    <span class="alias-name">${n.name}</span>
-                    <code class="alias-code">${n.alias}</code>
+                    <span class="alias-name">${o.name}</span>
+                    <code class="alias-code">${o.alias}</code>
                   </label>`;
     })}
               </div>`}
@@ -113,14 +114,14 @@ let u = class extends U(E) {
           <uui-button
             look="primary"
             color="positive"
-            ?disabled=${!a}
+            ?disabled=${!r}
             @click=${() => {
-      o(this, r, b).call(this);
+      n(this, a, y).call(this);
     }}
           >
             ${this._saveState.kind === "saving" ? l`<uui-loader></uui-loader>&nbsp;Saving…` : "Save"}
           </uui-button>
-          ${o(this, r, $).call(this)}
+          ${n(this, a, A).call(this)}
         </div>
       </uui-box>
 
@@ -130,57 +131,52 @@ let u = class extends U(E) {
           via the <code>llmsTxtSettingsComposition</code> composition. Toggle
           per-page exclusions in the standard Umbraco content tree.
         </p>
-        ${o(this, r, D).call(this)}
+        ${n(this, a, D).call(this)}
       </uui-box>
     `;
   }
 };
-r = /* @__PURE__ */ new WeakSet();
-p = async function(e, t = {}) {
+a = /* @__PURE__ */ new WeakSet();
+h = async function(e, t = {}) {
   this._abortController || (this._abortController = new AbortController());
-  const s = this._abortController.signal;
+  const i = this._abortController.signal;
   try {
-    const i = await this.getContext(I);
-    if (!i)
-      return { ok: !1, status: 0, message: "Backoffice auth context unavailable. Please refresh and try again." };
-    const a = i.getOpenApiConfiguration(), n = await a.token(), m = `${a.base}${e}`, c = await fetch(m, {
-      method: t.method ?? "GET",
-      credentials: a.credentials,
-      signal: s,
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${n}`
-      },
-      body: t.body !== void 0 ? JSON.stringify(t.body) : void 0
-    });
-    if (!c.ok) {
-      let g;
+    const s = await R(
+      () => this.getContext(z),
+      e,
+      {
+        method: t.method,
+        body: t.body,
+        signal: i
+      }
+    );
+    if (!s.ok) {
+      let o;
       try {
-        g = await c.json();
+        o = await s.json();
       } catch {
       }
       return {
         ok: !1,
-        status: c.status,
-        problem: g,
-        message: g?.detail ?? `HTTP ${c.status} ${c.statusText}`
+        status: s.status,
+        problem: o,
+        message: o?.detail ?? `HTTP ${s.status} ${s.statusText}`
       };
     }
-    return { ok: !0, data: await c.json() };
-  } catch (i) {
-    return i instanceof DOMException && i.name === "AbortError" || s.aborted ? { ok: !1, status: 0, message: "Request aborted.", aborted: !0 } : {
+    return { ok: !0, data: await s.json() };
+  } catch (s) {
+    return s instanceof DOMException && s.name === "AbortError" || i.aborted ? { ok: !1, status: 0, message: "Request aborted.", aborted: !0 } : s instanceof F ? { ok: !1, status: 0, message: "Backoffice auth context unavailable. Please refresh and try again." } : {
       ok: !1,
       status: 0,
-      message: i instanceof Error ? i.message : String(i)
+      message: s instanceof Error ? s.message : String(s)
     };
   }
 };
-_ = async function() {
+g = async function() {
   this._state = { kind: "loading" };
   const [e, t] = await Promise.all([
-    o(this, r, p).call(this, N),
-    o(this, r, p).call(this, G)
+    n(this, a, h).call(this, $),
+    n(this, a, h).call(this, G)
   ]);
   if (!this.isConnected) return;
   if (!e.ok) {
@@ -193,20 +189,20 @@ _ = async function() {
     this._state = { kind: "error", message: t.message };
     return;
   }
-  const s = e.data, i = {
-    siteName: s.siteName ?? "",
-    siteSummary: s.siteSummary ?? "",
-    excludedDoctypeAliases: [...s.excludedDoctypeAliases]
-  };
-  this._formState = i, this._initialFormState = {
-    siteName: i.siteName,
-    siteSummary: i.siteSummary,
+  const i = e.data, s = {
+    siteName: i.siteName ?? "",
+    siteSummary: i.siteSummary ?? "",
     excludedDoctypeAliases: [...i.excludedDoctypeAliases]
-  }, this._state = { kind: "ready", settings: s, doctypes: t.data }, o(this, r, f).call(this);
+  };
+  this._formState = s, this._initialFormState = {
+    siteName: s.siteName,
+    siteSummary: s.siteSummary,
+    excludedDoctypeAliases: [...s.excludedDoctypeAliases]
+  }, this._state = { kind: "ready", settings: i, doctypes: t.data }, n(this, a, p).call(this);
 };
-f = async function() {
+p = async function() {
   this._excludedPages = { kind: "loading" };
-  const e = await o(this, r, p).call(this, `${H}?skip=0&take=100`);
+  const e = await n(this, a, h).call(this, `${X}?skip=0&take=100`);
   if (this.isConnected) {
     if (!e.ok) {
       if (e.aborted) return;
@@ -216,11 +212,11 @@ f = async function() {
     this._excludedPages = { kind: "ready", page: e.data };
   }
 };
-b = async function() {
+y = async function() {
   if (!this._canSave())
     return;
   this._saveToastTimer && (clearTimeout(this._saveToastTimer), this._saveToastTimer = null), this._saveState = { kind: "saving" };
-  const e = await o(this, r, p).call(this, N, {
+  const e = await n(this, a, h).call(this, $, {
     method: "PUT",
     body: {
       siteName: this._formState.siteName.length === 0 ? null : this._formState.siteName,
@@ -234,82 +230,82 @@ b = async function() {
     this._saveState = { kind: "error", message: e.message };
     return;
   }
-  const t = e.data, s = {
+  const t = e.data, i = {
     siteName: t.siteName ?? "",
     siteSummary: t.siteSummary ?? "",
     excludedDoctypeAliases: [...t.excludedDoctypeAliases]
   };
-  this._formState = s, this._initialFormState = {
-    siteName: s.siteName,
-    siteSummary: s.siteSummary,
-    excludedDoctypeAliases: [...s.excludedDoctypeAliases]
+  this._formState = i, this._initialFormState = {
+    siteName: i.siteName,
+    siteSummary: i.siteSummary,
+    excludedDoctypeAliases: [...i.excludedDoctypeAliases]
   }, this._state.kind === "ready" && (this._state = { ...this._state, settings: t }), this._saveState = { kind: "success" }, this._saveToastTimer = setTimeout(() => {
     this._saveState = { kind: "idle" }, this._saveToastTimer = null;
-  }, j), o(this, r, f).call(this);
+  }, j), n(this, a, p).call(this);
 };
-x = function(e) {
+b = function(e) {
   const t = e.target;
   this._formState = { ...this._formState, siteName: t?.value ?? "" };
 };
-S = function(e) {
+x = function(e) {
   const t = e.target;
   this._formState = { ...this._formState, siteSummary: t?.value ?? "" };
 };
-k = function(e, t) {
-  const s = this._formState.excludedDoctypeAliases, i = e.toLowerCase(), a = s.filter((n) => n.toLowerCase() !== i);
+S = function(e, t) {
+  const i = this._formState.excludedDoctypeAliases, s = e.toLowerCase(), r = i.filter((o) => o.toLowerCase() !== s);
   this._formState = {
     ...this._formState,
-    excludedDoctypeAliases: t ? [...a, e] : a
+    excludedDoctypeAliases: t ? [...r, e] : r
   };
 };
-T = async function() {
+k = async function() {
   try {
-    const e = await this.getContext(L);
+    const e = await this.getContext(I);
     if (!this.isConnected || !e)
       return;
     const t = await Promise.race([
-      M(e.unique.pipe(R((a) => !!a))),
+      L(e.unique.pipe(M((r) => !!r))),
       new Promise(
-        (a) => setTimeout(() => a(null), X)
+        (r) => setTimeout(() => r(null), W)
       )
     ]);
     if (!this.isConnected || (this._currentUserUnique = t, !t))
       return;
-    const s = w + t;
-    let i = !1;
+    const i = N + t;
+    let s = !1;
     try {
-      i = localStorage.getItem(s) === "1";
+      s = localStorage.getItem(i) === "1";
     } catch {
     }
-    this._onboardingDismissed = i;
+    this._onboardingDismissed = s;
   } catch {
   }
 };
-C = function() {
+T = function() {
   this._onboardingDismissed = !0;
   const e = this._currentUserUnique;
   if (e)
     try {
-      localStorage.setItem(w + e, "1");
+      localStorage.setItem(N + e, "1");
     } catch {
     }
 };
-A = function() {
-  return this._onboardingDismissed ? v : l`
+C = function() {
+  return this._onboardingDismissed ? _ : l`
       <div class="onboarding-notice" role="status">
-        <p class="onboarding-body">${J}</p>
+        <p class="onboarding-body">${Y}</p>
         <uui-button
           class="onboarding-dismiss"
           look="secondary"
-          @click=${() => o(this, r, C).call(this)}
+          @click=${() => n(this, a, T).call(this)}
         >
           Dismiss
         </uui-button>
       </div>
     `;
 };
-$ = function() {
-  return this._saveState.kind === "success" ? l`<span class="save-success">Settings saved.</span>` : this._saveState.kind === "error" ? l`<span class="save-error">${this._saveState.message}</span>` : v;
+A = function() {
+  return this._saveState.kind === "success" ? l`<span class="save-success">Settings saved.</span>` : this._saveState.kind === "error" ? l`<span class="save-error">${this._saveState.message}</span>` : _;
 };
 D = function() {
   if (this._excludedPages.kind === "loading")
@@ -317,7 +313,7 @@ D = function() {
   if (this._excludedPages.kind === "error")
     return l`<p class="error">${this._excludedPages.message}</p>
         <uui-button look="secondary" @click=${() => {
-      o(this, r, f).call(this);
+      n(this, a, p).call(this);
     }}>Retry</uui-button>`;
   const { items: e, total: t } = this._excludedPages.page;
   return e.length === 0 ? l`<p class="muted">No pages are currently excluded from LLM exports.</p>` : l`
@@ -333,11 +329,11 @@ D = function() {
         </thead>
         <tbody>
           ${e.map(
-    (s) => l`<tr>
-              <td>${s.name}</td>
-              <td><code>${s.path || "(no URL)"}</code></td>
-              <td>${s.contentTypeName}</td>
-              <td>${s.culture ?? "—"}</td>
+    (i) => l`<tr>
+              <td>${i.name}</td>
+              <td><code>${i.path || "(no URL)"}</code></td>
+              <td>${i.contentTypeName}</td>
+              <td>${i.culture ?? "—"}</td>
             </tr>`
   )}
         </tbody>
@@ -345,7 +341,7 @@ D = function() {
     `;
 };
 u.styles = [
-  P`
+  E`
       :host {
         display: block;
         padding: var(--uui-size-layout-1, 24px);
@@ -461,34 +457,33 @@ u.styles = [
       }
     `
 ];
-d([
-  O({ attribute: !1 })
+c([
+  P({ attribute: !1 })
 ], u.prototype, "manifest", 2);
-d([
-  h()
+c([
+  d()
 ], u.prototype, "_state", 2);
-d([
-  h()
+c([
+  d()
 ], u.prototype, "_saveState", 2);
-d([
-  h()
+c([
+  d()
 ], u.prototype, "_excludedPages", 2);
-d([
-  h()
+c([
+  d()
 ], u.prototype, "_formState", 2);
-d([
-  h()
+c([
+  d()
 ], u.prototype, "_onboardingDismissed", 2);
-d([
-  h()
+c([
+  d()
 ], u.prototype, "_currentUserUnique", 2);
-u = d([
-  z("aiv-settings-dashboard")
+u = c([
+  O("aiv-settings-dashboard")
 ], u);
-const te = u, se = u;
+const se = u, ie = u;
 export {
   u as AiVisibilitySettingsDashboardElement,
-  se as default,
-  te as element
+  ie as default,
+  se as element
 };
-//# sourceMappingURL=aiv-settings-dashboard.element-Cih4iJke.js.map

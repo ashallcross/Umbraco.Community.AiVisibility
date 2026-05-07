@@ -1,10 +1,10 @@
-# Maintenance — for package maintainers
+# Maintenance — for contributors and maintainers
 
-Operational notes for maintainers of LlmsTxt.Umbraco. End-user / adopter docs live in [`getting-started.md`](getting-started.md).
+Operational notes for anyone contributing to or maintaining Umbraco.Community.AiVisibility. If you're using the package in your own Umbraco site, you don't need anything in this doc — start with [`getting-started.md`](getting-started.md) instead. This page covers the workflows that come up when you're modifying the package itself: refreshing the AI-bot list, running the two-instance distributed-job verification, and similar.
 
 ## Refreshing the pinned AI-bot-list SHA
 
-The build-time `SyncAiBotList` MSBuild target (in `LlmsTxt.Umbraco/LlmsTxt.Umbraco.csproj`) fetches `https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt` and verifies its SHA-256 against the `<ExpectedAiBotListSha256>` constant. **Mismatch is a hard build failure** — deliberate, to surface upstream changes for review rather than silently embedding new tokens.
+The build-time `SyncAiBotList` MSBuild target (in `Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj`) fetches `https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt` and verifies its SHA-256 against the `<ExpectedAiBotListSha256>` constant. **Mismatch is a hard build failure** — deliberate, to surface upstream changes for review rather than silently embedding new tokens.
 
 When the upstream feed updates, the build fails with:
 
@@ -20,29 +20,29 @@ To refresh:
 2. **Refresh both files in lockstep.** From the repo root:
    ```bash
    curl -fsSL https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt \
-     -o LlmsTxt.Umbraco/HealthChecks/AiBotList.fallback.txt
-   shasum -a 256 LlmsTxt.Umbraco/HealthChecks/AiBotList.fallback.txt
+     -o Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt
+   shasum -a 256 Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt
    ```
-   Update **both** `<ExpectedAiBotListSha256>` AND `<ExpectedAiBotListFallbackSha256>` in `LlmsTxt.Umbraco/LlmsTxt.Umbraco.csproj` to the new SHA (lowercase hex, no spaces). The build verifies both: the upstream pin gates the online fetch; the fallback pin gates the committed snapshot. They can deliberately differ during an upstream-broken interregnum, but the common case is that they're identical.
+   Update **both** `<ExpectedAiBotListSha256>` AND `<ExpectedAiBotListFallbackSha256>` in `Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj` to the new SHA (lowercase hex, no spaces). The build verifies both: the upstream pin gates the online fetch; the fallback pin gates the committed snapshot. They can deliberately differ during an upstream-broken interregnum, but the common case is that they're identical.
 
-3. **Update the curated category map** in `LlmsTxt.Umbraco/HealthChecks/AiBotList.cs` for any new tokens that should not surface as `BotCategory.Unknown`. New deprecations go in `AiBotList.DeprecatedTokens`.
+3. **Update the curated category map** in `Umbraco.Community.AiVisibility/Robots/AiBotList.cs` for any new tokens that should not surface as `BotCategory.Unknown`. New deprecations go in `AiBotList.DeprecatedTokens`.
 
 4. **Run the build matrix** locally:
    ```bash
    # Online build — should succeed with "synced from upstream" log line
-   dotnet build LlmsTxt.Umbraco.slnx --configuration Release
+   dotnet build Umbraco.Community.AiVisibility.slnx --configuration Release
    # Offline simulation — should succeed with "Falling back to AiBotList.fallback.txt" warning
-   dotnet build LlmsTxt.Umbraco.slnx --configuration Release \
+   dotnet build Umbraco.Community.AiVisibility.slnx --configuration Release \
      /p:AiBotListSourceUrl=http://localhost:65535/unreachable
    ```
 
-5. **Run the test suite** — `dotnet test LlmsTxt.Umbraco.slnx --configuration Release`. The `AiBotListTests.Load_RealEmbeddedResource_HasKnownTokens` test pins anchor tokens (`GPTBot`, `ClaudeBot`, `anthropic-ai`, `Bytespider`) — if upstream removes any of them, this test fails. Update the test fixture in the same PR.
+5. **Run the test suite** — `dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release`. The `AiBotListTests.Load_RealEmbeddedResource_HasKnownTokens` test pins anchor tokens (`GPTBot`, `ClaudeBot`, `anthropic-ai`, `Bytespider`) — if upstream removes any of them, this test fails. Update the test fixture in the same PR.
 
 6. **Open a PR** with the changes scoped to the three files (`AiBotList.fallback.txt`, the csproj's `<ExpectedAiBotListSha256>`, optional `AiBotList.cs` curated-map updates). Title format: `chore: refresh AI bot list (YYYY-MM-DD upstream snapshot)`. Include the upstream commit SHA in the body.
 
 ## Source URL drift handling
 
-The `<AiBotListSourceUrl>` constant in `LlmsTxt.Umbraco.csproj` points at `https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt`. If the upstream repository moves (org rename, repo rename, file rename, branch retirement, archival), the build's online fetch starts returning 404. The fallback path absorbs the failure into a warning + embeds the committed snapshot — adopters keep working — but maintainers MUST react.
+The `<AiBotListSourceUrl>` constant in `Umbraco.Community.AiVisibility.csproj` points at `https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt`. If the upstream repository moves (org rename, repo rename, file rename, branch retirement, archival), the build's online fetch starts returning 404. The fallback path absorbs the failure into a warning + embeds the committed snapshot — adopters keep working — but maintainers MUST react.
 
 Symptoms:
 
@@ -78,20 +78,20 @@ docker run --name umbraco-sqlserver \
   -p 1433:1433 \
   -d mcr.microsoft.com/mssql/server:2022-latest
 
-# Create the LlmsTxt-test database
+# Create the AiVisibility-test database
 docker exec -i umbraco-sqlserver /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U SA -P "YourStrong!Passw0rd" -No \
-  -Q "CREATE DATABASE [LlmsTxtTest]"
+  -Q "CREATE DATABASE [AiVisibilityTest]"
 ```
 
 ### TestSite configuration
 
-Update `LlmsTxt.Umbraco.TestSite/appsettings.Development.json` to point at SQL Server:
+Update `Umbraco.Community.AiVisibility.TestSite/appsettings.Development.json` to point at SQL Server:
 
 ```json
 {
   "ConnectionStrings": {
-    "umbracoDbDSN": "Server=localhost,1433;Database=LlmsTxtTest;User Id=SA;Password=YourStrong!Passw0rd;TrustServerCertificate=true",
+    "umbracoDbDSN": "Server=localhost,1433;Database=AiVisibilityTest;User Id=SA;Password=YourStrong!Passw0rd;TrustServerCertificate=true",
     "umbracoDbDSN_ProviderName": "Microsoft.Data.SqlClient"
   }
 }
@@ -103,12 +103,12 @@ Spin two instances against the same database:
 
 ```bash
 # Terminal 1 — instance A
-dotnet run --project LlmsTxt.Umbraco.TestSite \
+dotnet run --project Umbraco.Community.AiVisibility.TestSite \
   --urls "https://localhost:44314" \
   --launch-profile "Development"
 
 # Terminal 2 — instance B (different port, same DB)
-dotnet run --project LlmsTxt.Umbraco.TestSite \
+dotnet run --project Umbraco.Community.AiVisibility.TestSite \
   --urls "https://localhost:44315" \
   --launch-profile "Development"
 ```
@@ -119,7 +119,7 @@ Watch both instances' logs for `Robots audit refresh job RUN — InstanceId=…`
 
 The same Docker SQL Server 2022 setup verifies Story 5.1's `LogRetentionJob` (`IDistributedBackgroundJob`). Configure both TestSite instances with `AiVisibility:LogRetention:DurationDays: 30` and `AiVisibility:LogRetention:RunIntervalSecondsOverride: 30` (the dev-only escape hatch — do NOT use in production) so cycles tick every 30 seconds rather than every 24 hours. Hit a few `.md` / `/llms.txt` / `/llms-full.txt` URLs across both instances to populate `aiVisibilityRequestLog`.
 
-Watch both instances' logs for `LlmsTxt log retention job RUN — InstanceId=… CycleStart=… RowsDeleted=…`. Same invariant: **exactly one** RUN entry per cycle across the two instances. If you see two entries for the same `CycleStart`, stop — re-running Spike 0.B is cheaper than absorbing the drift.
+Watch both instances' logs for `AiVisibility log retention job RUN — InstanceId=… CycleStart=… RowsDeleted=…`. Same invariant: **exactly one** RUN entry per cycle across the two instances. If you see two entries for the same `CycleStart`, stop — re-running Spike 0.B is cheaper than absorbing the drift.
 
 Story 5.1 is the second consumer of this two-instance setup; future stories with `IDistributedBackgroundJob` exactly-once gates reuse the same procedure.
 

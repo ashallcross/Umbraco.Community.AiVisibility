@@ -13,6 +13,10 @@ import type {
   UmbDashboardElement,
   ManifestDashboard,
 } from "@umbraco-cms/backoffice/dashboard";
+import {
+  authenticatedFetch,
+  AuthContextUnavailableError,
+} from "../util/authenticated-fetch.js";
 
 // ────────────────────────────────────────────────────────────────────────
 // View-model contracts shared with AnalyticsManagementApiController.cs
@@ -72,10 +76,6 @@ type DashboardState =
     }
   | { kind: "error"; message: string }
   | { kind: "auth-error" };
-
-class AuthContextUnavailableError extends Error {
-  override readonly name = "AuthContextUnavailableError";
-}
 
 interface FilterState {
   fromDate: string;       // YYYY-MM-DD (input value)
@@ -165,29 +165,12 @@ export class AiVisibilityAiTrafficDashboardElement
   }
 
   async #authedFetch(path: string, signal: AbortSignal): Promise<Response> {
-    const authContext = await this.getContext(UMB_AUTH_CONTEXT);
-    if (!authContext) {
-      throw new AuthContextUnavailableError("Auth context unavailable");
-    }
-    const config = authContext.getOpenApiConfiguration();
-    let token: string | undefined;
-    try {
-      token = await config.token();
-    } catch {
-      throw new AuthContextUnavailableError("Token acquisition failed");
-    }
-    if (!token) {
-      throw new AuthContextUnavailableError("Token acquisition returned empty");
-    }
-    return fetch(`${config.base}${path}`, {
-      method: "GET",
-      credentials: config.credentials,
-      signal,
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Story 6.0b AC6 — auth-fetch primitive lifted to a shared helper at
+    // ../util/authenticated-fetch.ts. The strict-token contract (throws
+    // AuthContextUnavailableError on missing context / failed token /
+    // empty token) is preserved verbatim; the calling shape `({ signal })`
+    // matches the helper's GET-default options.
+    return authenticatedFetch(() => this.getContext(UMB_AUTH_CONTEXT), path, { signal });
   }
 
   #buildQuerystring(includeFilters: boolean): string {

@@ -1,19 +1,15 @@
-import { LitElement as I, nothing as u, html as o, css as F, property as O, state as g, customElement as M } from "@umbraco-cms/backoffice/external/lit";
-import { UmbElementMixin as H } from "@umbraco-cms/backoffice/element-api";
-import { UMB_AUTH_CONTEXT as L } from "@umbraco-cms/backoffice/auth";
-var q = Object.defineProperty, N = Object.getOwnPropertyDescriptor, D = (t) => {
+import { LitElement as P, nothing as u, html as l, css as I, property as F, state as g, customElement as O } from "@umbraco-cms/backoffice/external/lit";
+import { UmbElementMixin as M } from "@umbraco-cms/backoffice/element-api";
+import { UMB_AUTH_CONTEXT as H } from "@umbraco-cms/backoffice/auth";
+import { A as L, a as q } from "./authenticated-fetch-Dotc30dn.js";
+var N = Object.defineProperty, j = Object.getOwnPropertyDescriptor, D = (t) => {
   throw TypeError(t);
-}, h = (t, e, a, i) => {
-  for (var r = i > 1 ? void 0 : i ? N(e, a) : e, l = t.length - 1, d; l >= 0; l--)
-    (d = t[l]) && (r = (i ? d(e, a, r) : d(r)) || r);
-  return i && r && q(e, a, r), r;
-}, j = (t, e, a) => e.has(t) || D("Cannot " + a), B = (t, e, a) => e.has(t) ? D("Cannot add the same private member more than once") : e instanceof WeakSet ? e.add(t) : e.set(t, a), n = (t, e, a) => (j(t, e, "access private method"), a), s, C, p, b, A, f, m, T, k, v, y, S, E, U, z;
-class _ extends Error {
-  constructor() {
-    super(...arguments), this.name = "AuthContextUnavailableError";
-  }
-}
-const G = "/umbraco/management/api/v1/aivisibility/analytics/requests", K = "/umbraco/management/api/v1/aivisibility/analytics/classifications", Q = "/umbraco/management/api/v1/aivisibility/analytics/summary", V = "/umbraco/management/api/v1/aivisibility/analytics/retention", Y = 50, W = 7, Z = 200;
+}, h = (t, e, a, s) => {
+  for (var n = s > 1 ? void 0 : s ? j(e, a) : e, o = t.length - 1, d; o >= 0; o--)
+    (d = t[o]) && (n = (s ? d(e, a, n) : d(n)) || n);
+  return s && n && N(e, a, n), n;
+}, K = (t, e, a) => e.has(t) || D("Cannot " + a), B = (t, e, a) => e.has(t) ? D("Cannot add the same private member more than once") : e instanceof WeakSet ? e.add(t) : e.set(t, a), r = (t, e, a) => (K(t, e, "access private method"), a), i, x, p, _, C, f, m, A, T, y, b, k, S, U, E;
+const G = "/umbraco/management/api/v1/aivisibility/analytics/requests", Q = "/umbraco/management/api/v1/aivisibility/analytics/classifications", V = "/umbraco/management/api/v1/aivisibility/analytics/summary", Y = "/umbraco/management/api/v1/aivisibility/analytics/retention", W = 50, Z = 7, X = 200;
 function R(t) {
   switch (t) {
     case "AiTraining":
@@ -28,43 +24,43 @@ function R(t) {
       return "default";
   }
 }
-function X() {
+function J() {
   const t = /* @__PURE__ */ new Date(), e = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
   return new Date(e).toISOString();
 }
-function x(t) {
+function w(t) {
   return (/* @__PURE__ */ new Date(`${t}T00:00:00.000Z`)).toISOString();
 }
-let c = class extends H(I) {
+let c = class extends M(P) {
   constructor() {
-    super(...arguments), B(this, s), this._state = { kind: "loading" }, this._filter = n(this, s, C).call(this), this._retentionDays = null, this._lastClassifications = [], this._dateRangeError = null, this._inflight = null;
+    super(...arguments), B(this, i), this._state = { kind: "loading" }, this._filter = r(this, i, x).call(this), this._retentionDays = null, this._lastClassifications = [], this._dateRangeError = null, this._inflight = null;
   }
   connectedCallback() {
-    super.connectedCallback(), n(this, s, A).call(this), n(this, s, f).call(this);
+    super.connectedCallback(), r(this, i, C).call(this), r(this, i, f).call(this);
   }
   disconnectedCallback() {
     this._inflight?.abort(), this._inflight = null, super.disconnectedCallback();
   }
   render() {
-    return o`
+    return l`
       <uui-box headline="AI Traffic">
-        ${this._state.kind === "loading" ? o`<uui-loader-bar></uui-loader-bar>` : u}
-        ${n(this, s, E).call(this)}
-        ${n(this, s, U).call(this)}
-        ${this._state.kind === "error" ? o`
+        ${this._state.kind === "loading" ? l`<uui-loader-bar></uui-loader-bar>` : u}
+        ${r(this, i, S).call(this)}
+        ${r(this, i, U).call(this)}
+        ${this._state.kind === "error" ? l`
               <div role="alert" class="error-banner">
                 <span>${this._state.message}</span>
                 <uui-button
                   look="primary"
                   @click=${() => {
-      n(this, s, f).call(this);
+      r(this, i, f).call(this);
     }}
                 >
                   Retry
                 </uui-button>
               </div>
             ` : u}
-        ${this._state.kind === "auth-error" ? o`
+        ${this._state.kind === "auth-error" ? l`
               <div role="alert" class="error-banner">
                 <span
                   >Could not authenticate with the Backoffice — please refresh and try
@@ -75,56 +71,36 @@ let c = class extends H(I) {
                 </uui-button>
               </div>
             ` : u}
-        ${n(this, s, z).call(this)}
+        ${r(this, i, E).call(this)}
       </uui-box>
     `;
   }
 };
-s = /* @__PURE__ */ new WeakSet();
-C = function() {
+i = /* @__PURE__ */ new WeakSet();
+x = function() {
   const t = /* @__PURE__ */ new Date(), e = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()), a = new Date(e + 864e5);
   return {
-    fromDate: new Date(e - W * 864e5).toISOString().slice(0, 10),
+    fromDate: new Date(e - Z * 864e5).toISOString().slice(0, 10),
     toDate: a.toISOString().slice(0, 10),
     selectedClasses: /* @__PURE__ */ new Set(),
     page: 1,
-    pageSize: Y
+    pageSize: W
   };
 };
 p = async function(t, e) {
-  const a = await this.getContext(L);
-  if (!a)
-    throw new _("Auth context unavailable");
-  const i = a.getOpenApiConfiguration();
-  let r;
-  try {
-    r = await i.token();
-  } catch {
-    throw new _("Token acquisition failed");
-  }
-  if (!r)
-    throw new _("Token acquisition returned empty");
-  return fetch(`${i.base}${t}`, {
-    method: "GET",
-    credentials: i.credentials,
-    signal: e,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${r}`
-    }
-  });
+  return q(() => this.getContext(H), t, { signal: e });
 };
-b = function(t) {
-  const e = x(this._filter.fromDate), a = x(this._filter.toDate), i = new URLSearchParams();
-  if (i.append("from", e), i.append("to", a), t) {
-    for (const r of this._filter.selectedClasses) i.append("class", r);
-    i.append("page", String(this._filter.page)), i.append("pageSize", String(this._filter.pageSize));
+_ = function(t) {
+  const e = w(this._filter.fromDate), a = w(this._filter.toDate), s = new URLSearchParams();
+  if (s.append("from", e), s.append("to", a), t) {
+    for (const n of this._filter.selectedClasses) s.append("class", n);
+    s.append("page", String(this._filter.page)), s.append("pageSize", String(this._filter.pageSize));
   }
-  return `?${i.toString()}`;
+  return `?${s.toString()}`;
 };
-A = async function() {
+C = async function() {
   try {
-    const t = new AbortController(), e = await n(this, s, p).call(this, V, t.signal);
+    const t = new AbortController(), e = await r(this, i, p).call(this, Y, t.signal);
     if (!e.ok) return;
     const a = await e.json();
     this._retentionDays = a.durationDays;
@@ -136,47 +112,47 @@ f = async function() {
   this._inflight?.abort();
   const t = new AbortController();
   this._inflight = t, this._state = { kind: "loading" };
-  const e = n(this, s, b).call(this, !0), a = n(this, s, b).call(this, !1);
+  const e = r(this, i, _).call(this, !0), a = r(this, i, _).call(this, !1);
   try {
-    const [i, r, l] = await Promise.all([
-      n(this, s, p).call(this, `${G}${e}`, t.signal),
-      n(this, s, p).call(this, `${K}${a}`, t.signal),
-      n(this, s, p).call(this, `${Q}${a}`, t.signal)
+    const [s, n, o] = await Promise.all([
+      r(this, i, p).call(this, `${G}${e}`, t.signal),
+      r(this, i, p).call(this, `${Q}${a}`, t.signal),
+      r(this, i, p).call(this, `${V}${a}`, t.signal)
     ]);
     if (t.signal.aborted) return;
-    if (!i.ok) {
+    if (!s.ok) {
       this._state = {
         kind: "error",
-        message: await n(this, s, m).call(this, i)
+        message: await r(this, i, m).call(this, s)
       };
       return;
     }
-    if (!r.ok) {
+    if (!n.ok) {
       this._state = {
         kind: "error",
-        message: await n(this, s, m).call(this, r)
+        message: await r(this, i, m).call(this, n)
       };
       return;
     }
-    if (!l.ok) {
+    if (!o.ok) {
       this._state = {
         kind: "error",
-        message: await n(this, s, m).call(this, l)
+        message: await r(this, i, m).call(this, o)
       };
       return;
     }
-    const d = await i.json(), w = await r.json(), P = await l.json();
-    this._lastClassifications = w, this._state = { kind: "ready", requests: d, classifications: w, summary: P };
+    const d = await s.json(), v = await n.json(), z = await o.json();
+    this._lastClassifications = v, this._state = { kind: "ready", requests: d, classifications: v, summary: z };
     const $ = d.rangeFrom.slice(0, 10);
     $ !== this._filter.fromDate && (this._filter = { ...this._filter, fromDate: $ });
-  } catch (i) {
-    if (i?.name === "AbortError") return;
-    if (i instanceof _) {
+  } catch (s) {
+    if (s?.name === "AbortError") return;
+    if (s instanceof L) {
       this._state = { kind: "auth-error" };
       return;
     }
-    const r = i?.message ?? "Failed to load AI Traffic data";
-    this._state = { kind: "error", message: r };
+    const n = s?.message ?? "Failed to load AI Traffic data";
+    this._state = { kind: "error", message: n };
   }
 };
 m = async function(t) {
@@ -187,32 +163,32 @@ m = async function(t) {
     return `HTTP ${t.status}`;
   }
 };
+A = function(t) {
+  const e = t.target.value;
+  this._filter = { ...this._filter, fromDate: e, page: 1 }, r(this, i, y).call(this);
+};
 T = function(t) {
   const e = t.target.value;
-  this._filter = { ...this._filter, fromDate: e, page: 1 }, n(this, s, v).call(this);
+  this._filter = { ...this._filter, toDate: e, page: 1 }, r(this, i, y).call(this);
 };
-k = function(t) {
-  const e = t.target.value;
-  this._filter = { ...this._filter, toDate: e, page: 1 }, n(this, s, v).call(this);
-};
-v = function() {
+y = function() {
   if (this._filter.fromDate && this._filter.toDate && this._filter.fromDate > this._filter.toDate) {
     this._dateRangeError = "From date cannot be after To date";
     return;
   }
-  this._dateRangeError = null, n(this, s, f).call(this);
+  this._dateRangeError = null, r(this, i, f).call(this);
 };
-y = function(t) {
+b = function(t) {
   const e = new Set(this._filter.selectedClasses);
-  e.has(t) ? e.delete(t) : e.add(t), this._filter = { ...this._filter, selectedClasses: e, page: 1 }, n(this, s, f).call(this);
+  e.has(t) ? e.delete(t) : e.add(t), this._filter = { ...this._filter, selectedClasses: e, page: 1 }, r(this, i, f).call(this);
 };
-S = function(t) {
+k = function(t) {
   const a = t.target.current ?? 1;
-  a !== this._filter.page && (this._filter = { ...this._filter, page: a }, n(this, s, f).call(this));
+  a !== this._filter.page && (this._filter = { ...this._filter, page: a }, r(this, i, f).call(this));
 };
-E = function() {
-  const t = this._state.kind === "ready" ? this._state.summary : null, e = t ? t.totalRequests.toLocaleString() : "…", a = t?.firstSeenUtc ? new Date(t.firstSeenUtc).toLocaleString() : "—", i = t?.lastSeenUtc ? new Date(t.lastSeenUtc).toLocaleString() : "—", r = X().slice(0, 10);
-  return o`
+S = function() {
+  const t = this._state.kind === "ready" ? this._state.summary : null, e = t ? t.totalRequests.toLocaleString() : "…", a = t?.firstSeenUtc ? new Date(t.firstSeenUtc).toLocaleString() : "—", s = t?.lastSeenUtc ? new Date(t.lastSeenUtc).toLocaleString() : "—", n = J().slice(0, 10);
+  return l`
       <div class="header-row">
         <label
           >From
@@ -220,8 +196,8 @@ E = function() {
             type="date"
             .value=${this._filter.fromDate}
             min="2020-01-01"
-            max=${r}
-            @change=${n(this, s, T)}
+            max=${n}
+            @change=${r(this, i, A)}
           />
         </label>
         <label
@@ -230,34 +206,34 @@ E = function() {
             type="date"
             .value=${this._filter.toDate}
             min="2020-01-01"
-            max=${r}
-            @change=${n(this, s, k)}
+            max=${n}
+            @change=${r(this, i, T)}
           />
         </label>
         <span class="summary-line">
-          Showing ${e} requests from ${a} to ${i}
+          Showing ${e} requests from ${a} to ${s}
         </span>
       </div>
-      ${this._dateRangeError !== null ? o`<uui-form-validation-message>${this._dateRangeError}</uui-form-validation-message>` : u}
+      ${this._dateRangeError !== null ? l`<uui-form-validation-message>${this._dateRangeError}</uui-form-validation-message>` : u}
     `;
 };
 U = function() {
   const t = this._state.kind === "ready" ? this._state.classifications : this._lastClassifications;
-  return t.length === 0 ? this._state.kind === "ready" ? o`<div class="chips muted">No classifications recorded for this range.</div>` : u : o`
+  return t.length === 0 ? this._state.kind === "ready" ? l`<div class="chips muted">No classifications recorded for this range.</div>` : u : l`
       <div class="chips" role="group" aria-label="Filter by user-agent classification">
         ${t.map((e) => {
-    const a = this._filter.selectedClasses.has(e.class), i = a ? "primary" : "outline", r = R(e.class);
-    return o`
+    const a = this._filter.selectedClasses.has(e.class), s = a ? "primary" : "outline", n = R(e.class);
+    return l`
             <uui-tag
               class="chip"
               tabindex="0"
               role="button"
               aria-pressed=${a ? "true" : "false"}
-              look=${i}
-              color=${r}
-              @click=${() => n(this, s, y).call(this, e.class)}
-              @keydown=${(l) => {
-      (l.key === "Enter" || l.key === " ") && (l.preventDefault(), n(this, s, y).call(this, e.class));
+              look=${s}
+              color=${n}
+              @click=${() => r(this, i, b).call(this, e.class)}
+              @keydown=${(o) => {
+      (o.key === "Enter" || o.key === " ") && (o.preventDefault(), r(this, i, b).call(this, e.class));
     }}
             >
               ${e.class} (${e.count.toLocaleString()})
@@ -267,25 +243,25 @@ U = function() {
       </div>
     `;
 };
-z = function() {
+E = function() {
   if (this._state.kind !== "ready") return u;
   const t = this._state.requests;
   if (t.total === 0) {
     const e = new Date(t.rangeFrom), a = this._retentionDays !== null && this._retentionDays > 0 && e < new Date(Date.now() - this._retentionDays * 864e5);
-    return o`
+    return l`
         <div role="status" class="empty-state">
           <p>
             No AI traffic recorded yet for this filter. The package is logging — check back
             later.
           </p>
-          ${a ? o`<p class="retention-hint">
+          ${a ? l`<p class="retention-hint">
                 Retention is configured to ${this._retentionDays} days; older data is not
                 available.
               </p>` : u}
         </div>
       `;
   }
-  return o`
+  return l`
       <uui-table>
         <uui-table-head>
           <uui-table-head-cell>Timestamp</uui-table-head-cell>
@@ -296,40 +272,40 @@ z = function() {
           <uui-table-head-cell>Referrer</uui-table-head-cell>
         </uui-table-head>
         ${t.items.map((e) => {
-    const a = e.path.length > 80 ? `${e.path.slice(0, 77)}…` : e.path, i = e.contentKey ? `${e.contentKey.slice(0, 8)}…` : "—", r = e.referrerHost ?? "—";
-    return o`
+    const a = e.path.length > 80 ? `${e.path.slice(0, 77)}…` : e.path, s = e.contentKey ? `${e.contentKey.slice(0, 8)}…` : "—", n = e.referrerHost ?? "—";
+    return l`
             <uui-table-row title=${e.createdUtc}>
               <uui-table-cell>${new Date(e.createdUtc).toLocaleString()}</uui-table-cell>
               <uui-table-cell title=${e.path}>${a}</uui-table-cell>
-              <uui-table-cell title=${e.contentKey ?? ""}>${i}</uui-table-cell>
+              <uui-table-cell title=${e.contentKey ?? ""}>${s}</uui-table-cell>
               <uui-table-cell>${e.culture || "—"}</uui-table-cell>
               <uui-table-cell>
                 <uui-tag look="primary" color=${R(e.userAgentClass)}>
                   ${e.userAgentClass}
                 </uui-tag>
               </uui-table-cell>
-              <uui-table-cell>${r}</uui-table-cell>
+              <uui-table-cell>${n}</uui-table-cell>
             </uui-table-row>
           `;
   })}
       </uui-table>
-      ${t.totalCappedAt ? o`
+      ${t.totalCappedAt ? l`
             <div class="cap-footer">
               Showing first ${t.totalCappedAt.toLocaleString()} results — narrow your
               date range or add a classification filter to see more.
             </div>
           ` : u}
-      ${t.totalPages > 1 ? o`
+      ${t.totalPages > 1 ? l`
             <uui-pagination
-              total=${Math.min(t.totalPages, Z)}
+              total=${Math.min(t.totalPages, X)}
               current=${t.page}
-              @change=${n(this, s, S)}
+              @change=${r(this, i, k)}
             ></uui-pagination>
           ` : u}
     `;
 };
 c.styles = [
-  F`
+  I`
       :host {
         display: block;
         padding: var(--uui-size-layout-1, 24px);
@@ -407,7 +383,7 @@ c.styles = [
     `
 ];
 h([
-  O({ attribute: !1 })
+  F({ attribute: !1 })
 ], c.prototype, "manifest", 2);
 h([
   g()
@@ -425,12 +401,11 @@ h([
   g()
 ], c.prototype, "_dateRangeError", 2);
 c = h([
-  M("aiv-ai-traffic-dashboard")
+  O("aiv-ai-traffic-dashboard")
 ], c);
-const at = c, it = c;
+const st = c, rt = c;
 export {
   c as AiVisibilityAiTrafficDashboardElement,
-  it as default,
-  at as element
+  rt as default,
+  st as element
 };
-//# sourceMappingURL=aiv-ai-traffic-dashboard.element-DkAKzgPI.js.map

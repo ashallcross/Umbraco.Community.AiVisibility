@@ -341,6 +341,37 @@ public class CacheKeysTests
         });
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Story 6.0b AC7 — IPv6-aware NormaliseHost (Codex finding #12)
+    // ────────────────────────────────────────────────────────────────────────
+
+    [TestCase("[::1]:443", ExpectedResult = "[::1]", Description = "bracketed IPv6 + port → brackets preserved, port stripped")]
+    [TestCase("[::1]", ExpectedResult = "[::1]", Description = "bracketed IPv6 (no port) → brackets preserved verbatim")]
+    [TestCase("::1", ExpectedResult = "::1", Description = "bare IPv6 (multiple colons, no port) → preserved as host")]
+    [TestCase("fe80::1", ExpectedResult = "fe80::1", Description = "bare IPv6 multi-segment (no port) → preserved as host")]
+    [TestCase("example.com:443", ExpectedResult = "example.com", Description = "hostname:port → port stripped")]
+    [TestCase("example.com", ExpectedResult = "example.com", Description = "hostname (no port) → preserved verbatim")]
+    [TestCase("EXAMPLE.COM", ExpectedResult = "example.com", Description = "uppercase hostname → lowercased")]
+    [TestCase("[FE80::1]:8080", ExpectedResult = "[fe80::1]", Description = "uppercase bracketed IPv6 + port → lowercased + port stripped")]
+    public string NormaliseHost_Inputs_ReturnsCanonical(string input)
+    {
+        return AiVisibilityCacheKeys.NormaliseHost(input);
+    }
+
+    [Test]
+    public void NormaliseHost_NullOrEmpty_ReturnsUnderscoreSentinel()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(AiVisibilityCacheKeys.NormaliseHost(null), Is.EqualTo("_"),
+                "null host → _ sentinel");
+            Assert.That(AiVisibilityCacheKeys.NormaliseHost(""), Is.EqualTo("_"),
+                "empty host → _ sentinel");
+            Assert.That(AiVisibilityCacheKeys.NormaliseHost("   "), Is.EqualTo("_"),
+                "whitespace-only host → _ sentinel");
+        });
+    }
+
     [Test]
     public void Robots_HostOnly_FormatsAsLowercase()
     {

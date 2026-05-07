@@ -67,8 +67,63 @@ jobs:
             exit 1
           fi
 
-      - name: dotnet test (Release)
-        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal
+      # Story 6.0b AC3 — dependency vulnerability release gate. Compares
+      # de-duped NU1902/NU1903 warning lines against the catalogued allow-list
+      # at .github/expected-vuln-warnings.txt. The matcher is exact-line
+      # equality (`comm -23`): each captured warning's canonical
+      # `NUxxxx: Package '<name>' <version>` substring must appear verbatim
+      # in the allow-list, otherwise the build fails. See
+      # `docs/dependency-status.md` for the per-warning narrative + target
+      # review dates.
+      - name: Assert no unexpected NU1902/NU1903 vulnerability warnings
+        run: |
+          set -euo pipefail
+          EXPECTED_FILE=.github/expected-vuln-warnings.txt
+          if [[ ! -f "${EXPECTED_FILE}" ]]; then
+            echo "::error::Vuln allow-list missing at ${EXPECTED_FILE}"
+            exit 1
+          fi
+          # The previous `dotnet build` step pipes its full output into
+          # `build-online.log` via `tee`. If that file is missing or empty,
+          # ACTUAL would silently be empty and the gate would PASS even
+          # though no input was scanned — so fail loudly here instead.
+          if [[ ! -s build-online.log ]]; then
+            echo "::error::build-online.log missing or empty — vuln gate cannot run."
+            echo "Did the preceding 'dotnet build (Release)' step change its `tee` redirection?"
+            exit 1
+          fi
+          # Extract the canonical "NU190x: Package '<name>' <version>" substring
+          # from each warning line, de-dup, sort. `grep` exits 1 on no-match
+          # under `pipefail`; tolerate exit 1 only and let other failures
+          # propagate (rather than the catch-all `|| true`).
+          ACTUAL=$(grep -Eo "NU190[23]: Package '[^']+' [^ ]+" build-online.log | sort -u || { rc=$?; [[ "${rc}" -eq 1 ]] || exit "${rc}"; })
+          EXPECTED=$(grep -Ev '^[[:space:]]*(#|$)' "${EXPECTED_FILE}" | sort -u)
+          UNEXPECTED=$(comm -23 <(echo "${ACTUAL}") <(echo "${EXPECTED}") | grep -v '^$' || { rc=$?; [[ "${rc}" -eq 1 ]] || exit "${rc}"; })
+          if [[ -n "${UNEXPECTED}" ]]; then
+            echo "::error::Unexpected vulnerability warning(s) — not in ${EXPECTED_FILE}:"
+            echo "${UNEXPECTED}" | sed 's/^/  - /'
+            echo ""
+            echo "Either update the allow-list (legitimate new vuln, document in docs/dependency-status.md)"
+            echo "or fix the underlying dependency (preferred — bump the transitive root)."
+            exit 1
+          fi
+          STALE=$(comm -13 <(echo "${ACTUAL}") <(echo "${EXPECTED}") | grep -v '^$' || { rc=$?; [[ "${rc}" -eq 1 ]] || exit "${rc}"; })
+          if [[ -n "${STALE}" ]]; then
+            echo "::warning::Allow-list entries no longer fire (consider pruning):"
+            echo "${STALE}" | sed 's/^/  - /'
+          fi
+
+      - name: dotnet test (Release, excludes LaunchSmoke)
+        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal --filter "Category!=LaunchSmoke"
+
+      # Story 6.0b AC4 — launch-readiness smoke trio gate. Three integration
+      # tests boot the TestSite via WebApplicationFactory<Program> and assert
+      # the package's most load-bearing routes against seeded Clean.Core 7.0.5
+      # content (per-page Markdown frontmatter, HTML pipeline unaltered, ETag
+      # 304 revalidation). Separate step so a smoke-trio-only failure surfaces
+      # distinctly from generic test regressions.
+      - name: dotnet test (Release, LaunchSmoke gate only)
+        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal --filter "Category=LaunchSmoke"
 
   build-offline:
     name: Build + test (offline — falls back to committed snapshot)
@@ -114,5 +169,76 @@ jobs:
             exit 1
           fi
 
-      - name: dotnet test (Release)
-        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal
+      # Story 6.0b AC3 — same vuln gate as build-online, against
+      # build-offline.log so a regression that only surfaces under the
+      # offline transitive resolution path is also caught. See the
+      # build-online step header for the full rationale.
+      - name: Assert no unexpected NU1902/NU1903 vulnerability warnings (offline lane)
+        run: |
+          set -euo pipefail
+          EXPECTED_FILE=.github/expected-vuln-warnings.txt
+          if [[ ! -f "${EXPECTED_FILE}" ]]; then
+            echo "::error::Vuln allow-list missing at ${EXPECTED_FILE}"
+            exit 1
+          fi
+          if [[ ! -s build-offline.log ]]; then
+            echo "::error::build-offline.log missing or empty — vuln gate cannot run."
+            exit 1
+          fi
+          ACTUAL=$(grep -Eo "NU190[23]: Package '[^']+' [^ ]+" build-offline.log | sort -u || { rc=$?; [[ "${rc}" -eq 1 ]] || exit "${rc}"; })
+          EXPECTED=$(grep -Ev '^[[:space:]]*(#|$)' "${EXPECTED_FILE}" | sort -u)
+          UNEXPECTED=$(comm -23 <(echo "${ACTUAL}") <(echo "${EXPECTED}") | grep -v '^$' || { rc=$?; [[ "${rc}" -eq 1 ]] || exit "${rc}"; })
+          if [[ -n "${UNEXPECTED}" ]]; then
+            echo "::error::Unexpected vulnerability warning(s) on offline lane — not in ${EXPECTED_FILE}:"
+            echo "${UNEXPECTED}" | sed 's/^/  - /'
+            exit 1
+          fi
+          STALE=$(comm -13 <(echo "${ACTUAL}") <(echo "${EXPECTED}") | grep -v '^$' || { rc=$?; [[ "${rc}" -eq 1 ]] || exit "${rc}"; })
+          if [[ -n "${STALE}" ]]; then
+            echo "::warning::Allow-list entries no longer fire on offline lane (consider pruning):"
+            echo "${STALE}" | sed 's/^/  - /'
+          fi
+
+      - name: dotnet test (Release, excludes LaunchSmoke)
+        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal --filter "Category!=LaunchSmoke"
+
+      # Story 6.0b AC4 — launch-readiness smoke trio gate. Three integration
+      # tests boot the TestSite via WebApplicationFactory<Program> and assert
+      # the package's most load-bearing routes against seeded Clean.Core 7.0.5
+      # content (per-page Markdown frontmatter, HTML pipeline unaltered, ETag
+      # 304 revalidation). Separate step so a smoke-trio-only failure surfaces
+      # distinctly from generic test regressions.
+      - name: dotnet test (Release, LaunchSmoke gate only)
+        run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal --filter "Category=LaunchSmoke"
+
+  pack-gate:
+    # Story 6.0b AC1 — pack-output release gate. Runs `dotnet pack` and
+    # asserts the resulting .nupkg's entries match an explicit allow-list.
+    # Catches the kind of MSBuild/Razor-SDK content-leakage the 2026-05-05
+    # external Codex review surfaced (duplicated `content/` /
+    # `contentFiles/` entries) and any future analogue.
+    name: Pack output assertion (Story 6.0b AC1 release gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.1'
+
+      - name: npm ci (Backoffice TS — Vite bundle must exist before pack)
+        run: npm ci
+        working-directory: Umbraco.Community.AiVisibility/Client
+
+      - name: npm run build (Backoffice TS — emits the staticwebassets bundle)
+        run: npm run build
+        working-directory: Umbraco.Community.AiVisibility/Client
+
+      - name: Assert pack output matches allow-list
+        run: ./.github/scripts/assert-pack-output.sh

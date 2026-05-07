@@ -1,6 +1,6 @@
 # Extension points
 
-Story 5.1 introduces three public notifications and two new extension-point interfaces alongside the seams Stories 1–4 already shipped. This page is the canonical adopter reference for **subscribing to events**, **overriding the default writer**, and **overriding UA classification**.
+This page is the canonical adopter reference for the package's three public notifications, two new extension-point interfaces, and the seams shipped in earlier releases — the canonical reference for **subscribing to events**, **overriding the default writer**, and **overriding UA classification**.
 
 > **PII discipline (NFR11).** Notifications and the request-log table capture **path, content key, culture, UA classification, referrer host** ONLY. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers MUST honour the same discipline if they forward data to external sinks.
 
@@ -74,7 +74,7 @@ services.AddScoped<IRequestLog, MyScopedLog>();
 services.AddTransient<IRequestLog, MyTransientLog>();
 ```
 
-`NotificationsComposer.Compose` throws `InvalidOperationException` if a non-Singleton lifetime is registered (architecture.md § Configuration & DI; Story 4.2 chunk-3 D2 pattern).
+`NotificationsComposer.Compose` throws `InvalidOperationException` if a non-Singleton lifetime is registered (architecture.md § Configuration & DI).
 
 > **Register before `NotificationsComposer` runs.** The composer-time hard-validation only inspects registrations present when the composer executes. If your `IComposer` runs AFTER `NotificationsComposer` (via `[ComposeAfter(typeof(NotificationsComposer))]`, alphabetical ordering by type name, or a `services.AddScoped<IRequestLog, ...>` after `IUmbracoBuilder.Build()`) the validation is bypassed at composer-time. Microsoft DI's runtime `ValidateScopes` would still catch a captive Scoped → Singleton mismatch at boot — but the soonest, clearest error message comes from registering before `NotificationsComposer`.
 
@@ -122,7 +122,7 @@ public sealed class AppInsightsRequestLog : IRequestLog
 
     public Task EnqueueAsync(RequestLogEntry entry, CancellationToken ct)
     {
-        _telemetry.TrackEvent("LlmsTxtRequest", new Dictionary<string, string>
+        _telemetry.TrackEvent("AiVisibilityRequest", new Dictionary<string, string>
         {
             ["Path"] = entry.Path,
             ["UserAgentClass"] = entry.UserAgentClass,
@@ -141,7 +141,7 @@ services.AddSingleton<IRequestLog, AppInsightsRequestLog>();
 
 ## `IUserAgentClassifier` — UA classification
 
-The default classifier (`DefaultUserAgentClassifier`) projects Story 4.2's `AiBotList` into a token-to-class map, returning one of the seven `UserAgentClass` values: `AiTraining`, `AiSearchRetrieval`, `AiUserTriggered`, `AiDeprecated`, `HumanBrowser`, `CrawlerOther`, `Unknown`.
+The default classifier (`DefaultUserAgentClassifier`) projects `AiBotList` into a token-to-class map, returning one of the seven `UserAgentClass` values: `AiTraining`, `AiSearchRetrieval`, `AiUserTriggered`, `AiDeprecated`, `HumanBrowser`, `CrawlerOther`, `Unknown`.
 
 ### `BotCategory` → `UserAgentClass` mapping
 
@@ -177,16 +177,16 @@ services.AddSingleton<IUserAgentClassifier, CustomClassifier>();
 
 ---
 
-## Other Story 5.1 surfaces (no public extension)
+## Other surfaces (no public extension)
 
 - **`LogRetentionJob` (`IDistributedBackgroundJob`)** — sealed; not an extension point. Adjust cadence via `AiVisibility:LogRetention:DurationDays` + `RunIntervalHours`. Set `DurationDays: 0` to disable retention entirely.
 - **`RequestLogDrainHostedService` (`IHostedService`)** — internal to the default `DefaultRequestLog` shape; bypassed when an adopter overrides `IRequestLog`.
 
 ---
 
-## Backoffice consumers of `IRequestLog` (Story 5.2)
+## Backoffice consumers of `IRequestLog`
 
-Story 5.2's AI Traffic Backoffice dashboard (under `Settings`) reads recent request rows DIRECTLY from the host DB's `aiVisibilityRequestLog` table via NPoco — it does **NOT** go through `IRequestLog`. The interface is write-only by design (`EnqueueAsync` is its only method).
+The AI Traffic Backoffice dashboard (under `Settings`) reads recent request rows DIRECTLY from the host DB's `aiVisibilityRequestLog` table via NPoco — it does **NOT** go through `IRequestLog`. The interface is write-only by design (`EnqueueAsync` is its only method).
 
 **Implications when you replace `IRequestLog`:**
 
@@ -200,8 +200,8 @@ If the empty-dashboard state is unacceptable, the v1 path is: keep the default `
 
 ## Other extension points (cross-references)
 
-- **`IRobotsAuditor`** (Story 4.2) — runs the build-time AI-bot list against the host site's `robots.txt` and surfaces blocking advice via the Backoffice Health Check view. See [`robots-audit.md`](robots-audit.md). Lifetime: Singleton (composer-time hard-validation enforced by `HealthChecksComposer`).
-- **`IExclusionEvaluator`** (Story 4.1) — shared shape for the per-doctype + per-page `excludeFromLlmExports` boolean used by `MarkdownController` + `AcceptHeaderNegotiationMiddleware` + the Razor TagHelpers. See [`data-attributes.md`](data-attributes.md).
-- **`ISettingsResolver`** (Story 3.1) — overlays the appsettings + Settings-doctype configuration into a `ResolvedLlmsSettings` per-request. See [`getting-started.md` § Settings doctype](getting-started.md#settings-doctype--backoffice-story-31). Adopter overrides go via `services.AddScoped<ISettingsResolver, MyResolver>()`; resolver throws degrade gracefully to appsettings-only.
-- **`IMarkdownContentExtractor`** + **`IContentRegionSelector`** (Story 1.x) — the seam between `IPublishedContent` and the Markdown body. Adopters who need a different HTML→Markdown pipeline (e.g. inject custom Markdig pipelines, transform images, etc.) override these. See [`getting-started.md` § Customising extraction](getting-started.md#customising-extraction). The package's `Caching/` decorator wraps any registration; bypass-extractor adopters get a one-shot `Information` log line at boot.
-- **`ILlmsTxtBuilder`** + **`ILlmsFullBuilder`** (Story 2.x) — the per-route manifest builders for `/llms.txt` and `/llms-full.txt`. Pure functions over `(host, culture, root content, pages, settings)` — no HTTP / scope dependencies. See the package's `Builders/` source for the public contracts; default behaviour is the canonical `llms.txt` shape from llmstxt.org.
+- **`IRobotsAuditor`** — runs the build-time AI-bot list against the host site's `robots.txt` and surfaces blocking advice via the Backoffice Health Check view. See [`robots-audit.md`](robots-audit.md). Lifetime: Singleton (composer-time hard-validation enforced by `HealthChecksComposer`).
+- **`IExclusionEvaluator`** — shared shape for the per-doctype + per-page `excludeFromLlmExports` boolean used by `MarkdownController` + `AcceptHeaderNegotiationMiddleware` + the Razor TagHelpers. See [`data-attributes.md`](data-attributes.md).
+- **`ISettingsResolver`** — overlays the appsettings + Settings-doctype configuration into a `ResolvedLlmsSettings` per-request. See [`getting-started.md` § Settings doctype](getting-started.md#settings-doctype--backoffice-story-31). Adopter overrides go via `services.AddScoped<ISettingsResolver, MyResolver>()`; resolver throws degrade gracefully to appsettings-only.
+- **`IMarkdownContentExtractor`** + **`IContentRegionSelector`** — the seam between `IPublishedContent` and the Markdown body. Adopters who need a different HTML→Markdown pipeline (e.g. inject custom Markdig pipelines, transform images, etc.) override these. See [`getting-started.md` § Customising extraction](getting-started.md#customising-extraction). The package's `Caching/` decorator wraps any registration; bypass-extractor adopters get a one-shot `Information` log line at boot.
+- **`ILlmsTxtBuilder`** + **`ILlmsFullBuilder`** — the per-route manifest builders for `/llms.txt` and `/llms-full.txt`. Pure functions over `(host, culture, root content, pages, settings)` — no HTTP / scope dependencies. See the package's `Builders/` source for the public contracts; default behaviour is the canonical `llms.txt` shape from llmstxt.org.

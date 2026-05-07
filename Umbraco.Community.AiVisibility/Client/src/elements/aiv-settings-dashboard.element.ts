@@ -15,6 +15,10 @@ import type {
   UmbDashboardElement,
   ManifestDashboard,
 } from "@umbraco-cms/backoffice/dashboard";
+import {
+  authenticatedFetch,
+  AuthContextUnavailableError,
+} from "../util/authenticated-fetch.js";
 
 // ────────────────────────────────────────────────────────────────────────
 // View-model contracts shared with SettingsManagementApiController.cs
@@ -177,24 +181,20 @@ export class AiVisibilitySettingsDashboardElement
     }
     const signal = this._abortController.signal;
     try {
-      const authContext = await this.getContext(UMB_AUTH_CONTEXT);
-      if (!authContext) {
-        return { ok: false, status: 0, message: "Backoffice auth context unavailable. Please refresh and try again." };
-      }
-      const config = authContext.getOpenApiConfiguration();
-      const token = await config.token();
-      const url = `${config.base}${path}`;
-      const response = await fetch(url, {
-        method: init.method ?? "GET",
-        credentials: config.credentials,
-        signal,
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      // Story 6.0b AC6 — auth-fetch primitive lifted to a shared helper.
+      // The thrown AuthContextUnavailableError is translated into the
+      // existing { ok: false, status: 0, message } result shape so the
+      // dashboard's UI states (`_state = { kind: "error", message }`)
+      // remain unchanged across the refactor.
+      const response = await authenticatedFetch(
+        () => this.getContext(UMB_AUTH_CONTEXT),
+        path,
+        {
+          method: init.method,
+          body: init.body,
+          signal,
         },
-        body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-      });
+      );
       if (!response.ok) {
         let problem: ProblemDetails | undefined;
         try {
@@ -214,6 +214,9 @@ export class AiVisibilitySettingsDashboardElement
     } catch (err) {
       if ((err instanceof DOMException && err.name === "AbortError") || signal.aborted) {
         return { ok: false, status: 0, message: "Request aborted.", aborted: true };
+      }
+      if (err instanceof AuthContextUnavailableError) {
+        return { ok: false, status: 0, message: "Backoffice auth context unavailable. Please refresh and try again." };
       }
       return {
         ok: false,

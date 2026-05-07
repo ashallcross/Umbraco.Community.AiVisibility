@@ -21,10 +21,22 @@
     <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Umbraco.Cms.Tests.Integration" />
+    <!-- Story 6.0b Task 4 — Launch-smoke trio uses WebApplicationFactory<Program>
+         against the TestSite assembly to sidestep the Story F.1 content-seeding gap. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Umbraco.Community.AiVisibility\Umbraco.Community.AiVisibility.csproj" />
+    <!-- Story 6.0b Task 4 — TestSite project reference used by LaunchSmokeTests
+         (WebApplicationFactory<Program> needs the TestSite's compiled entry point).
+         Side-effect: the TestSite assembly + its Spike composers land in this
+         project's bin/ directory, which Umbraco's TypeLoader auto-discovers when
+         UmbracoTestServerTestBase boots. This breaks the pre-existing
+         MarkdownControllerIntegrationTests.Get_UnpublishedPath_Returns404 fixture
+         (Story 1.5) — it's marked [Explicit] with a cross-link to the SDN.
+         Story F.1 (Umbraco 17.4.0 harness drain) reconciles. -->
+    <ProjectReference Include="..\Umbraco.Community.AiVisibility.TestSite\Umbraco.Community.AiVisibility.TestSite.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -172,6 +172,21 @@ public static class AiVisibilityCacheKeys
     /// hostname. Public so <see cref="MarkdownResponseWriter"/> can reuse the same
     /// normalisation when building ETag input — alignment between cache key and ETag
     /// input is what keeps <c>If-None-Match</c> revalidation working across host casings.
+    /// <para>
+    /// Story 6.0b AC7 — IPv6 contract:
+    /// <list type="bullet">
+    /// <item><description>Bracketed IPv6 literal (<c>[::1]:443</c>, <c>[::1]</c>) — brackets preserved; trailing
+    /// <c>:port</c> outside the closing bracket stripped. Per RFC 3986 § 3.2.2.</description></item>
+    /// <item><description>Bare IPv6 literal without brackets (<c>::1</c>, <c>fe80::1</c>) — treated as host-only,
+    /// no port to strip. Detected by the presence of more than one <c>:</c> AND no closing bracket.</description></item>
+    /// <item><description>Unbracketed <c>hostname:port</c> — port stripped (single-colon shape).</description></item>
+    /// </list>
+    /// The <see cref="Microsoft.AspNetCore.Http.HostString.FromUriComponent"/> path was considered
+    /// but NOT taken: it would introduce a <c>Microsoft.AspNetCore.Http.Abstractions</c> reference
+    /// inside <c>Caching/</c>, breaking the folder dependency boundary documented in
+    /// architecture.md (<c>Caching/</c> is HTTP-agnostic so adopters replacing the cache layer
+    /// don't drag ASP.NET into their substitute).
+    /// </para>
     /// </summary>
     public static string NormaliseHost(string? host)
     {
@@ -180,8 +195,43 @@ public static class AiVisibilityCacheKeys
             return "_";
         }
 
-        var portIndex = host.IndexOf(':', StringComparison.Ordinal);
-        var hostOnly = portIndex >= 0 ? host[..portIndex] : host;
+        // Bracketed IPv6 literal (RFC 3986 § 3.2.2). Preserve brackets, strip
+        // any trailing :port outside the closing bracket. e.g.
+        //   "[::1]:443" → "[::1]", "[::1]" → "[::1]".
+        if (host.StartsWith('['))
+        {
+            var closeBracket = host.IndexOf(']', StringComparison.Ordinal);
+            if (closeBracket > 0)
+            {
+                var bracketed = host[..(closeBracket + 1)];
+                return bracketed.ToLowerInvariant();
+            }
+
+            // Malformed (no closing bracket) — fall through to the generic path
+            // below. Collision risk is negligible because malformed hosts are
+            // non-routable anyway.
+        }
+
+        var firstColon = host.IndexOf(':', StringComparison.Ordinal);
+        if (firstColon < 0)
+        {
+            // No colon — bare hostname or single-segment IP.
+            return host.ToLowerInvariant();
+        }
+
+        // Bare IPv6 literal without brackets (e.g. "::1", "fe80::1"): if there's
+        // more than one colon AND no closing bracket, treat the whole string as
+        // host (no port). RFC 7230 requires brackets for IPv6 in HTTP Host
+        // headers, but defensive handling is cheap and matches what
+        // HostString.FromUriComponent does.
+        var lastColon = host.LastIndexOf(':');
+        if (firstColon != lastColon)
+        {
+            return host.ToLowerInvariant();
+        }
+
+        // Single colon: standard hostname:port shape; strip the port.
+        var hostOnly = host[..firstColon];
         return string.IsNullOrWhiteSpace(hostOnly) ? "_" : hostOnly.ToLowerInvariant();
     }
 }

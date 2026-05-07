@@ -1,0 +1,31 @@
+# Story 6.0b AC3 — release-gate allow-list of known dependency vulnerability warnings.
+#
+# Each non-blank, non-comment line is an exact-line allow-list entry that the
+# CI vuln gate compares (via `comm -23`) against the de-duplicated
+# `dotnet build` warning lines (NU1902 + NU1903), already truncated to the
+# canonical `NUxxxx: Package '<name>' <version>` substring before comparison.
+# Any captured warning whose canonical substring does NOT byte-match a line
+# below fails the build with `::error::Unexpected vulnerability warning…`.
+# (A patch bump that changes the version, e.g. MailKit 4.15.1 → 4.15.2,
+# trips the gate by design — re-review the upstream advisory and decide
+# whether the new version still has the open CVE before updating this file.)
+#
+# When this gate fires, ONE of two things is happening:
+#   (a) Your story bumped a dependency (or an Umbraco patch landed) that
+#       introduced a new transitive vuln. Investigate at the upstream issue
+#       tracker, decide on resolve-via-bump vs document-with-target-date, then
+#       update this file in the same diff.
+#   (b) An Umbraco patch silently fixed a previously-catalogued NU190x and
+#       the warning no longer fires. Remove the now-stale entry from this
+#       file AND update `docs/dependency-status.md` § Vulnerability warnings
+#       to mark the row resolved.
+#
+# Both cases require an explicit edit to this file alongside the underlying
+# change. Do NOT add a wildcard / regex pattern that would silence "all NU190x"
+# warnings — that defeats the gate.
+#
+# See `docs/dependency-status.md` for the canonical narrative + target review
+# dates for each entry below.
+
+NU1902: Package 'MailKit' 4.15.1
+NU1903: Package 'System.Security.Cryptography.Xml' 8.0.0

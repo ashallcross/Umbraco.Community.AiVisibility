@@ -24,6 +24,16 @@ Umbraco.Community.AiVisibility.TestSite/umbraco/Logs/
 Umbraco.Community.AiVisibility.TestSite/wwwroot/media/
 
 ##
+## Tests project runtime artefacts copied during WebApplicationFactory<Program>
+## boot of the LaunchSmoke harness (Story 6.0b AC4) — Clean.Core 7.0.5 demo
+## media + cshtml partials + wwwroot assets get materialised into the Tests
+## bin/working directory at runtime; none of them belong in the repo.
+##
+Umbraco.Community.AiVisibility.Tests/TEMP/
+Umbraco.Community.AiVisibility.Tests/Views/
+Umbraco.Community.AiVisibility.Tests/wwwroot/
+
+##
 ## Visual Studio / .NET standard ignores
 ## (https://github.com/github/gitignore/blob/master/VisualStudio.gitignore)
 ##

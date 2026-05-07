@@ -10,7 +10,7 @@ const i = [
     type: "dashboard",
     alias: "AiVisibility.Dashboard.Settings",
     name: "AI Visibility Settings Dashboard",
-    element: () => import("./aiv-settings-dashboard.element-Cih4iJke.js"),
+    element: () => import("./aiv-settings-dashboard.element-D9uA2o4l.js"),
     weight: 100,
     meta: {
       label: "AI Visibility",
@@ -28,7 +28,7 @@ const i = [
     type: "dashboard",
     alias: "AiVisibility.Dashboard.AiTraffic",
     name: "AI Visibility AI Traffic Dashboard",
-    element: () => import("./aiv-ai-traffic-dashboard.element-DkAKzgPI.js"),
+    element: () => import("./aiv-ai-traffic-dashboard.element-DDDESoE1.js"),
     weight: 90,
     meta: {
       label: "AI Traffic",
@@ -49,4 +49,3 @@ const i = [
 export {
   s as manifests
 };
-//# sourceMappingURL=umbraco-community-aivisibility.js.map

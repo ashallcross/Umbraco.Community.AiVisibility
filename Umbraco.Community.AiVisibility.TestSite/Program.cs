@@ -49,3 +49,10 @@ app.UseUmbraco()
 app.MapControllers();
 
 await app.RunAsync();
+
+// Story 6.0b Task 4 — `WebApplicationFactory<TEntryPoint>` requires `TEntryPoint`
+// to be a public type. Top-level statements generate an internal partial class
+// `Program`; this declaration upgrades it to public so
+// `WebApplicationFactory<Program>` in `Umbraco.Community.AiVisibility.Tests` can
+// resolve the entry point. Pure shape upgrade — no runtime behaviour change.
+public partial class Program { }

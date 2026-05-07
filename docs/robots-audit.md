@@ -1,6 +1,6 @@
 # Robots audit
 
-LlmsTxt.Umbraco includes a Backoffice Health Check that audits your site's `/robots.txt` against the [`ai-robots-txt/ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt) AI-crawler list and surfaces copy-pasteable suggested removals when AI bots are blocked.
+Umbraco.Community.AiVisibility includes a Backoffice Health Check that audits your site's `/robots.txt` against the [`ai-robots-txt/ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt) AI-crawler list and surfaces copy-pasteable suggested removals when AI bots are blocked.
 
 **The package is read-only on your `/robots.txt`** — it audits and surfaces, you decide what to change. There is no auto-fix button, no auto-PR, no `IRobotsAuditWriter`. This is by design (UX-DR3 + project-context.md § Critical Don't-Miss Rules).
 
@@ -30,7 +30,7 @@ Each AI-bot token in the curated list maps to one of:
 | **Search-retrieval** | `OAI-SearchBot`, `PerplexityBot`, `Claude-SearchBot` | "Don't include me in AI-mediated search answers." (Usually a different intent than training.) |
 | **User-triggered** | `ChatGPT-User`, `Claude-User`, `Perplexity-User`, `MistralAI-User` | "Block users who ask their LLM to fetch my page." (Usually unintentional.) |
 | **Opt-out** | `Google-Extended` | "Allow regular search; opt out of AI-only training." |
-| **Unclassified** | (any token not yet in the curated map) | Surfaced verbatim — patch the curated map in `LlmsTxt.Umbraco/HealthChecks/AiBotList.cs` to fix. |
+| **Unclassified** | (any token not yet in the curated map) | Surfaced verbatim — patch the curated map in `Umbraco.Community.AiVisibility/Robots/AiBotList.cs` to fix. |
 
 ## Deprecated tokens
 
@@ -53,8 +53,8 @@ The list is fetched from upstream at **build time**:
 
 ```
 Source URL:   https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt
-Pinned SHA:   <ExpectedAiBotListSha256> in LlmsTxt.Umbraco/LlmsTxt.Umbraco.csproj
-Fallback:     LlmsTxt.Umbraco/HealthChecks/AiBotList.fallback.txt (committed)
+Pinned SHA:   <ExpectedAiBotListSha256> in Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj
+Fallback:     Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt (committed)
 ```
 
 | Path | Behaviour |
@@ -95,7 +95,7 @@ public interface IRobotsAuditor
 | `AiVisibility:RobotsAuditor:RefreshIntervalHours` | `24` | Recurring refresh cadence via `IDistributedBackgroundJob`. Set `0` (or negative) to disable. |
 | `AiVisibility:RobotsAuditor:FetchTimeoutSeconds` | `5` | Per-host `/robots.txt` fetch timeout. Distinct from the build-time MSBuild fetch timeout (also 5s, but configured separately in the csproj target). |
 | `AiVisibility:RobotsAuditor:DevFetchPort` | `null` | **Dev/test only — DO NOT set in production.** When set, the auditor composes the audit URI with the supplied port instead of the scheme default (443/80). Useful when running the TestSite on Kestrel's dev port (e.g. `44314`) so the live audit can round-trip against the running site. Convention: live in `appsettings.Development.json` only. `null` (default) → use scheme default port — the production-correct behaviour. |
-| `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev/test only — DO NOT set in production.** When set, the recurring refresh job's `Period` uses this value (in seconds) instead of `RefreshIntervalHours`. Used by the architect-A5 two-instance shared-SQL-Server exactly-once gate (where 1-hour cycles would make the test prohibitively long). `null` (default) → use the hours knob. Values `<= 0` are treated as unset. |
+| `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev/test only — DO NOT set in production.** When set, the recurring refresh job's `Period` uses this value (in seconds) instead of `RefreshIntervalHours`. `null` (default) → use the hours knob. Values `<= 0` are treated as unset. |
 
 ## Caveats
 

@@ -4,11 +4,49 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A drop-in Umbraco v17+ package that makes your CMS visible to AI search engines (ChatGPT, Claude, Perplexity, Gemini, Bing Copilot) and gives editors visibility into who's reading the site. Renders pages as Markdown on demand, advertises that surface to AI crawlers, audits your `robots.txt` against the AI-crawler list, and logs every AI hit to a Backoffice dashboard. Zero configuration on a typical site.
+A drop-in Umbraco v17+ package that makes your CMS visible to AI search engines (ChatGPT, Claude, Perplexity, Gemini, Bing Copilot) and gives editors visibility into who's reading the site. Renders pages as Markdown on demand, advertises that surface to AI crawlers, audits your `robots.txt` against the AI-crawler list, and logs every AI hit to a Backoffice dashboard. **Zero configuration on a typical site.**
 
-## Status
+## Compatibility
 
-🚧 **Pre-release.** v0.1.0-alpha. Not yet on NuGet.
+| Concern | Required |
+|---|---|
+| .NET | `10.0` (single-target — v17 floor) |
+| Umbraco CMS | `17.3.2+` (floats forward via Central Package Management) |
+| Database | SQL Server / Azure SQL / MySQL / PostgreSQL — anything Umbraco supports. SQLite is supported in development. |
+| Node.js (Backoffice TS rebuild only) | `≥ 24.11.1` (Umbraco v17 docs floor — only needed if you're rebuilding the bundled JS yourself) |
+
+The Vite bundle ships pre-built inside the NuGet package, so adopters do not need Node.js to run the package.
+
+## Installation
+
+```bash
+dotnet add package Umbraco.Community.AiVisibility
+```
+
+That's it. The package's `PackageMigrationPlan` runs on first boot and creates an `aiVisibilitySettings` doctype + the `aiVisibilityRequestLog` table; no manual migration step needed.
+
+## Zero-config quick-start
+
+After install, three new routes are immediately reachable:
+
+```bash
+# Per-page Markdown — converts the page's HTML output to clean Markdown.
+curl https://your-site.example/.md
+curl https://your-site.example/products/widget-x.md
+
+# llms.txt manifest — concatenated index of every published page (RFC-style links).
+curl https://your-site.example/llms.txt
+
+# llms-full.txt — concatenated full-Markdown export of every published page.
+curl https://your-site.example/llms-full.txt
+```
+
+Two new Backoffice dashboards appear under **Settings**:
+
+- **Settings → AI Visibility** — site name + summary + per-doctype exclusion overrides.
+- **Settings → AI Traffic** — every AI / human / crawler hit by classification, with date filtering and pagination.
+
+A Health Check at **Settings → Health Checks → AI Visibility — Robots audit** warns when `/robots.txt` blocks GPTBot / ClaudeBot / PerplexityBot / OAI-SearchBot etc. The package does not modify `robots.txt` — it audits, you decide.
 
 ## What it does
 
@@ -22,17 +60,9 @@ A drop-in Umbraco v17+ package that makes your CMS visible to AI search engines 
 | **Discoverability headers + TagHelpers** | Auto-injected HTTP `Link: rel="alternate"` headers + optional `<llms-link />` and `<llms-hint />` Razor tag helpers so AI tools can find the Markdown surface. |
 | **Settings dashboard** | Backoffice **Settings → AI Visibility** surfaces site-name / site-summary / per-doctype exclusion overrides without editing `appsettings.json`. |
 
-## Installation
-
-```bash
-dotnet add package Umbraco.Community.AiVisibility
-```
-
-(Available once v0.1.0 ships.)
-
 ## Configuration
 
-Zero-config defaults produce useful output on a typical Umbraco site immediately. To customise:
+Zero-config defaults produce useful output on a typical Umbraco site immediately. The most common `appsettings.json` overrides:
 
 ```jsonc
 {
@@ -52,11 +82,51 @@ Zero-config defaults produce useful output on a typical Umbraco site immediately
 }
 ```
 
-See [`docs/getting-started.md`](docs/getting-started.md) for the full configuration reference, the extension points (`IMarkdownContentExtractor`, `IRequestLog`, `IRobotsAuditor`, `ISettingsResolver`), and the per-page exclusion contract.
+See [`docs/configuration.md`](docs/configuration.md) for the full reference (every key under `AiVisibility:` with defaults + constraints), [`docs/getting-started.md`](docs/getting-started.md) for the per-page exclusion contract + extension points, and [`docs/multi-site.md`](docs/multi-site.md) for the multi-host + multi-culture story.
+
+## Extension points
+
+Five interfaces give adopters override paths without forking:
+
+| Interface | Default | Override use case |
+|---|---|---|
+| `IMarkdownContentExtractor` | `DefaultMarkdownContentExtractor` (HTML → Markdown via ReverseMarkdown + SmartReader fallback) | Replace the extraction pipeline (e.g. domain-specific Markdown shape, custom region selectors). |
+| `IRequestLog` | `DefaultRequestLog` (writes to `aiVisibilityRequestLog` host table) | Redirect AI traffic logging to Application Insights, Serilog, an external sink, etc. |
+| `IRobotsAuditor` | `DefaultRobotsAuditor` | Replace the audit's HTTP-fetch + bot-list-comparison logic (e.g. fetch via custom HTTP client, support a private bot list). |
+| `ISettingsResolver` | `DefaultSettingsResolver` (reads the global `aiVisibilitySettings` content node + appsettings overlay) | Per-host or per-tenant settings overrides on multi-site installs. |
+| `IUserAgentClassifier` | `DefaultUserAgentClassifier` | Custom UA classification (e.g. internal bot tracking, custom enterprise UA conventions). |
+
+Register your override with `services.TryAdd*<I, MyImpl>()` in a composer — the package uses `services.TryAdd*` for every default so adopter overrides are honoured without `Remove<>()` ceremony. See [`docs/extension-points.md`](docs/extension-points.md) for the full per-interface contract + multi-instance behaviour.
 
 ## How it works (architectural decision)
 
 Renders the page through Umbraco's normal template pipeline, extracts the main content region (`data-llms-content` → `<main>` → `<article>` → SmartReader fallback), and converts that HTML to Markdown via ReverseMarkdown. The Umbraco template is the canonical visual form of content — the package respects that rather than re-implementing block rendering.
+
+## Security & privacy notes
+
+- **PII discipline (NFR11).** `aiVisibilityRequestLog` captures path, content key, culture, UA classification, and referrer host **only**. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers replacing `IRequestLog` (e.g. App Insights forwarding) are expected to honour the same discipline.
+- **Backoffice Management API** is behind Umbraco's standard authorisation policy — the dashboards' `/umbraco/management/api/v1/aivisibility/...` endpoints require the configured Section policy (default: Settings).
+- **SSRF defence** — the robots audit's HTTP fetcher refuses RFC1918 / loopback / link-local / cloud-metadata IPs and rejects 3xx redirects in-app to defend against redirect-based amplification.
+- **XSS defence** — the Health Check's HTML-rendered messages run every adopter-controlled value through `WebUtility.HtmlEncode`.
+
+## Known limitations
+
+- **Custom `IRequestLog` write-sink + AI Traffic dashboard.** If you replace the default `IRequestLog` to redirect writes elsewhere (e.g. Application Insights, Serilog, an external sink), the **Settings → AI Traffic** Backoffice dashboard reads from the local `aiVisibilityRequestLog` host-DB table — it will appear empty unless your override ALSO seeds that table. The dashboard does not consume the alternate sink. See [`docs/extension-points.md`](docs/extension-points.md) § "Backoffice consumers of `IRequestLog`" for the full caveat + the suggested dual-write pattern.
+- **`/llms-full.txt` size cap.** The full-Markdown manifest enforces a hard byte cap (default 5 MB, configurable via `AiVisibility:MaxLlmsFullSizeKb`). Pages emit in tree order until the next page would push past the cap; the body then ends with a truncation footer documenting how many of the total pages were emitted. Pagination of `/llms-full.txt` for very large sites is deferred to v1.1.
+- **Single global Settings node by design.** There is exactly one `aiVisibilitySettings` content node per Umbraco install — the same site name, summary, and per-doctype exclusion list applies to every bound host. Adopters needing per-host or per-tenant overrides supply their own `ISettingsResolver` implementation; see [`docs/extension-points.md`](docs/extension-points.md) and [`docs/multi-site.md`](docs/multi-site.md) for the override pattern.
+- **Umbraco v17 only.** Single-target on `.NET 10` + `Umbraco.Cms 17.3.2+`. There is no v13 / v15 / v16 multi-target. The `[Obsolete]` API call sites flagged for v18 / v19 removal are catalogued in [`docs/dependency-status.md`](docs/dependency-status.md) and will be migrated when the corresponding Umbraco majors land.
+
+## Documentation
+
+- [`docs/getting-started.md`](docs/getting-started.md) — install + extraction-region contract + per-page exclusion + extension-point overview.
+- [`docs/configuration.md`](docs/configuration.md) — full `AiVisibility:` config reference (every key + default + constraint).
+- [`docs/extension-points.md`](docs/extension-points.md) — per-interface adopter contracts (IRequestLog, IUserAgentClassifier, IRobotsAuditor, IMarkdownContentExtractor, ISettingsResolver) + notification subscription guide.
+- [`docs/multi-site.md`](docs/multi-site.md) — multi-host (`IDomainService.GetAll`) + multi-culture (BCP-47 routing) + per-host cache-key shapes.
+- [`docs/data-attributes.md`](docs/data-attributes.md) — `data-llms-content` / `data-llms-ignore` extraction-region attributes.
+- [`docs/robots-audit.md`](docs/robots-audit.md) — Health Check + bot-list refresh process.
+- [`docs/maintenance.md`](docs/maintenance.md) — maintainer-only operational notes (SHA refresh, two-instance Docker SQL Server setup).
+- [`docs/release-checklist.md`](docs/release-checklist.md) — recurring per-release checklist (pack output, dependency triage, smoke trio, README freshness).
+- [`docs/dependency-status.md`](docs/dependency-status.md) — NU1902/NU1903 + CS0618 catalogue with resolution status + target review dates.
 
 ## What it does NOT do (and why)
 
@@ -71,9 +141,10 @@ Documented anti-patterns — explicitly not shipped:
 
 See [Evil Martians: How to make your website visible to LLMs](https://evilmartians.com/chronicles/how-to-make-your-website-visible-to-llms) for the source research.
 
-## License
+## Support
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+- **Issues + feature requests:** [GitHub issues](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues)
+- **License:** Apache 2.0 — see [LICENSE](LICENSE).
 
 ## Author
 
