@@ -92,7 +92,7 @@ GitHub Actions' `release.yml` workflow picks up the tag and runs the NuGet push 
 
 ### 9. Marketplace listing update (when applicable)
 
-`umbraco-marketplace.json` is shipped at `Umbraco.Community.AiVisibility/Client/public/umbraco-marketplace.json` — verify the listing's `name`, `description`, `categories`, and `minimumUmbracoVersion` reflect the release.
+`umbraco-marketplace.json` is shipped at the repo root (matches the AgentRun.Umbraco precedent and the canonical Umbraco Marketplace listing pattern) — verify the listing's `Title`, `Description`, `Tags`, `Category`, and `MinimumUmbracoVersion` reflect the release. The file is read by the Marketplace at submission/listing time and is NOT packed inside the `.nupkg` (it's submission metadata, not adopter-runtime data).
 
 For v1.0 ship: see Story 6.1 spec for the full first-time Marketplace listing process. For minor/patch releases: re-publish the listing if the spec or categories change; otherwise the listing auto-tracks the latest published NuGet version.
 
