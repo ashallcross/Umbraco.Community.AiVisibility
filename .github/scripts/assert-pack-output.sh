@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Story 6.0b AC1 — pack-output release-gate assertion.
+# Pack-output release-gate assertion.
 #
 # Runs `dotnet pack` against the package csproj, lists the resulting .nupkg's
 # entries, and asserts every entry matches an explicit allow-list pattern. Any
@@ -62,6 +62,7 @@ ALLOWED_PATTERNS=(
   '^buildMultiTargeting/Umbraco\.Community\.AiVisibility\.props$'
   '^buildTransitive/Umbraco\.Community\.AiVisibility\.props$'
   '^README\.md$'
+  '^icon\.png$'
   '^\[Content_Types\]\.xml$'
   '^package/services/metadata/core-properties/[a-f0-9]+\.psmdcp$'
 )

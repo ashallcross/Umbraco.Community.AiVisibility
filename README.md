@@ -2,6 +2,9 @@
 
 > AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, `*.md` page rendering.
 
+[![NuGet](https://img.shields.io/nuget/v/Umbraco.Community.AiVisibility.svg)](https://www.nuget.org/packages/Umbraco.Community.AiVisibility/)
+[![CI](https://github.com/ashallcross/Umbraco.Community.AiVisibility/actions/workflows/ci.yml/badge.svg)](https://github.com/ashallcross/Umbraco.Community.AiVisibility/actions/workflows/ci.yml)
+[![Umbraco Marketplace](https://img.shields.io/badge/Umbraco%20Marketplace-Listed-blue)](https://marketplace.umbraco.com/package/umbraco.community.aivisibility)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A drop-in Umbraco v17+ package that makes your CMS visible to AI search engines (ChatGPT, Claude, Perplexity, Gemini, Bing Copilot) and gives editors visibility into who's reading the site. Renders pages as Markdown on demand, advertises that surface to AI crawlers, audits your `robots.txt` against the AI-crawler list, and logs every AI hit to a Backoffice dashboard. **Zero configuration on a typical site.**
@@ -27,18 +30,20 @@ That's it. The package's `PackageMigrationPlan` runs on first boot and creates a
 
 ## Zero-config quick-start
 
-After install, three new routes are immediately reachable:
+After install, the Markdown surface is immediately reachable. Replace `/about/` with any published page on your site:
 
 ```bash
-# Per-page Markdown — converts the page's HTML output to clean Markdown.
-curl https://your-site.example/.md
-curl https://your-site.example/products/widget-x.md
+# Content negotiation on any canonical URL — works on every page, no path tricks needed.
+# This is the path most AI crawlers take; sidesteps trailing-slash conventions entirely.
+curl -H "Accept: text/markdown" https://your-site.example/about/
 
-# llms.txt manifest — concatenated index of every published page (RFC-style links).
-curl https://your-site.example/llms.txt
+# Site-level manifests per the llms.txt spec.
+curl https://your-site.example/llms.txt          # RFC-style index of every published page
+curl https://your-site.example/llms-full.txt     # concatenated full-Markdown export
 
-# llms-full.txt — concatenated full-Markdown export of every published page.
-curl https://your-site.example/llms-full.txt
+# Per-page Markdown URLs — both shapes resolve.
+curl https://your-site.example/about/index.html.md   # llmstxt.org canonical (trailing-slash) form
+curl https://your-site.example/about.md              # short form (also accepted)
 ```
 
 Two new Backoffice dashboards appear under **Settings**:
@@ -104,7 +109,7 @@ Renders the page through Umbraco's normal template pipeline, extracts the main c
 
 ## Security & privacy notes
 
-- **PII discipline (NFR11).** `aiVisibilityRequestLog` captures path, content key, culture, UA classification, and referrer host **only**. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers replacing `IRequestLog` (e.g. App Insights forwarding) are expected to honour the same discipline.
+- **PII discipline.** `aiVisibilityRequestLog` captures path, content key, culture, UA classification, and referrer host **only**. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers replacing `IRequestLog` (e.g. App Insights forwarding) are expected to honour the same discipline.
 - **Backoffice Management API** is behind Umbraco's standard authorisation policy — the dashboards' `/umbraco/management/api/v1/aivisibility/...` endpoints require the configured Section policy (default: Settings).
 - **SSRF defence** — the robots audit's HTTP fetcher refuses RFC1918 / loopback / link-local / cloud-metadata IPs and rejects 3xx redirects in-app to defend against redirect-based amplification.
 - **XSS defence** — the Health Check's HTML-rendered messages run every adopter-controlled value through `WebUtility.HtmlEncode`.
@@ -144,6 +149,7 @@ See [Evil Martians: How to make your website visible to LLMs](https://evilmartia
 ## Support
 
 - **Issues + feature requests:** [GitHub issues](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues)
+- **Pull requests:** welcome — keep the change focused (one feature or fix per PR), include tests covering new behaviour, and document any new public surface in `docs/` so adopters discover it.
 - **License:** Apache 2.0 — see [LICENSE](LICENSE).
 
 ## Author

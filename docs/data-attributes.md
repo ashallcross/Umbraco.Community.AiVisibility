@@ -2,7 +2,7 @@
 
 This page documents the adopter-facing markup hooks that Umbraco.Community.AiVisibility ships:
 
-- **`data-llms-content` / `data-llms-ignore`** — extraction-region opt-in / opt-out attributes (Stories 1.1 + 1.4).
+- **`data-llms-content` / `data-llms-ignore`** — extraction-region opt-in / opt-out attributes.
 - **HTTP `Link` discoverability header** — auto-emitted on every opted-in HTML response.
 - **`<llms-link />` and `<llms-hint />` Razor TagHelpers** — optional body-side discoverability markup.
 - **Cloudflare "Markdown for Agents" alignment** — `X-Markdown-Tokens` and `Content-Signal` response headers.

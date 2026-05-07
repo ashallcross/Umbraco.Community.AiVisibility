@@ -2,7 +2,7 @@
 
 Umbraco.Community.AiVisibility includes a Backoffice Health Check that audits your site's `/robots.txt` against the [`ai-robots-txt/ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt) AI-crawler list and surfaces copy-pasteable suggested removals when AI bots are blocked.
 
-**The package is read-only on your `/robots.txt`** — it audits and surfaces, you decide what to change. There is no auto-fix button, no auto-PR, no `IRobotsAuditWriter`. This is by design (UX-DR3 + project-context.md § Critical Don't-Miss Rules).
+**The package is read-only on your `/robots.txt`** — it audits and surfaces, you decide what to change. There is no auto-fix button, no auto-PR, no `IRobotsAuditWriter`. This is by design.
 
 ## What the audit does
 

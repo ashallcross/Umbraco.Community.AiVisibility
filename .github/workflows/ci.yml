@@ -1,4 +1,4 @@
-# Story 4.2 — CI build matrix: online + offline.
+# CI build matrix: online + offline.
 #
 # The package's MSBuild pipeline fetches the AI-crawler list from upstream
 # (ai-robots-txt/ai.robots.txt) at build time and verifies the SHA against a
@@ -15,7 +15,7 @@
 #
 # SHA refresh is a maintainer action only (PR review). Do NOT add a scheduled
 # job that auto-bumps the pinned SHA — that defeats the protection
-# (architect note A6, see docs/maintenance.md).
+# (see docs/maintenance.md).
 
 name: ci
 
@@ -54,6 +54,21 @@ jobs:
         run: npm run build
         working-directory: Umbraco.Community.AiVisibility/Client
 
+      - name: Assert Vite bundle materialised
+        run: |
+          set -euo pipefail
+          BUNDLE=Umbraco.Community.AiVisibility/wwwroot/App_Plugins/UmbracoCommunityAiVisibility/umbraco-community-aivisibility.js
+          PKG_MANIFEST=Umbraco.Community.AiVisibility/Client/public/umbraco-package.json
+          if [[ ! -f "${BUNDLE}" ]]; then
+            echo "::error::Vite entry bundle missing at ${BUNDLE} after 'npm run build'. The Backoffice JS will not load — adopters' dashboards will fail to register."
+            exit 1
+          fi
+          if [[ ! -f "${PKG_MANIFEST}" ]]; then
+            echo "::error::Umbraco package manifest missing at ${PKG_MANIFEST} — Backoffice extension manifests will not register."
+            exit 1
+          fi
+          echo "Vite bundle and Umbraco package manifest present."
+
       - name: dotnet restore
         run: dotnet restore Umbraco.Community.AiVisibility.slnx
 
@@ -67,7 +82,7 @@ jobs:
             exit 1
           fi
 
-      # Story 6.0b AC3 — dependency vulnerability release gate. Compares
+      # dependency vulnerability release gate. Compares
       # de-duped NU1902/NU1903 warning lines against the catalogued allow-list
       # at .github/expected-vuln-warnings.txt. The matcher is exact-line
       # equality (`comm -23`): each captured warning's canonical
@@ -116,7 +131,7 @@ jobs:
       - name: dotnet test (Release, excludes LaunchSmoke)
         run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal --filter "Category!=LaunchSmoke"
 
-      # Story 6.0b AC4 — launch-readiness smoke trio gate. Three integration
+      # launch-readiness smoke trio gate. Three integration
       # tests boot the TestSite via WebApplicationFactory<Program> and assert
       # the package's most load-bearing routes against seeded Clean.Core 7.0.5
       # content (per-page Markdown frontmatter, HTML pipeline unaltered, ETag
@@ -149,6 +164,21 @@ jobs:
         run: npm run build
         working-directory: Umbraco.Community.AiVisibility/Client
 
+      - name: Assert Vite bundle materialised
+        run: |
+          set -euo pipefail
+          BUNDLE=Umbraco.Community.AiVisibility/wwwroot/App_Plugins/UmbracoCommunityAiVisibility/umbraco-community-aivisibility.js
+          PKG_MANIFEST=Umbraco.Community.AiVisibility/Client/public/umbraco-package.json
+          if [[ ! -f "${BUNDLE}" ]]; then
+            echo "::error::Vite entry bundle missing at ${BUNDLE} after 'npm run build' (offline lane). The Backoffice JS will not load."
+            exit 1
+          fi
+          if [[ ! -f "${PKG_MANIFEST}" ]]; then
+            echo "::error::Umbraco package manifest missing at ${PKG_MANIFEST} (offline lane)."
+            exit 1
+          fi
+          echo "Vite bundle and Umbraco package manifest present (offline lane)."
+
       - name: dotnet restore
         run: dotnet restore Umbraco.Community.AiVisibility.slnx
 
@@ -169,7 +199,7 @@ jobs:
             exit 1
           fi
 
-      # Story 6.0b AC3 — same vuln gate as build-online, against
+      # same vuln gate as build-online, against
       # build-offline.log so a regression that only surfaces under the
       # offline transitive resolution path is also caught. See the
       # build-online step header for the full rationale.
@@ -202,7 +232,7 @@ jobs:
       - name: dotnet test (Release, excludes LaunchSmoke)
         run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal --filter "Category!=LaunchSmoke"
 
-      # Story 6.0b AC4 — launch-readiness smoke trio gate. Three integration
+      # launch-readiness smoke trio gate. Three integration
       # tests boot the TestSite via WebApplicationFactory<Program> and assert
       # the package's most load-bearing routes against seeded Clean.Core 7.0.5
       # content (per-page Markdown frontmatter, HTML pipeline unaltered, ETag
@@ -212,12 +242,12 @@ jobs:
         run: dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release --no-build --verbosity normal --filter "Category=LaunchSmoke"
 
   pack-gate:
-    # Story 6.0b AC1 — pack-output release gate. Runs `dotnet pack` and
+    # pack-output release gate. Runs `dotnet pack` and
     # asserts the resulting .nupkg's entries match an explicit allow-list.
     # Catches the kind of MSBuild/Razor-SDK content-leakage the 2026-05-05
     # external Codex review surfaced (duplicated `content/` /
     # `contentFiles/` entries) and any future analogue.
-    name: Pack output assertion (Story 6.0b AC1 release gate)
+    name: Pack output assertion (release gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -240,5 +270,58 @@ jobs:
         run: npm run build
         working-directory: Umbraco.Community.AiVisibility/Client
 
+      - name: Assert Vite bundle materialised
+        run: |
+          set -euo pipefail
+          BUNDLE=Umbraco.Community.AiVisibility/wwwroot/App_Plugins/UmbracoCommunityAiVisibility/umbraco-community-aivisibility.js
+          PKG_MANIFEST=Umbraco.Community.AiVisibility/Client/public/umbraco-package.json
+          if [[ ! -f "${BUNDLE}" ]]; then
+            echo "::error::Vite entry bundle missing at ${BUNDLE} after 'npm run build' (pack-gate lane). The pack will not include adopter-facing JS."
+            exit 1
+          fi
+          if [[ ! -f "${PKG_MANIFEST}" ]]; then
+            echo "::error::Umbraco package manifest missing at ${PKG_MANIFEST} (pack-gate lane)."
+            exit 1
+          fi
+          echo "Vite bundle and Umbraco package manifest present (pack-gate lane)."
+
       - name: Assert pack output matches allow-list
         run: ./.github/scripts/assert-pack-output.sh
+
+      - name: dotnet pack (artifact for PR review)
+        run: dotnet pack Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj --configuration Release --output ./artifacts
+
+      - name: Upload .nupkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Umbraco.Community.AiVisibility-nupkg
+          path: ./artifacts/*.nupkg
+          retention-days: 7
+
+  link-check:
+    # Markdown link-check release gate. Targets adopter-facing markdown
+    # (README.md, CHANGELOG.md, docs/**.md) and fails the build on any broken
+    # link. Configured via `.markdown-link-check.json` at repo root for
+    # ignore-patterns of pre-launch URLs (the NuGet listing 404s until v1.0.0
+    # publishes; the integration test feed URLs are documented references the
+    # link-checker should not hit on every PR).
+    name: Markdown link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Markdown link check (README + CHANGELOG)
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'no'
+          use-verbose-mode: 'yes'
+          config-file: '.markdown-link-check.json'
+          file-path: './README.md, ./CHANGELOG.md'
+
+      - name: Markdown link check (docs/)
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'no'
+          use-verbose-mode: 'yes'
+          config-file: '.markdown-link-check.json'
+          folder-path: 'docs'

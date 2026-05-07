@@ -25,7 +25,7 @@ Umbraco.Community.AiVisibility.TestSite/wwwroot/media/
 
 ##
 ## Tests project runtime artefacts copied during WebApplicationFactory<Program>
-## boot of the LaunchSmoke harness (Story 6.0b AC4) — Clean.Core 7.0.5 demo
+## boot of the LaunchSmoke harness Clean.Core 7.0.5 demo
 ## media + cshtml partials + wwwroot assets get materialised into the Tests
 ## bin/working directory at runtime; none of them belong in the repo.
 ##

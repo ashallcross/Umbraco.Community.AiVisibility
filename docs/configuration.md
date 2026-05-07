@@ -6,6 +6,88 @@ Zero-config defaults produce useful output on a typical Umbraco site immediately
 
 > **Note on resolution layers.** Most string + boolean keys are also editable via the **Settings → AI Visibility** Backoffice dashboard, which writes to a global `aiVisibilitySettings` content node. The `ISettingsResolver` overlays that node's values on top of `appsettings.json`; editor saves take effect within sub-second broadcast latency. Per-doctype overrides + per-page exclusions live ONLY on the dashboard / per-page property.
 
+## Migrating from a pre-v1 install
+
+If you're upgrading from a v0.x pre-release install carrying environment variable or `appsettings.json` overrides under the legacy `LlmsTxt:` prefix, **the package warns at boot but does NOT honour the old keys**. The pre-1.0 "no shim" principle: silent fall-back to defaults is the runtime behaviour for any unmigrated key.
+
+### What changed at v1
+
+| Surface | Pre-v1 prefix | v1 prefix |
+|---|---|---|
+| `appsettings.json` config section | `LlmsTxt:` | `AiVisibility:` |
+| Environment variable prefix | `LlmsTxt__` | `AiVisibility__` |
+| Distributed cache key prefix | `llms:` | `aiv:` (ops note: adopters running cache-eviction tooling against the host's distributed cache need to flip eviction patterns) |
+| HTTP header prefix | `X-Llms-` | `X-AiVisibility-` (ops note: adopters with reverse-proxy log filtering or WAF rules need to update header-name matchers) |
+
+### What the package does at boot
+
+The `LegacyConfigurationProbe` runs once at host startup and emits a single `LogLevel.Warning` line listing any residual `LlmsTxt:` keys still being supplied via configuration (appsettings.json, environment variables, Azure Key Vault, etc.). Point your structured-logging surface (Application Insights, Serilog file sink, console) at the warning text to discover what to migrate.
+
+### What the package does NOT do
+
+It does NOT honour the old keys. There is no shim layer that silently re-binds `LlmsTxt:RequestLog:Enabled` → `AiVisibility:RequestLog:Enabled`. Any v0.x key still in your configuration is silently treated as "not set" — the runtime falls back to defaults for that key.
+
+The decision is intentional: a shim layer adds maintenance surface forever, encourages copy-paste mistakes, and hides the migration cost. Warn-loud + fail-hard means adopters discover the gap immediately rather than after months of silent default-fallback drift.
+
+### Mechanical migration table
+
+Find / replace mechanically. Every key under the legacy `LlmsTxt:` section maps to the same sub-block name under `AiVisibility:`. The mapping is exhaustive — there are no renamed-within-sub-block keys.
+
+| Pre-v1 (`LlmsTxt:` prefix) | v1 (`AiVisibility:` prefix) |
+|---|---|
+| `LlmsTxt:SiteName` | `AiVisibility:SiteName` |
+| `LlmsTxt:SiteSummary` | `AiVisibility:SiteSummary` |
+| `LlmsTxt:CachePolicySeconds` | `AiVisibility:CachePolicySeconds` |
+| `LlmsTxt:MaxLlmsFullSizeKb` | `AiVisibility:MaxLlmsFullSizeKb` |
+| `LlmsTxt:ExcludedDoctypeAliases` | `AiVisibility:ExcludedDoctypeAliases` |
+| `LlmsTxt:SettingsResolverCachePolicySeconds` | `AiVisibility:SettingsResolverCachePolicySeconds` |
+| `LlmsTxt:RobotsAuditOnStartup` | `AiVisibility:RobotsAuditOnStartup` |
+| `LlmsTxt:MainContentSelectors` | `AiVisibility:MainContentSelectors` |
+| `LlmsTxt:LlmsTxtBuilder:CachePolicySeconds` | `AiVisibility:LlmsTxtBuilder:CachePolicySeconds` |
+| `LlmsTxt:LlmsTxtBuilder:PageSummaryPropertyAlias` | `AiVisibility:LlmsTxtBuilder:PageSummaryPropertyAlias` |
+| `LlmsTxt:LlmsTxtBuilder:SectionGrouping` | `AiVisibility:LlmsTxtBuilder:SectionGrouping` |
+| `LlmsTxt:LlmsFullScope:RootContentTypeAlias` | `AiVisibility:LlmsFullScope:RootContentTypeAlias` |
+| `LlmsTxt:LlmsFullScope:IncludedDocTypeAliases` | `AiVisibility:LlmsFullScope:IncludedDocTypeAliases` |
+| `LlmsTxt:LlmsFullScope:ExcludedDocTypeAliases` | `AiVisibility:LlmsFullScope:ExcludedDocTypeAliases` |
+| `LlmsTxt:LlmsFullBuilder:Order` | `AiVisibility:LlmsFullBuilder:Order` |
+| `LlmsTxt:LlmsFullBuilder:CachePolicySeconds` | `AiVisibility:LlmsFullBuilder:CachePolicySeconds` |
+| `LlmsTxt:Hreflang:Enabled` | `AiVisibility:Hreflang:Enabled` |
+| `LlmsTxt:DiscoverabilityHeader:Enabled` | `AiVisibility:DiscoverabilityHeader:Enabled` |
+| `LlmsTxt:ContentSignal:Default` | `AiVisibility:ContentSignal:Default` |
+| `LlmsTxt:ContentSignal:PerDocTypeAlias` | `AiVisibility:ContentSignal:PerDocTypeAlias` |
+| `LlmsTxt:Migrations:SkipSettingsDoctype` | `AiVisibility:Migrations:SkipSettingsDoctype` |
+| `LlmsTxt:RobotsAuditor:RefreshIntervalHours` | `AiVisibility:RobotsAuditor:RefreshIntervalHours` |
+| `LlmsTxt:RobotsAuditor:FetchTimeoutSeconds` | `AiVisibility:RobotsAuditor:FetchTimeoutSeconds` |
+| `LlmsTxt:RobotsAuditor:DevFetchPort` | `AiVisibility:RobotsAuditor:DevFetchPort` |
+| `LlmsTxt:RobotsAuditor:RefreshIntervalSecondsOverride` | `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` |
+| `LlmsTxt:RequestLog:Enabled` | `AiVisibility:RequestLog:Enabled` |
+| `LlmsTxt:RequestLog:QueueCapacity` | `AiVisibility:RequestLog:QueueCapacity` |
+| `LlmsTxt:RequestLog:BatchSize` | `AiVisibility:RequestLog:BatchSize` |
+| `LlmsTxt:RequestLog:MaxBatchIntervalSeconds` | `AiVisibility:RequestLog:MaxBatchIntervalSeconds` |
+| `LlmsTxt:RequestLog:OverflowLogIntervalSeconds` | `AiVisibility:RequestLog:OverflowLogIntervalSeconds` |
+| `LlmsTxt:LogRetention:DurationDays` | `AiVisibility:LogRetention:DurationDays` |
+| `LlmsTxt:LogRetention:RunIntervalHours` | `AiVisibility:LogRetention:RunIntervalHours` |
+| `LlmsTxt:LogRetention:RunIntervalSecondsOverride` | `AiVisibility:LogRetention:RunIntervalSecondsOverride` |
+| `LlmsTxt:Analytics:DefaultPageSize` | `AiVisibility:Analytics:DefaultPageSize` |
+| `LlmsTxt:Analytics:MaxPageSize` | `AiVisibility:Analytics:MaxPageSize` |
+| `LlmsTxt:Analytics:DefaultRangeDays` | `AiVisibility:Analytics:DefaultRangeDays` |
+| `LlmsTxt:Analytics:MaxRangeDays` | `AiVisibility:Analytics:MaxRangeDays` |
+| `LlmsTxt:Analytics:MaxResultRows` | `AiVisibility:Analytics:MaxResultRows` |
+
+### Environment variable equivalent
+
+ASP.NET Core's `__` (double-underscore) configuration-section separator means:
+
+- Pre-v1: `LlmsTxt__RequestLog__Enabled` → v1: `AiVisibility__RequestLog__Enabled`
+- Pre-v1: `LlmsTxt__Analytics__MaxResultRows` → v1: `AiVisibility__Analytics__MaxResultRows`
+
+…and so on for every key in the table above. The `__` separator is unchanged; only the top-level prefix differs.
+
+### See also
+
+- [`CHANGELOG.md`](../CHANGELOG.md) § "Migration from pre-1.0" — the full v1.0.0 release call-out (route shapes, header prefixes, type names, public extension-point lifetime contract).
+- [`docs/getting-started.md`](getting-started.md) § Prerequisites — the upgrade-from-v0.x cross-reference.
+
 ## Top-level keys
 
 | Key | Type | Default | What it controls |

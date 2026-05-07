@@ -63,11 +63,17 @@ public sealed class NotificationsComposer : IComposer
         // public extension point per Story 5.2 § What NOT to Build).
         builder.Services.TryAddSingleton<IAnalyticsReader, DefaultAnalyticsReader>();
 
-        // Story 5.2 code-review P11 — startup validation for the Analytics
-        // settings sub-block. Surfaces operator typos at first config read
-        // instead of letting Math.Max defences silently coerce values.
+        // Startup validators for sub-blocks owned by this composer.
+        // TryAddEnumerable is load-bearing here: IValidateOptions<T> is a
+        // many-to-one shape, so each registration appends to the validator
+        // list rather than replacing it. TryAddSingleton would no-op for
+        // every validator after the first, silently dropping coverage.
         builder.Services.TryAddEnumerable(ServiceDescriptor
             .Singleton<IValidateOptions<AiVisibilitySettings>, AiVisibilitySettingsValidator>());
+        builder.Services.TryAddEnumerable(ServiceDescriptor
+            .Singleton<IValidateOptions<AiVisibilitySettings>, LogRetentionSettingsValidator>());
+        builder.Services.TryAddEnumerable(ServiceDescriptor
+            .Singleton<IValidateOptions<AiVisibilitySettings>, RequestLogSettingsValidator>());
 
         builder.Services.AddHostedService<RequestLogDrainHostedService>();
         builder.Services.AddSingleton<IDistributedBackgroundJob, LogRetentionJob>();

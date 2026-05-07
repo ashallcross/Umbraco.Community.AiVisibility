@@ -4,6 +4,15 @@ Umbraco.Community.AiVisibility exposes Umbraco published content to AI crawlers 
 
 This document covers everything shipping in v1 — the per-page Markdown route + per-page caching with publish-driven invalidation; `Accept: text/markdown` content negotiation; `/llms.txt` and `/llms-full.txt` manifests with hot-path protection (`If-None-Match` / 304 / single-flight) and optional hreflang variants; the Settings doctype + `ISettingsResolver` overlay + per-doctype/per-page exclusion; the **Settings → AI Visibility** dashboard with its Management API for editor-driven configuration; the robots audit Health Check (with build-time AI-bot-list sync + SHA pinning); the AI traffic request log (per-instance drainer running on every node) + the **Settings → AI Traffic** dashboard with date-range + classification filtering; HTTP `Link: rel="alternate"; type="text/markdown"` discoverability headers + optional `<llms-link />` and `<llms-hint />` Razor TagHelpers; and the Cloudflare `Content-Signal` response header (off by default; opt-in per-doctype). See [`README.md`](../README.md) for the at-a-glance feature table.
 
+## Prerequisites
+
+- **.NET 10.0+** — single-target. There is no v9 backport.
+- **Umbraco CMS v17.3.2+** — floats forward via Central Package Management.
+- **Database** — anything Umbraco supports (SQL Server, Azure SQL, MySQL, PostgreSQL). SQLite is supported in development; production-realistic distributed-job verification needs a real database. See [`maintenance.md`](maintenance.md) for the two-instance verification procedure.
+- **Node.js ≥ 24.11.1** — only needed if you're rebuilding the bundled JS yourself. The Vite output ships pre-built inside the NuGet package, so adopters do NOT need Node to run the package.
+
+> **Upgrading from a v0.x pre-release install?** See [`configuration.md`](configuration.md) § "Migrating from a pre-v1 install" for the config + envvar rename mapping. The package warns at boot but does NOT honour the legacy `LlmsTxt:` prefix at runtime — you'll fall back to defaults silently otherwise.
+
 ## What you get
 
 After installing the package, every published Umbraco page becomes reachable as Markdown via:
@@ -13,6 +22,43 @@ GET /{path}.md
 ```
 
 The package renders the page through Umbraco's normal Razor pipeline (no property walking, no template forking), parses the resulting HTML with AngleSharp, picks the main content region, strips boilerplate, absolutifies relative URLs, and converts to GitHub-flavoured Markdown via ReverseMarkdown — with a YAML frontmatter prefix containing `title`, `url`, and `updated`.
+
+## For editors
+
+If you're an editor (not a developer), here's what you'll see in the Backoffice and how to act on it.
+
+### Settings dashboard
+
+The **Settings → AI Visibility** tile is where you tune the package without editing `appsettings.json`. Open it from the Settings section.
+
+- **Site name + summary** — the H1 + blockquote line at the top of `/llms.txt`. If you leave them empty, the package falls back to the matched root content node's name.
+- **Excluded doctype aliases** — comma-separated list of doctypes to omit from `/llms.txt`, `/llms-full.txt`, and the per-page `.md` route. Useful for hiding things like login pages or internal redirect doctypes.
+- **Per-page exclusion** — every published page now carries an `excludeFromLlmExports` toggle on its content properties. Tick it to remove that single page from all three surfaces; leave it untouched for the default-included behaviour.
+- **Saving + propagation** — saves write to the global `aiVisibilitySettings` content node. Hit refresh on `/llms.txt` after Save to verify your change took effect; sub-second propagation is normal.
+
+### AI Traffic dashboard
+
+The **Settings → AI Traffic** tile (second tile under Settings) shows every AI / human / crawler hit by classification. Read-only — there's nothing to configure here, you're just observing.
+
+- **Columns** — timestamp, URL path, content key (short form), culture, UA classification chip, referrer host. No query strings, no cookies, no full referrer paths (the package's PII discipline).
+- **Filtering** — pick a date range and tick / untick UA classification chips at the top. Filters apply live; reload happens automatically.
+- **Chip colour meanings** — blue (primary) for AI training / search / user-triggered hits, green (positive) for human browsers, amber (warning) for AI deprecated tokens, default grey for crawler-other and unknown UAs.
+- **Empty state** — if you see "No requests in this range," the package is logging but no AI traffic has hit your site yet in the date range. The empty-state hint reminds you of the configured retention period (default 90 days) so you don't expect older history that's already been purged.
+- **Pagination** — page size matches the configured default (50 by default).
+
+### Robots audit Health Check
+
+The **Settings → Health Checks → AI Visibility — Robots audit** entry warns when your `/robots.txt` blocks AI crawlers you might not want to block (GPTBot, ClaudeBot, PerplexityBot, OAI-SearchBot, etc.).
+
+- **A yellow warning means** an AI bot the package knows about is currently disallowed in your `robots.txt`. The Health Check description lists every match by category (training / search-retrieval / user-triggered / opt-out) with copy-pasteable suggested removal lines.
+- **The package never edits your `robots.txt`** — it audits and surfaces, you decide. Copy the suggested removal into your `robots.txt`, redeploy, and re-run the Health Check to confirm the warning clears.
+- **Bytespider / Grok caveat** — if the audit flags those tokens, the description notes that they're known to ignore `robots.txt` regardless of what you set. You'll need network-layer or WAF blocking if you actually want to prevent their access.
+
+### What you DON'T need to do
+
+- **Don't manually edit `/robots.txt` to "fix it" for the package.** The package never touches your `robots.txt`; the Health Check is informational only.
+- **Don't worry about telemetry or phone-home.** The package ships zero phone-home, zero analytics-out, zero anything-leaving-your-host. The AI Traffic dashboard reads from your own host DB and never uploads anywhere.
+- **Don't worry about cookies, query strings, or user agent strings.** The package classifies UAs against a curated bot list at `aiVisibilityRequestLog` write time, but it never sniffs UAs to gate content (no cloaking) and never stores query strings, cookies, tokens, or session IDs.
 
 ## URL forms
 

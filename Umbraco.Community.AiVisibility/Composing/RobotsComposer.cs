@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http;
+using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Telemetry;
 using Umbraco.Community.AiVisibility.Robots;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Infrastructure.BackgroundJobs;
@@ -47,6 +49,13 @@ public sealed class RobotsComposer : IComposer
         builder.Services.TryAddTransient<RobotsAuditHealthCheck>();
         builder.Services.AddHostedService<StartupRobotsAuditRunner>();
         builder.Services.AddSingleton<IDistributedBackgroundJob, RobotsAuditRefreshJob>();
+
+        // Startup validator for the RobotsAuditor sub-block. TryAddEnumerable
+        // is load-bearing — IValidateOptions<T> is many-to-one; TryAddSingleton
+        // would silently no-op once another validator for the same options
+        // type was registered.
+        builder.Services.TryAddEnumerable(ServiceDescriptor
+            .Singleton<IValidateOptions<AiVisibilitySettings>, RobotsAuditorSettingsValidator>());
 
         // SSRF defence: the named HttpClient used by DefaultRobotsAuditor
         // refuses to follow redirects so a hostile /robots.txt cannot pull the

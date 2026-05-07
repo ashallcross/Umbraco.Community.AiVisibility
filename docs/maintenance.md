@@ -55,17 +55,17 @@ Response:
 2. **Find the new canonical URL** (or accept that the project is dead). If a successor exists, switch `<AiBotListSourceUrl>` in the csproj. Refresh `<ExpectedAiBotListSha256>`, `<ExpectedAiBotListFallbackSha256>`, and `AiBotList.fallback.txt` per the section above. The curated category map likely needs review (different upstream conventions).
 3. **If no successor exists**, the package's audit still runs against the committed fallback. Consider: (a) freezing the fallback as the long-lived snapshot + dropping the online fetch entirely; (b) maintaining the fallback in-house going forward (manual curation against operator docs); (c) adopting a different upstream feed (`darkvisitors.com`, `cloudflare/known-bots`, etc.) — each comes with its own provenance trade-offs.
 
-Whatever the choice, document it in `_bmad-output/planning-artifacts/architecture.md` § Robots.txt Audit before shipping the change.
+Whatever the choice, document the rationale in the project's contributor docs before shipping the change so future maintainers understand the provenance trade-off.
 
 ## Why no scheduled auto-refresh
 
 A scheduled GitHub Action that auto-bumps the SHA would defeat the protection. The pin's purpose is to force human review of upstream changes — without that gate, an upstream maintainer or supply-chain attacker could ship arbitrary tokens into the embedded list. **The cost** is one PR per month or so (upstream cadence is roughly monthly); **the benefit** is provenance review at every change. The trade is favourable.
 
-If a future story decides this is too expensive, the upgrade is a scheduled GitHub Action that opens the PR + runs the tests but **never auto-merges** — the human review step stays. Document that decision in `_bmad-output/planning-artifacts/architecture.md` § Robots.txt Audit before shipping the action.
+If a future release decides this is too expensive, the upgrade is a scheduled GitHub Action that opens the PR + runs the tests but **never auto-merges** — the human review step stays. Document the rationale in the project's contributor docs before shipping the action.
 
 ## Two-instance shared-SQL-Server manual gate setup
 
-Story 4.2's manual E2E gate requires verifying `IDistributedBackgroundJob` exactly-once execution across two TestSite instances against shared SQL Server (NOT SQLite — the lock semantics differ materially per `feedback_production_env_assumptions.md`).
+The robots-audit and log-retention release manual gates require verifying `IDistributedBackgroundJob` exactly-once execution across two TestSite instances against shared SQL Server (NOT SQLite — the lock semantics differ materially; SQLite's shared-lock approximation does not coordinate exactly-once execution across multiple host instances).
 
 ### One-time SQL Server setup
 
@@ -113,15 +113,15 @@ dotnet run --project Umbraco.Community.AiVisibility.TestSite \
   --launch-profile "Development"
 ```
 
-Watch both instances' logs for `Robots audit refresh job RUN — InstanceId=…`. The architect-mandated invariant per cycle: **exactly one** RUN entry across the two instances. If you see two entries for the same `CycleStart`, stop — `IDistributedBackgroundJob` coordination is broken and re-running Spike 0.B is cheaper than absorbing the drift.
+Watch both instances' logs for `Robots audit refresh job RUN — InstanceId=…`. The invariant per cycle: **exactly one** RUN entry across the two instances. If you see two entries for the same `CycleStart`, stop — `IDistributedBackgroundJob` coordination is broken and re-investigating the distributed-lock setup is cheaper than absorbing the drift.
 
-### Verifying `LogRetentionJob` exactly-once (Story 5.1)
+### Verifying `LogRetentionJob` exactly-once
 
-The same Docker SQL Server 2022 setup verifies Story 5.1's `LogRetentionJob` (`IDistributedBackgroundJob`). Configure both TestSite instances with `AiVisibility:LogRetention:DurationDays: 30` and `AiVisibility:LogRetention:RunIntervalSecondsOverride: 30` (the dev-only escape hatch — do NOT use in production) so cycles tick every 30 seconds rather than every 24 hours. Hit a few `.md` / `/llms.txt` / `/llms-full.txt` URLs across both instances to populate `aiVisibilityRequestLog`.
+The same Docker SQL Server 2022 setup verifies the `LogRetentionJob` (`IDistributedBackgroundJob`). Configure both TestSite instances with `AiVisibility:LogRetention:DurationDays: 30` and `AiVisibility:LogRetention:RunIntervalSecondsOverride: 30` (the dev-only escape hatch — do NOT use in production) so cycles tick every 30 seconds rather than every 24 hours. Hit a few `.md` / `/llms.txt` / `/llms-full.txt` URLs across both instances to populate `aiVisibilityRequestLog`.
 
-Watch both instances' logs for `AiVisibility log retention job RUN — InstanceId=… CycleStart=… RowsDeleted=…`. Same invariant: **exactly one** RUN entry per cycle across the two instances. If you see two entries for the same `CycleStart`, stop — re-running Spike 0.B is cheaper than absorbing the drift.
+Watch both instances' logs for `AiVisibility log retention job RUN — InstanceId=… CycleStart=… RowsDeleted=…`. Same invariant: **exactly one** RUN entry per cycle across the two instances. If you see two entries for the same `CycleStart`, stop — re-investigate the distributed-lock setup before continuing.
 
-Story 5.1 is the second consumer of this two-instance setup; future stories with `IDistributedBackgroundJob` exactly-once gates reuse the same procedure.
+`LogRetentionJob` is the second consumer of this two-instance setup; any future `IDistributedBackgroundJob` consumers reuse the same procedure.
 
 ### Teardown
 
@@ -131,6 +131,110 @@ docker rm umbraco-sqlserver
 ```
 
 Subsequent manual gates can reuse the same setup; the container holds no state once removed.
+
+## Adding a new `IValidateOptions<T>` validator
+
+When extending `AiVisibilitySettings` with a new sub-block that has invariants worth catching at boot (operator typos, range mistakes, etc.), follow the canonical contract — `TryAddEnumerable` registration so multiple validators against the same options type coexist. `TryAddSingleton` would replace, breaking the canonical contract.
+
+### Class shape
+
+Place the validator at `Umbraco.Community.AiVisibility/Configuration/<SubBlock>SettingsValidator.cs`:
+
+```csharp
+internal sealed class LogRetentionSettingsValidator : IValidateOptions<AiVisibilitySettings>
+{
+    public ValidateOptionsResult Validate(string? name, AiVisibilitySettings options)
+    {
+        var failures = new List<string>();
+
+        if (options.LogRetention.DurationDays > 0 && options.LogRetention.DurationDays < 1)
+        {
+            failures.Add($"AiVisibility:LogRetention:DurationDays must be >= 1 when set, or <= 0 to disable retention. Got {options.LogRetention.DurationDays}.");
+        }
+
+        // …additional invariant checks per sub-block…
+
+        return failures.Count == 0
+            ? ValidateOptionsResult.Success
+            : ValidateOptionsResult.Fail(failures);
+    }
+}
+```
+
+The class is `internal sealed` (matches the existing `AiVisibilitySettingsValidator` shape). Encode invariants that catch real operator typos at boot — not invariants the runtime already clamps silently. Coverage targets are CEILINGS, not floors.
+
+### Registration
+
+In the composer that owns the corresponding settings sub-block, register via `services.TryAddEnumerable(ServiceDescriptor.Singleton<…>)`:
+
+```csharp
+public sealed class NotificationsComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder builder)
+    {
+        // …existing registrations…
+
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IValidateOptions<AiVisibilitySettings>, LogRetentionSettingsValidator>());
+
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IValidateOptions<AiVisibilitySettings>, RequestLogSettingsValidator>());
+    }
+}
+```
+
+Colocation principle: the validator lives in the composer that owns the sub-block's runtime consumer. `LogRetentionSettingsValidator` registers in the composer that wires `LogRetentionJob`; `RobotsAuditorSettingsValidator` registers in the composer that wires `IRobotsAuditor`. Keeps the registration next to its consumer so a future composer split is mechanical.
+
+### Paired tests
+
+Ship three tests at `Umbraco.Community.AiVisibility.Tests/Configuration/<SubBlock>SettingsValidatorTests.cs`:
+
+```csharp
+[Test]
+public void Validate_DefaultSettings_ReturnsSuccess()
+{
+    // happy-path — defaults satisfy every invariant.
+}
+
+[Test]
+public void Validate_DurationDaysBelowMinimum_ReturnsFail()
+{
+    // one test per `Fail(...)` branch in Validate, encoding the range / typo
+    // case that the invariant catches.
+}
+
+[Test]
+public void Compose_LogRetentionSettingsValidator_RegisteredAsSingleton_AppendedNotReplaced()
+{
+    // build a baseline ServiceCollection.
+    // run the composer.
+    // assert services.Where(d => d.ServiceType == typeof(IValidateOptions<AiVisibilitySettings>))
+    //                .Count() increased by exactly 1.
+    // catches the TryAddSingleton-vs-TryAddEnumerable regression.
+}
+
+[Test]
+public void Compose_StartupValidation_LogRetentionSettingsValidator_NoCaptiveDependency()
+{
+    // build a stub ServiceCollection with the validator registered.
+    // resolve a ServiceProvider with ValidateScopes = true, ValidateOnBuild = true.
+    // shape-confirmation gate; validators are stateless Singletons so this
+    // primarily catches a future regression that introduces a captive Scoped
+    // dependency.
+}
+```
+
+The `_AppendedNotReplaced` test is load-bearing — a future contributor accidentally using `TryAddSingleton` instead of `TryAddEnumerable` would cause every previously-registered validator against the same options type to be silently dropped. Without this test, the regression is invisible until a runtime failure surfaces in production.
+
+### When to ship a validator vs `no invariants worth encoding`
+
+Coverage targets are CEILINGS, not floors. Skip the validator when:
+
+- The sub-block contains only `bool` flags (binding handles them; there's nothing to validate).
+- The runtime already clamps the value silently with a `Warning` log on out-of-range input AND the warning surfaces in adopter logs.
+- The invariant is "the value must be parseable as `<enum>`" — `Microsoft.Extensions.Configuration` enforces this at binding time.
+
+Document the decision in [`release-checklist.md`](release-checklist.md) § "IValidateOptions sweep" with a one-line `no invariants worth encoding` justification. Adopters and future maintainers can re-evaluate when invariants emerge.
 
 ## Future scheduled actions (out of scope for v1)
 
