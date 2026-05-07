@@ -92,9 +92,19 @@ GitHub Actions' `release.yml` workflow picks up the tag and runs the NuGet push 
 
 ### 9. Marketplace listing update (when applicable)
 
-`umbraco-marketplace.json` is shipped at the repo root (matches the AgentRun.Umbraco precedent and the canonical Umbraco Marketplace listing pattern) — verify the listing's `Title`, `Description`, `Tags`, `Category`, and `MinimumUmbracoVersion` reflect the release. The file is read by the Marketplace at submission/listing time and is NOT packed inside the `.nupkg` (it's submission metadata, not adopter-runtime data).
+`umbraco-marketplace.json` is shipped at the repo root (matches the AgentRun.Umbraco precedent and the canonical Umbraco Marketplace listing pattern) — verify the listing's `Title`, `Description`, `Tags`, `Category`, and `AuthorDetails` reflect the release. The file is read by the Marketplace from `<PackageProjectUrl>` at submission/listing time and is NOT packed inside the `.nupkg` (it's submission metadata, not adopter-runtime data).
 
-For v1.0 ship: see Story 6.1 spec for the full first-time Marketplace listing process. For minor/patch releases: re-publish the listing if the spec or categories change; otherwise the listing auto-tracks the latest published NuGet version.
+**Refresh cadence — important ops detail:** the Marketplace re-fetches `umbraco-marketplace.json` every 2h. For listing copy changes (Title, Description, Tags, Screenshots, AuthorDetails) you do NOT re-publish to NuGet — edit the JSON, push to repo, wait up to 2h. For new code versions you DO publish to NuGet, then trigger the expedite endpoint to skip the 24h discovery scan:
+
+```bash
+curl -X POST https://functions.marketplace.umbraco.com/api/InitiateSinglePackageSyncFunction \
+  -H "Content-Type: application/json" \
+  -d '{"PackageId": "Umbraco.Community.AiVisibility"}'
+```
+
+**Validation:** before announcing the listing publicly, run the listing through `https://marketplace.umbraco.com/validate` — it confirms NuGet tag, Umbraco dependency, JSON resolution, screenshot reachability, and license-type recognition.
+
+**See also: [`docs/marketplace-listing-checklist.md`](marketplace-listing-checklist.md)** — the full canonical process (csproj fields, JSON schema, Step 1 → Step 8 procedure, refresh cadences, common gotchas). That checklist is reusable across packages; this release-checklist's § 9 only carries the per-release recurring touch.
 
 ## Post-release
 
@@ -110,7 +120,7 @@ For v1.0 ship: see Story 6.1 spec for the full first-time Marketplace listing pr
 
 ## Cross-references
 
-- `docs/dependency-status.md` — NU1902/NU1903 + CS0618 catalogue.
-- `docs/maintenance.md` — bot-list SHA refresh, two-instance Docker SQL Server setup.
-- `_bmad-output/planning-artifacts/epics.md` § Story 6.1 — canonical v1 ship process (one-time runbook).
+- [`docs/marketplace-listing-checklist.md`](marketplace-listing-checklist.md) — Umbraco Marketplace listing checklist (csproj fields, JSON schema, submission procedure, gotchas).
+- [`docs/dependency-status.md`](dependency-status.md) — NU1902/NU1903 + CS0618 catalogue.
+- [`docs/maintenance.md`](maintenance.md) — bot-list SHA refresh, two-instance Docker SQL Server setup.
 - `.github/workflows/ci.yml` — CI gate definitions (`pack-gate`, vuln gate inside `build-online`, LaunchSmoke gate split).
