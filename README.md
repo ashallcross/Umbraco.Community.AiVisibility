@@ -3,7 +3,6 @@
 > AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, `*.md` page rendering.
 
 [![NuGet](https://img.shields.io/nuget/v/Umbraco.Community.AiVisibility.svg)](https://www.nuget.org/packages/Umbraco.Community.AiVisibility/)
-[![CI](https://github.com/ashallcross/Umbraco.Community.AiVisibility/actions/workflows/ci.yml/badge.svg)](https://github.com/ashallcross/Umbraco.Community.AiVisibility/actions/workflows/ci.yml)
 [![Umbraco Marketplace](https://img.shields.io/badge/Umbraco%20Marketplace-Listed-blue)](https://marketplace.umbraco.com/package/umbraco.community.aivisibility)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 

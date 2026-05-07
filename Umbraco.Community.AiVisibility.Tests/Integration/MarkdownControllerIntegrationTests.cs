@@ -19,7 +19,6 @@ namespace Umbraco.Community.AiVisibility.Tests.Integration;
 public sealed class MarkdownControllerIntegrationTests : IntegrationTestBase
 {
     [Test]
-    [Explicit("Story 6.0b SDN: regressed when Tests gained a ProjectReference to the TestSite project (required for Task 4 LaunchSmoke fixture's WebApplicationFactory<Program>). The TestSite assembly + its Spike composers land in this project's bin/ directory, and Umbraco's TypeLoader auto-discovers them when UmbracoTestServerTestBase boots — Umbraco then enters Upgrade mode and the request short-circuits to ~/umbraco/UmbracoWebsite/Upgrading.cshtml (404 path never reaches the package's MarkdownController). Reconcile in Story F.1 (Umbraco 17.4.0 harness drain) — either by migrating this test into the WebApplicationFactory<Program> harness shape, or by splitting LaunchSmoke into a separate test project with its own bin/ assembly load list. Run explicitly via `dotnet test … --filter FullyQualifiedName~Get_UnpublishedPath_Returns404` when investigating.")]
     public async Task Get_UnpublishedPath_Returns404()
     {
         // No seeding required — path nothing has ever published. The route resolver

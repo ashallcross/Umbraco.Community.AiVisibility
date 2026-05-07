@@ -46,7 +46,7 @@ The `<AiBotListSourceUrl>` constant in `Umbraco.Community.AiVisibility.csproj` p
 
 Symptoms:
 
-- Local + CI builds emit `MSB3923: Failed to download file …` followed by the `Falling back to AiBotList.fallback.txt` warning. Online builds pass via fallback (silent regression: pinned SHA never re-verified).
+- Local builds emit `MSB3923: Failed to download file …` followed by the `Falling back to AiBotList.fallback.txt` warning. The build still succeeds via fallback (silent regression: pinned SHA never re-verified).
 - Online build's grep assertion (`grep "AI bot list synced from upstream"`) starts failing — the CI gate flips red where it had been green.
 
 Response:

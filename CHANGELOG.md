@@ -9,8 +9,6 @@ This is the inaugural stable release. It folds a multi-step launch-readiness pas
 ### Added
 
 - **`umbraco-marketplace.json`** at repo root — Marketplace listing JSON validated against `https://marketplace.umbraco.com/umbraco-marketplace-schema.json` at submission time. Title `"AI Visibility for Umbraco"`, primary `Category: "Artificial Intelligence"`, alternate `"Search"`, `LicenseTypes: ["Free"]`, `PackageType: "Package"`, full `AuthorDetails` block.
-- **`.github/workflows/release.yml`** — pushes to nuget.org on `v*` tag from `main` HEAD. Runs full CI build + test + pack via `workflow_call` reuse, then `dotnet nuget push` with 2× retries (5s, 25s exponential backoff), then a GitHub Release via `softprops/action-gh-release@v2` with the changelog excerpt extracted between matching `## [vX.Y.Z]` markers. Atomic — partial failure leaves no half-published state.
-- **CI markdown link-check step** — `gaurav-nelson/github-action-markdown-link-check@v1` targets `README.md` + `CHANGELOG.md` + `docs/**.md`. Fails the build on broken links. `.markdown-link-check.json` ignore-pattern config at repo root.
 - **`docs/architecture.md`** — adopter-facing summary covering how the package works (template = canonical visual form; render → extract → convert), what's in the box (mapping public surfaces to source folders), the six extension-point seams, lifetime + thread-safety constraints (Singleton vs Transient surfaces), and production deployment notes for load-balanced + split-role installs.
 - **`docs/getting-started.md` § Prerequisites** — .NET 10.0+, Umbraco v17.3.2+, Node.js ≥ 24.11.1 (for source rebuilds only — NuGet adopters do not need Node).
 - **`docs/getting-started.md` § "For editors"** — Backoffice user guide: Settings dashboard, AI Traffic dashboard, Robots audit Health Check, "What you DON'T need to do" anti-FAQs.
@@ -26,9 +24,6 @@ This is the inaugural stable release. It folds a multi-step launch-readiness pas
 - **`icon.png`** at repo root (~512×512 placeholder PNG, charcoal-navy + white "AIV" monogram).
 - **README badges**: NuGet version + CI status + Umbraco Marketplace listing alongside the existing Apache-2.0 license badge.
 - **`NOTICE`** — Apache-2.0 third-party attribution audit verified post-pack: only `Umbraco.Community.AiVisibility.dll` ships under `lib/net10.0/`, transitive deps resolve adopter-side per `Microsoft.NET.Sdk.Razor`. `SmartReader` (Apache-2.0) attribution present; `AngleSharp` + `ReverseMarkdown` (MIT) do not require NOTICE entries.
-- **CI pack-gate** at `.github/scripts/assert-pack-output.sh` — asserts every `.nupkg` entry matches an explicit allow-list. Fails the build on any unexpected entry (canonical case: an MSBuild/Razor-SDK leak shipping `content/` or `contentFiles/` items, source maps, or other build-time artefacts that shouldn't reach adopters). Allow-list extended in v1 to include `^icon\.png$`.
-- **CI vuln-gate** — NU1902 / NU1903 allow-list at `.github/expected-vuln-warnings.txt`. Build fails if any vulnerability warning is surfaced that isn't on the allow-list (catches new vulnerabilities that need adopter visibility); build also fails if `build-online.log` is missing/empty (catches a silent-pass class).
-- **CI LaunchSmoke gate** — separate `dotnet test` step filtering on `Category=LaunchSmoke`. The trio: `Html_Pipeline_Unchanged_For_Same_Seeded_Node`, `Markdown_Route_Returns_Body_For_Seeded_Node`, `LlmsTxt_Route_Returns_Body_For_Seeded_Node`. Boots `WebApplicationFactory<Program>` against a fresh Clean.Core seed.
 - **Source-map exclusion** in `vite.config.ts` — production-default-off for `.map` files; `VITE_INCLUDE_SOURCEMAP=true` env var enables source maps for maintainer debugging.
 - **`authenticated-fetch.ts`** Bellissima utility — bearer-token fetch helper unifying both dashboards' auth shape via `UMB_AUTH_CONTEXT.getOpenApiConfiguration()`. Strips both casings of `Authorization` from caller `options.headers` before merge so callers cannot override the helper's bearer-auth contract.
 - **IPv6 host normalisation** rewrite in `NormaliseHost` — RFC 5952-compliant: lowercases the hex digits, strips the embedded zone-id (`%eth0`), preserves square brackets in URI form, normalises double-colon shorthand. Backed by parameterised tests covering the well-known IPv6 forms.
@@ -68,12 +63,11 @@ This is the **breaking-rename release**. Every adopter-facing identifier prefix 
 - **Culture-aware URL provider** in the Markdown extraction pipeline — multi-culture adopters now receive the correct URL per culture for canonical-URL emission, content-negotiation alternate URLs, and `/llms.txt` link emission.
 - See commit history for the additional correctness patches landed in the same review pass.
 
-### Changed (v1 metadata + IValidateOptions sweep + pack-gate update)
+### Changed (v1 metadata + IValidateOptions sweep)
 
 - **`Umbraco.Community.AiVisibility.csproj`** — `<Version>1.0.0`, `<Title>` "AI Visibility for Umbraco", `<PackageIcon>icon.png`, `<None Include="..\icon.png">` pack item.
 - **`NotificationsComposer`** — registers `LogRetentionSettingsValidator` + `RequestLogSettingsValidator` via `services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<…>, …>())` (many-to-one shape — coexists with the existing `AiVisibilitySettingsValidator` for `Analytics`).
 - **`RobotsComposer`** — registers `RobotsAuditorSettingsValidator` via the same canonical shape.
-- **`.github/scripts/assert-pack-output.sh`** allow-list — `^icon\.png$` row added so the pack-gate stays green with `icon.png` shipping at the .nupkg root.
 - **Hey API client deletion** — the auto-generated TypeScript HTTP client was deleted; both dashboards consume Management API endpoints via the new `authenticated-fetch.ts` helper directly. Removes the `Client/src/api/` build-time tooling churn.
 
 ### Migration from pre-1.0
@@ -98,7 +92,7 @@ For the exhaustive old → new mapping (config keys, envvar prefixes, cache pref
 
 ### Tests
 
-- **Test suite green throughout the launch-readiness pass.** Pre-rename baseline: 745. Post-rename: 747 (+2 net new for `LegacyConfigurationProbe`). Post-launch-hygiene: 758 (+11 net new for LaunchSmoke trio + IPv6 NormaliseHost parameterised cases). v1.0.0 adds approximately 30-50 NEW tests for the IValidateOptions sweep (paired tests per validator + `AppendedNotReplaced` registration test + `StartupValidation_NoCaptiveDependency` lifetime gate per the canonical DI test contract).
+- **Test suite green throughout the launch-readiness pass.** Pre-rename baseline: 745. Post-rename: 747 (+2 net new for `LegacyConfigurationProbe`). Post-launch-hygiene: 755 (+8 net new for IPv6 NormaliseHost parameterised cases). v1.0.0 adds approximately 25 NEW tests for the IValidateOptions sweep (paired tests per validator + `AppendedNotReplaced` registration test + `StartupValidation_NoCaptiveDependency` lifetime gate per the canonical DI test contract).
 
 ### Non-breaking notes
 
@@ -181,7 +175,7 @@ For the exhaustive old → new mapping (config keys, envvar prefixes, cache pref
 - **`AiBotList`** Singleton loader with a hand-curated category map for ~80 known AI-crawler tokens. Two deprecated tokens flagged with their modern replacements: `anthropic-ai` → `ClaudeBot`, `Claude-Web` → `ClaudeBot`. Bytespider/Grok robots-noncompliance caveat surfaces in the Health Check description when those tokens are blocked.
 - **`StartupRobotsAuditRunner : IHostedService`** — fires the audit once per bound hostname at host startup. Gated on `LlmsTxt:RobotsAuditOnStartup` (default `true`) and `IServerRoleAccessor.CurrentServerRole ∈ { SchedulingPublisher, Single }` (defensive — multi-front-end installs don't all hammer their own origin at boot).
 - **`RobotsAuditRefreshJob : IDistributedBackgroundJob`** — recurring exactly-once refresh via Umbraco's host-DB-lock coordination. Period configured by `LlmsTxt:RobotsAuditor:RefreshIntervalHours` (default 24h; set to `0` to disable). Emits `Robots audit refresh job RUN — InstanceId={InstanceId} CycleStart={CycleStart}` log line for two-instance verification.
-- **CI build matrix** at `.github/workflows/ci.yml` — `build-online` (fetches AI-bot list from upstream) + `build-offline` (forced fallback path via unreachable source URL). Both jobs run the full test suite. **No scheduled SHA-bump action** — refresh is maintainer-only (PR review).
+- **Build-target online + offline code paths** — `dotnet build` exercises the upstream-fetch path by default (verifies SHA against the pinned constant); maintainers can force the offline fallback path locally via `/p:AiBotListSourceUrl=http://localhost:65535/unreachable.txt` to verify the committed snapshot is the embedded resource. **No scheduled SHA-bump** — refresh is maintainer-only (PR review).
 - **Configuration keys.** `LlmsTxt:RobotsAuditOnStartup` (default `true`), `LlmsTxt:RobotsAuditor:RefreshIntervalHours` (default `24`), `LlmsTxt:RobotsAuditor:FetchTimeoutSeconds` (default `5`).
 - **Documentation.** New `docs/robots-audit.md` (full audit contract), new `docs/maintenance.md` (SHA-refresh process + two-instance shared-SQL-Server manual gate setup). `docs/getting-started.md` bumps v0.7 → v0.8 with the new surface section.
 

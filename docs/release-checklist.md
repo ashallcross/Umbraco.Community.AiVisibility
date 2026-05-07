@@ -10,13 +10,9 @@ It complements [`maintenance.md`](maintenance.md) (one-off operational notes —
 
 Run these locally on a clean checkout of the release branch.
 
-### 1. Test suite + CI gates
+### 1. Test suite
 
 - [ ] `dotnet test Umbraco.Community.AiVisibility.slnx --configuration Release` → all pass
-- [ ] `dotnet test … --filter "Category=LaunchSmoke"` → 3 tests pass (the smoke trio)
-- [ ] `dotnet test … --filter "Category=ReleaseGuard"` → all pass
-- [ ] `.github/scripts/assert-pack-output.sh` → exit 0 (pack output matches allow-list)
-- [ ] CI run on the release branch is green across `build-online`, `build-offline`, and `pack-gate` jobs
 
 ### 2. Pack output review
 
@@ -51,7 +47,7 @@ To temporarily include source maps for a debugging release, flip `sourcemap: tru
     | sort -u
   ```
 
-- [ ] Every output line maps to a row in `docs/dependency-status.md` § Vulnerability warnings AND `.github/expected-vuln-warnings.txt`
+- [ ] Every output line maps to a row in `docs/dependency-status.md` § Vulnerability warnings
 - [ ] Every catalogued row maps to an output line (no stale catalogue entries)
 - [ ] If a row's target review date has passed, attempt path-a (Umbraco patch bump) and document the outcome
 
@@ -81,14 +77,34 @@ To temporarily include source maps for a debugging release, flip `sourcemap: tru
   - **Major** (e.g. `1.x` → `2.0.0`): breaking API changes. Reserved.
 - [ ] `CHANGELOG.md` updated with the new version + summary of changes (link to merged PRs)
 
-### 8. Tag + push
+### 8. Pack, push, tag
+
+Manual publish flow (no CI involved):
 
 ```bash
+# 1. Build the Backoffice bundle.
+cd Umbraco.Community.AiVisibility/Client && npm ci && npm run build && cd ../..
+
+# 2. Pack.
+rm -rf ./artifacts
+dotnet pack Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj --configuration Release --output ./artifacts
+
+# 3. Inspect the .nupkg one last time.
+unzip -l ./artifacts/Umbraco.Community.AiVisibility.<version>.nupkg
+
+# 4. Push to nuget.org.
+dotnet nuget push ./artifacts/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
+
+# 5. Tag locally + push the tag for the historical record.
 git tag -a v<version> -m "Release v<version>"
 git push origin v<version>
-```
 
-GitHub Actions' `release.yml` workflow picks up the tag and runs the NuGet push pipeline.
+# 6. Create the GitHub Release with the .nupkg attached + the CHANGELOG excerpt as the body.
+gh release create v<version> \
+  --title "v<version>" \
+  --notes-file <(awk '/^## \[v<version>\]/,/^## \[/' CHANGELOG.md | sed '$d') \
+  ./artifacts/*.nupkg
+```
 
 ### 9. Marketplace listing update (when applicable)
 
@@ -108,9 +124,9 @@ curl -X POST https://functions.marketplace.umbraco.com/api/InitiateSinglePackage
 
 ## Post-release
 
-- [ ] Verify the package appears on [nuget.org](https://www.nuget.org/packages/Umbraco.Community.AiVisibility) within ~10 min of the GH Actions release run
+- [ ] Verify the package appears on [nuget.org](https://www.nuget.org/packages/Umbraco.Community.AiVisibility) within ~10 min of the `dotnet nuget push` (it's usually faster — the page reaches "Listed" status once indexing completes)
 - [ ] Verify the Marketplace listing is updated (if changed)
-- [ ] Cut a GitHub Release pointing at the tag; copy the CHANGELOG.md entry as the release notes
+- [ ] GitHub Release was created at the tag-push step above; double-check the body matches the CHANGELOG entry and the `.nupkg` is attached
 
 ## v1 release-readiness audit
 
@@ -124,7 +140,7 @@ This is the cross-cutting verification matrix for a v1.0.0 (or v1.x patch) relea
 | `LICENSE` file at repo root with full Apache-2.0 text | `LICENSE` |
 | `NOTICE` file with third-party Apache-2.0 attributions | `NOTICE` (currently: `SmartReader`) |
 | Bundled DLLs check (only `Umbraco.Community.AiVisibility.dll` ships under `lib/net10.0/`) | `unzip -l artifacts/Umbraco.Community.AiVisibility.<version>.nupkg \| grep -E "lib/net10.0/.+\.dll"` |
-| README badges (NuGet + CI + Marketplace + Apache-2.0) | `README.md` |
+| README badges (NuGet + Marketplace + Apache-2.0) | `README.md` |
 
 ### Build + distribution
 
@@ -132,16 +148,13 @@ This is the cross-cutting verification matrix for a v1.0.0 (or v1.x patch) relea
 |---|---|
 | Single-target on .NET 10 | `Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj` `<TargetFramework>net10.0</TargetFramework>` |
 | Central Package Management (zero `PackageReference Version=` attributes) | `grep -rn 'PackageReference.*Version=' Umbraco.Community.AiVisibility*/**/*.csproj` returns zero matches |
-| Pack output assertion gated by allow-list | `.github/scripts/assert-pack-output.sh` runs in the `pack-gate` CI job |
-| Vulnerability allow-list at known-deps catalogue | `.github/expected-vuln-warnings.txt` + matching catalogue in [`dependency-status.md`](dependency-status.md) |
-| LaunchSmoke trio passes on every PR | `Category=LaunchSmoke` step in `.github/workflows/ci.yml` |
+| `unzip -l` of the `.nupkg` carries no unexpected entries (no `content/`, `contentFiles/`, `*.map` files) | manual pre-publish inspection per § Pack output review above |
+| Vulnerability warnings catalogued + reviewed | [`dependency-status.md`](dependency-status.md) § Vulnerability warnings — manual review per § Dependency status review above |
 | Vite bundle pre-built and committed | `Umbraco.Community.AiVisibility/wwwroot/App_Plugins/UmbracoCommunityAiVisibility/umbraco-community-aivisibility.js` exists in the repo |
 | Source maps excluded from production bundle | `Umbraco.Community.AiVisibility/Client/vite.config.ts` — sourcemap controlled by `VITE_INCLUDE_SOURCEMAP` env var, prod-default off |
 | Marketplace listing JSON at repo root | `umbraco-marketplace.json` (validated against `https://marketplace.umbraco.com/umbraco-marketplace-schema.json`) |
 | Package icon at repo root + wired via `<PackageIcon>` | `icon.png` + csproj `<PackageIcon>icon.png</PackageIcon>` + `<None Include="..\icon.png" Pack="true">` pack item |
 | `umbraco-marketplace` token first in semicolon-separated `<PackageTags>` | csproj `<PackageTags>` |
-| CI link-check passes on `README.md` + `CHANGELOG.md` + `docs/**.md` | `link-check` job in `.github/workflows/ci.yml` |
-| Release workflow with retry + tag-discipline + atomic GitHub Release creation | `.github/workflows/release.yml` |
 
 ### Public surfaces (HTTP + Backoffice)
 
@@ -196,10 +209,7 @@ This is the cross-cutting verification matrix for a v1.0.0 (or v1.x patch) relea
 | Item | Evidence |
 |---|---|
 | Test suite passes (post-launch-hygiene baseline + new validators) | `dotnet test Umbraco.Community.AiVisibility.slnx` returns green |
-| LaunchSmoke trio passes on every PR | `Category=LaunchSmoke` step in `.github/workflows/ci.yml` |
 | Each NEW validator ships happy-path + each-Fail-branch + AppendedNotReplaced + StartupValidation tests | `Umbraco.Community.AiVisibility.Tests/Configuration/<Name>SettingsValidatorTests.cs` |
-| Pack-output assertion succeeds against the allow-list | `.github/scripts/assert-pack-output.sh` exits 0 |
-| Vulnerability gate succeeds — no unexpected `NU1902`/`NU1903` warnings | Vuln-gate step in `.github/workflows/ci.yml` |
 
 ### Documentation
 
@@ -242,8 +252,8 @@ For each `AiVisibility:*` settings sub-block, ship a validator OR record a `no i
 
 ## When this checklist fails
 
-- **Pack output assertion fails**: investigate the unexpected entry. Either (a) update `.github/scripts/assert-pack-output.sh:ALLOWED_PATTERNS` for a legitimate new ship surface (in the same diff), or (b) tighten the csproj/Vite config to suppress the leak.
-- **Vuln-gate fails on a new NU1902/NU1903**: investigate upstream. Either path-a (bump Umbraco floor to a fixed transitive — preferred) or path-b (document in `docs/dependency-status.md` + add to `.github/expected-vuln-warnings.txt` allow-list).
+- **Pack output review surfaces an unexpected entry**: investigate. Either tighten the csproj/Vite config to suppress the leak (preferred), or accept the new ship surface as intentional + record the rationale in CHANGELOG so adopters get the heads-up.
+- **A new NU1902/NU1903 surfaces**: investigate upstream. Either path-a (bump Umbraco floor to a fixed transitive — preferred) or path-b (document the warning in [`dependency-status.md`](dependency-status.md) with a target review date).
 - **Smoke trio fails**: a real defect at the integration boundary. Slip the release until green; the gate exists for this.
 
 ## Cross-references
@@ -251,4 +261,3 @@ For each `AiVisibility:*` settings sub-block, ship a validator OR record a `no i
 - [`docs/marketplace-listing-checklist.md`](marketplace-listing-checklist.md) — Umbraco Marketplace listing checklist (csproj fields, JSON schema, submission procedure, gotchas).
 - [`docs/dependency-status.md`](dependency-status.md) — NU1902/NU1903 + CS0618 catalogue.
 - [`docs/maintenance.md`](maintenance.md) — bot-list SHA refresh, two-instance Docker SQL Server setup.
-- `.github/workflows/ci.yml` — CI gate definitions (`pack-gate`, vuln gate inside `build-online`, LaunchSmoke gate split).
