@@ -2,6 +2,21 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v1.0.1] — 2026-05-08: Marketplace listing fixes (docs-only)
+
+Patch release — package code is identical to v1.0.0. Fixes the Umbraco Marketplace listing rendering, which is the only adopter-visible surface that needed polish post-launch.
+
+### Fixed
+
+- **README internal links** — every `docs/*.md` and `LICENSE` reference rewritten from a repo-relative path to an absolute `https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/...` URL. The Marketplace listing renderer does not resolve relative paths the way GitHub does (every relative link surfaced as a dead `<a href="">`); absolute URLs render correctly on both GitHub and the Marketplace.
+- **`umbraco-marketplace.json` description** — rewritten as a single tight elevator-pitch paragraph (~190 words). The Marketplace renders the description card as one paragraph regardless of `\n\n` separators in the JSON; the multi-paragraph v1.0.0 wording collapsed into one wall of text. The detailed multi-section content lives in the README below the description card.
+
+### Notes
+
+- No code changes; same `Umbraco.Community.AiVisibility.dll`, same Vite bundle, same DI graph.
+- NuGet publish required because the README ships inside the `.nupkg` and is immutable post-publish — adopters installing via `dotnet add package Umbraco.Community.AiVisibility` from v1.0.1 onward see the corrected README.
+- Marketplace listing description refresh does NOT require a NuGet republish — the Marketplace re-fetches `umbraco-marketplace.json` from the repo's `<PackageProjectUrl>` every 2h (or immediately via the expedite endpoint).
+
 ## [v1.0.0] — 2026-05-07: launch readiness
 
 This is the inaugural stable release. It folds a multi-step launch-readiness pass — correctness fixes from external code review, launch hygiene + packaging + docs polish, the package rename, and the NuGet + Marketplace ship — into a single big-bang version entry.

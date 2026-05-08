@@ -10,7 +10,7 @@
     <PackageId>Umbraco.Community.AiVisibility</PackageId>
     <Product>Umbraco.Community.AiVisibility</Product>
     <Title>AI Visibility for Umbraco</Title>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Description>AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, and *.md page rendering. Auto-generates per-page Markdown at {url}.md, /llms.txt, and /llms-full.txt; surfaces an AI Traffic dashboard so editors can see who's reading the site; audits robots.txt against the AI-crawler list. Built for Umbraco v17+.</Description>
     <Authors>Adam Shallcross</Authors>
     <PackageTags>umbraco-marketplace;umbraco;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>

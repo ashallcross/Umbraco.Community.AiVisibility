@@ -86,7 +86,7 @@ Zero-config defaults produce useful output on a typical Umbraco site immediately
 }
 ```
 
-See [`docs/configuration.md`](docs/configuration.md) for the full reference (every key under `AiVisibility:` with defaults + constraints), [`docs/getting-started.md`](docs/getting-started.md) for the per-page exclusion contract + extension points, and [`docs/multi-site.md`](docs/multi-site.md) for the multi-host + multi-culture story.
+See [`docs/configuration.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/configuration.md) for the full reference (every key under `AiVisibility:` with defaults + constraints), [`docs/getting-started.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/getting-started.md) for the per-page exclusion contract + extension points, and [`docs/multi-site.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/multi-site.md) for the multi-host + multi-culture story.
 
 ## Extension points
 
@@ -100,7 +100,7 @@ Five interfaces give adopters override paths without forking:
 | `ISettingsResolver` | `DefaultSettingsResolver` (reads the global `aiVisibilitySettings` content node + appsettings overlay) | Per-host or per-tenant settings overrides on multi-site installs. |
 | `IUserAgentClassifier` | `DefaultUserAgentClassifier` | Custom UA classification (e.g. internal bot tracking, custom enterprise UA conventions). |
 
-Register your override with `services.TryAdd*<I, MyImpl>()` in a composer — the package uses `services.TryAdd*` for every default so adopter overrides are honoured without `Remove<>()` ceremony. See [`docs/extension-points.md`](docs/extension-points.md) for the full per-interface contract + multi-instance behaviour.
+Register your override with `services.TryAdd*<I, MyImpl>()` in a composer — the package uses `services.TryAdd*` for every default so adopter overrides are honoured without `Remove<>()` ceremony. See [`docs/extension-points.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/extension-points.md) for the full per-interface contract + multi-instance behaviour.
 
 ## How it works (architectural decision)
 
@@ -115,22 +115,22 @@ Renders the page through Umbraco's normal template pipeline, extracts the main c
 
 ## Known limitations
 
-- **Custom `IRequestLog` write-sink + AI Traffic dashboard.** If you replace the default `IRequestLog` to redirect writes elsewhere (e.g. Application Insights, Serilog, an external sink), the **Settings → AI Traffic** Backoffice dashboard reads from the local `aiVisibilityRequestLog` host-DB table — it will appear empty unless your override ALSO seeds that table. The dashboard does not consume the alternate sink. See [`docs/extension-points.md`](docs/extension-points.md) § "Backoffice consumers of `IRequestLog`" for the full caveat + the suggested dual-write pattern.
+- **Custom `IRequestLog` write-sink + AI Traffic dashboard.** If you replace the default `IRequestLog` to redirect writes elsewhere (e.g. Application Insights, Serilog, an external sink), the **Settings → AI Traffic** Backoffice dashboard reads from the local `aiVisibilityRequestLog` host-DB table — it will appear empty unless your override ALSO seeds that table. The dashboard does not consume the alternate sink. See [`docs/extension-points.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/extension-points.md) § "Backoffice consumers of `IRequestLog`" for the full caveat + the suggested dual-write pattern.
 - **`/llms-full.txt` size cap.** The full-Markdown manifest enforces a hard byte cap (default 5 MB, configurable via `AiVisibility:MaxLlmsFullSizeKb`). Pages emit in tree order until the next page would push past the cap; the body then ends with a truncation footer documenting how many of the total pages were emitted. Pagination of `/llms-full.txt` for very large sites is deferred to v1.1.
-- **Single global Settings node by design.** There is exactly one `aiVisibilitySettings` content node per Umbraco install — the same site name, summary, and per-doctype exclusion list applies to every bound host. Adopters needing per-host or per-tenant overrides supply their own `ISettingsResolver` implementation; see [`docs/extension-points.md`](docs/extension-points.md) and [`docs/multi-site.md`](docs/multi-site.md) for the override pattern.
-- **Umbraco v17 only.** Single-target on `.NET 10` + `Umbraco.Cms 17.3.2+`. There is no v13 / v15 / v16 multi-target. The `[Obsolete]` API call sites flagged for v18 / v19 removal are catalogued in [`docs/dependency-status.md`](docs/dependency-status.md) and will be migrated when the corresponding Umbraco majors land.
+- **Single global Settings node by design.** There is exactly one `aiVisibilitySettings` content node per Umbraco install — the same site name, summary, and per-doctype exclusion list applies to every bound host. Adopters needing per-host or per-tenant overrides supply their own `ISettingsResolver` implementation; see [`docs/extension-points.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/extension-points.md) and [`docs/multi-site.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/multi-site.md) for the override pattern.
+- **Umbraco v17 only.** Single-target on `.NET 10` + `Umbraco.Cms 17.3.2+`. There is no v13 / v15 / v16 multi-target. The `[Obsolete]` API call sites flagged for v18 / v19 removal are catalogued in [`docs/dependency-status.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/dependency-status.md) and will be migrated when the corresponding Umbraco majors land.
 
 ## Documentation
 
-- [`docs/getting-started.md`](docs/getting-started.md) — install + extraction-region contract + per-page exclusion + extension-point overview.
-- [`docs/configuration.md`](docs/configuration.md) — full `AiVisibility:` config reference (every key + default + constraint).
-- [`docs/extension-points.md`](docs/extension-points.md) — per-interface adopter contracts (IRequestLog, IUserAgentClassifier, IRobotsAuditor, IMarkdownContentExtractor, ISettingsResolver) + notification subscription guide.
-- [`docs/multi-site.md`](docs/multi-site.md) — multi-host (`IDomainService.GetAll`) + multi-culture (BCP-47 routing) + per-host cache-key shapes.
-- [`docs/data-attributes.md`](docs/data-attributes.md) — `data-llms-content` / `data-llms-ignore` extraction-region attributes.
-- [`docs/robots-audit.md`](docs/robots-audit.md) — Health Check + bot-list refresh process.
-- [`docs/maintenance.md`](docs/maintenance.md) — maintainer-only operational notes (SHA refresh, two-instance Docker SQL Server setup).
-- [`docs/release-checklist.md`](docs/release-checklist.md) — recurring per-release checklist (pack output, dependency triage, smoke trio, README freshness).
-- [`docs/dependency-status.md`](docs/dependency-status.md) — NU1902/NU1903 + CS0618 catalogue with resolution status + target review dates.
+- [`docs/getting-started.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/getting-started.md) — install + extraction-region contract + per-page exclusion + extension-point overview.
+- [`docs/configuration.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/configuration.md) — full `AiVisibility:` config reference (every key + default + constraint).
+- [`docs/extension-points.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/extension-points.md) — per-interface adopter contracts (IRequestLog, IUserAgentClassifier, IRobotsAuditor, IMarkdownContentExtractor, ISettingsResolver) + notification subscription guide.
+- [`docs/multi-site.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/multi-site.md) — multi-host (`IDomainService.GetAll`) + multi-culture (BCP-47 routing) + per-host cache-key shapes.
+- [`docs/data-attributes.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/data-attributes.md) — `data-llms-content` / `data-llms-ignore` extraction-region attributes.
+- [`docs/robots-audit.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/robots-audit.md) — Health Check + bot-list refresh process.
+- [`docs/maintenance.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/maintenance.md) — maintainer-only operational notes (SHA refresh, two-instance Docker SQL Server setup).
+- [`docs/release-checklist.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/release-checklist.md) — recurring per-release checklist (pack output, dependency triage, smoke trio, README freshness).
+- [`docs/dependency-status.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/dependency-status.md) — NU1902/NU1903 + CS0618 catalogue with resolution status + target review dates.
 
 ## What it does NOT do (and why)
 
@@ -149,7 +149,7 @@ See [Evil Martians: How to make your website visible to LLMs](https://evilmartia
 
 - **Issues + feature requests:** [GitHub issues](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues)
 - **Pull requests:** welcome — keep the change focused (one feature or fix per PR), include tests covering new behaviour, and document any new public surface in `docs/` so adopters discover it.
-- **License:** Apache 2.0 — see [LICENSE](LICENSE).
+- **License:** Apache 2.0 — see [LICENSE](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/LICENSE).
 
 ## Author
 
