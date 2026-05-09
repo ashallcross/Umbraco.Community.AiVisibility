@@ -76,6 +76,15 @@ public sealed class RoutingComposer : IComposer
         // Extraction pipeline — TryAdd* per AR17 so adopters can override before our
         // composer runs by registering their own implementation first.
         builder.Services.TryAddTransient<PageRenderer>();
+
+        // Story 7.1 — strategy interface + Razor extraction. PageRenderer dispatches
+        // to IPageRendererStrategy keyed by AiVisibility:RenderStrategy:Mode.
+        // TryAddKeyedTransient so adopters can replace the Razor strategy without
+        // removing-then-re-adding (matches AR17 TryAdd* discipline). Razor strategy
+        // mutates IVariationContextAccessor.VariationContext per render — Singleton
+        // would race; Transient is mandatory.
+        builder.Services.TryAddKeyedTransient<IPageRendererStrategy, RazorPageRendererStrategy>(RenderStrategyMode.Razor);
+
         builder.Services.TryAddSingleton<MarkdownConverter>();
         builder.Services.TryAddTransient<IContentRegionSelector, DefaultContentRegionSelector>();
         builder.Services.TryAddTransient<IMarkdownContentExtractor, DefaultMarkdownContentExtractor>();

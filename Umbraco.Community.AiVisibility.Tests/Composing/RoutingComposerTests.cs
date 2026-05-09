@@ -5,6 +5,9 @@ using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
 using Umbraco.Community.AiVisibility.Routing;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,6 +16,8 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Models.PublishedContent;
+using Umbraco.Cms.Core.Services;
+using Umbraco.Cms.Core.Web;
 
 namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
@@ -408,6 +413,163 @@ public class RoutingComposerTests
         });
     }
 
+    /// <summary>
+    /// Story 7.1 AC7 — pin the keyed-DI registration shape for
+    /// <see cref="IPageRendererStrategy"/>: the Razor strategy is registered
+    /// keyed by <see cref="RenderStrategyMode.Razor"/>, transient lifetime,
+    /// concrete impl <see cref="RazorPageRendererStrategy"/>. Mirrors the
+    /// existing <c>Compose_FreshServiceCollection_RegistersDefaultExtractorAsTransient</c>
+    /// shape so a future refactor away from
+    /// <c>TryAddKeyedTransient</c> would surface here.
+    /// </summary>
+    [Test]
+    public void Compose_RegistersRazorStrategyAsKeyedTransient()
+    {
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        // Use Where(...).ToList() + an explicit count assertion rather than
+        // Single(...) so a future regression that introduces a duplicate keyed
+        // registration surfaces as a clear NUnit failure rather than the opaque
+        // LINQ "Sequence contains more than one matching element"
+        // InvalidOperationException.
+        var registrations = services.Where(d =>
+            d.ServiceType == typeof(IPageRendererStrategy)
+            && d.IsKeyedService
+            && d.ServiceKey is RenderStrategyMode key
+            && key == RenderStrategyMode.Razor).ToList();
+
+        Assert.That(registrations, Has.Count.EqualTo(1),
+            "exactly one IPageRendererStrategy registration keyed by Razor — "
+            + "TryAddKeyedTransient must NOT register a duplicate");
+
+        var registration = registrations[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(registration.Lifetime, Is.EqualTo(ServiceLifetime.Transient),
+                "Razor strategy lifetime must be Transient (mutates IVariationContextAccessor.VariationContext per render)");
+            Assert.That(registration.KeyedImplementationType, Is.EqualTo(typeof(RazorPageRendererStrategy)),
+                "Razor strategy must be RazorPageRendererStrategy");
+        });
+    }
+
+    /// <summary>
+    /// Story 7.1 AC7 — adopter-override seam for the keyed
+    /// <see cref="IPageRendererStrategy"/> registration. Sibling to the
+    /// existing AC1 adopter-override tests for
+    /// <see cref="IMarkdownContentExtractor"/>: an adopter who registers
+    /// their own strategy keyed by <see cref="RenderStrategyMode.Razor"/>
+    /// BEFORE <see cref="RoutingComposer.Compose"/> runs must win, with the
+    /// package's <c>TryAddKeyedTransient</c> behaving as a no-op against the
+    /// pre-existing keyed registration. Guards against a future regression
+    /// where the composer is changed from <c>TryAddKeyedTransient</c> to
+    /// <c>AddKeyedTransient</c> — that change would silently break adopter
+    /// overrides today; this test would flip red.
+    /// </summary>
+    [Test]
+    public void Compose_AdopterRegistersOwnRazorStrategy_AdopterWins()
+    {
+        var (composer, builder, services) = BuildComposer();
+        services.AddKeyedTransient<IPageRendererStrategy, FakeAdopterRazorStrategy>(
+            RenderStrategyMode.Razor);
+
+        composer.Compose(builder);
+
+        var registrations = services.Where(d =>
+            d.ServiceType == typeof(IPageRendererStrategy)
+            && d.IsKeyedService
+            && d.ServiceKey is RenderStrategyMode key
+            && key == RenderStrategyMode.Razor).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registrations, Has.Count.EqualTo(1),
+                "exactly one IPageRendererStrategy keyed by Razor — TryAddKeyedTransient "
+                + "must NOT append a duplicate against the adopter's pre-existing registration");
+            Assert.That(registrations[0].KeyedImplementationType,
+                Is.EqualTo(typeof(FakeAdopterRazorStrategy)),
+                "adopter registration must remain in place — TryAdd is a no-op when "
+                + "(ServiceType, ServiceKey) is already registered");
+        });
+    }
+
+    /// <summary>
+    /// Story 7.1 AC5 — DI lifetime correctness gate (canonical stub-driven shape).
+    /// Build a stub <see cref="ServiceCollection"/> with NSubstitute interface
+    /// stubs for the eight transitive deps + the production
+    /// <c>TryAddKeyedTransient&lt;IPageRendererStrategy, RazorPageRendererStrategy&gt;</c>
+    /// registration, then resolve a <see cref="ServiceProvider"/> with
+    /// <see cref="ServiceProviderOptions.ValidateScopes"/> +
+    /// <see cref="ServiceProviderOptions.ValidateOnBuild"/> turned on. Clean
+    /// build is the gate — confirms no captive-scoped dependency leaked into
+    /// the strategy.
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_RazorPageRendererStrategy_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        // The eight transitive deps the Razor strategy receives.
+        services.AddSingleton(Substitute.For<IHttpContextAccessor>());
+        services.AddSingleton(Substitute.For<IUmbracoContextFactory>());
+        services.AddSingleton(Substitute.For<IFileService>());
+        services.AddSingleton(Substitute.For<ITemplateService>());
+        services.AddSingleton(Substitute.For<IRazorViewEngine>());
+        services.AddSingleton(Substitute.For<ITempDataProvider>());
+        services.AddSingleton(Substitute.For<IVariationContextAccessor>());
+        services.AddSingleton(NullLoggerFactory.Instance);
+        services.AddLogging();
+
+        // Mirror the production registration verbatim.
+        services.TryAddKeyedTransient<IPageRendererStrategy, RazorPageRendererStrategy>(RenderStrategyMode.Razor);
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        var strategy = sp.GetRequiredKeyedService<IPageRendererStrategy>(RenderStrategyMode.Razor);
+
+        Assert.That(strategy, Is.InstanceOf<RazorPageRendererStrategy>(),
+            "RazorPageRendererStrategy must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
+    /// <summary>
+    /// Story 7.1 AC5 — DI lifetime correctness gate for the new-shape
+    /// <see cref="PageRenderer"/> orchestrator. Deps:
+    /// <see cref="IServiceProvider"/> (auto-resolved by the container),
+    /// <see cref="IOptionsMonitor{TOptions}"/> of <see cref="AiVisibilitySettings"/>
+    /// (Singleton-resolvable), <see cref="ILogger{TCategoryName}"/> of
+    /// <see cref="PageRenderer"/> (always Singleton-resolvable). No captive
+    /// risk by construction; test confirms shape rather than discovers risk.
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_PageRenderer_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        monitor.CurrentValue.Returns(new AiVisibilitySettings());
+        services.AddSingleton(monitor);
+        services.AddSingleton(NullLoggerFactory.Instance);
+        services.AddLogging();
+
+        services.TryAddTransient<PageRenderer>();
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        var renderer = sp.GetRequiredService<PageRenderer>();
+
+        Assert.That(renderer, Is.Not.Null,
+            "PageRenderer (new orchestrator) must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
     private static (RoutingComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)
         BuildComposer()
     {
@@ -475,6 +637,21 @@ public class RoutingComposerTests
     {
         public Task<MarkdownExtractionResult> ExtractAsync(
             IPublishedContent content, string? culture, CancellationToken ct)
+            => throw new NotImplementedException("test fake — never invoked");
+    }
+
+    /// <summary>
+    /// Test fake — never invoked; only used to drive keyed-service descriptor
+    /// assertions for the <see cref="IPageRendererStrategy"/> adopter-override
+    /// seam (Story 7.1 AC7).
+    /// </summary>
+    private sealed class FakeAdopterRazorStrategy : IPageRendererStrategy
+    {
+        public Task<PageRenderResult> RenderAsync(
+            IPublishedContent content,
+            Uri absoluteUri,
+            string? culture,
+            CancellationToken cancellationToken)
             => throw new NotImplementedException("test fake — never invoked");
     }
 

@@ -13,6 +13,12 @@ namespace Umbraco.Community.AiVisibility.Configuration;
 /// <see cref="SettingsResolverCachePolicySeconds"/> + <see cref="Migrations"/>
 /// surface that <c>ISettingsResolver</c> consumes to overlay the Settings
 /// doctype values onto these appsettings values.
+/// Story 7.1 added the <see cref="RenderStrategy"/>
+/// (<see cref="RenderStrategySettings.Mode"/> +
+/// <see cref="RenderStrategySettings.LoopbackBaseUrl"/>) sub-block consumed
+/// by <c>PageRenderer</c>'s dispatcher to select between
+/// <c>RazorPageRendererStrategy</c> (default), <c>LoopbackPageRendererStrategy</c>
+/// (Story 7.2), and <c>AutoPageRendererStrategy</c> (Story 7.3).
 /// </summary>
 public sealed class AiVisibilitySettings
 {
@@ -246,6 +252,17 @@ public sealed class AiVisibilitySettings
     /// dashboard's <c>AnalyticsManagementApiController</c> query surface.
     /// </summary>
     public AnalyticsSettings Analytics { get; init; } = new();
+
+    /// <summary>
+    /// Story 7.1 — page renderer strategy selection. Operational config (NOT
+    /// editorial — no Backoffice doctype field for v1; deployment topology +
+    /// performance choice). Lives under <c>appsettings.json</c> only. The
+    /// dispatcher in <c>PageRenderer</c> reads
+    /// <see cref="RenderStrategySettings.Mode"/> at the top of every render
+    /// (not at DI startup) so adopters get config-hot-reload semantics for
+    /// free.
+    /// </summary>
+    public RenderStrategySettings RenderStrategy { get; init; } = new();
 }
 
 /// <summary>
@@ -384,6 +401,55 @@ public sealed class AnalyticsSettings
     /// pagination already bounds response size). Default <c>10000</c>.
     /// </summary>
     public int MaxResultRows { get; init; } = 10000;
+}
+
+/// <summary>
+/// Story 7.1 — configuration block for the page renderer strategy
+/// dispatcher. Bound from <c>AiVisibility:RenderStrategy</c>. Story 7.1
+/// ships <see cref="Mode"/> + a forward-compatibility binding for
+/// <see cref="LoopbackBaseUrl"/> (the resolver consuming the latter
+/// arrives in Story 7.2).
+/// </summary>
+/// <remarks>
+/// <para>
+/// Default <see cref="Mode"/> is <see cref="RenderStrategyMode.Razor"/>
+/// in Story 7.1 (the only registered strategy). Story 7.3 ships the
+/// <see cref="RenderStrategyMode.Auto"/> strategy and flips the default
+/// to <c>Auto</c> in the same release; the entire Epic 7 ships together,
+/// so adopters never see a Razor-default release after the epic lands.
+/// </para>
+/// <para>
+/// The <see cref="RenderStrategyMode.Razor"/> = <c>0</c> ordinal is
+/// load-bearing — <c>default(RenderStrategyMode)</c> resolves to Razor,
+/// so any adopter who has not touched the section (typical) renders
+/// identically to the pre-Epic-7 path.
+/// </para>
+/// </remarks>
+public sealed class RenderStrategySettings
+{
+    /// <summary>
+    /// Strategy used to render published content to HTML before extraction.
+    /// Default <see cref="RenderStrategyMode.Razor"/> in v1.0
+    /// (only the Razor strategy is registered; selecting
+    /// <see cref="RenderStrategyMode.Auto"/> or
+    /// <see cref="RenderStrategyMode.Loopback"/> throws at first render
+    /// with a diagnostic naming the missing strategy). The default flips to
+    /// <see cref="RenderStrategyMode.Auto"/> in the release that ships the
+    /// fallback strategy. See <see cref="RenderStrategyMode"/> remarks for
+    /// the full bad-value-handling shape.
+    /// </summary>
+    public RenderStrategyMode Mode { get; init; } = RenderStrategyMode.Razor;
+
+    /// <summary>
+    /// Story 7.2 — loopback transport target override. Story 7.1 binds
+    /// the property as a forward-compatibility seam; the
+    /// <c>ILoopbackUrlResolver</c> consuming it ships in Story 7.2. When
+    /// set, the loopback strategy uses this URL as the TCP transport
+    /// target instead of resolving via <c>IServerAddressesFeature</c>.
+    /// Has no effect when
+    /// <see cref="Mode"/> is <see cref="RenderStrategyMode.Razor"/>.
+    /// </summary>
+    public string? LoopbackBaseUrl { get; init; }
 }
 
 /// <summary>
@@ -710,4 +776,77 @@ public enum LlmsFullOrder
     /// first). Ties broken by tree-order index (stable secondary sort).
     /// </summary>
     RecentFirst = 2,
+}
+
+/// <summary>
+/// Story 7.1 — page renderer strategy selector consumed by
+/// <c>PageRenderer</c>'s dispatcher. Each value maps to an
+/// <c>IPageRendererStrategy</c> implementation registered as a keyed
+/// service in the composer.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="Razor"/> = <c>0</c> is load-bearing: it is the
+/// <c>default(RenderStrategyMode)</c>, so a <b>missing</b>
+/// <c>AiVisibility:RenderStrategy</c> section coerces to Razor — the
+/// pure-refactor invariant that protects adopters who have not touched their
+/// config.
+/// </para>
+/// <para>
+/// <b>Bad-value handling.</b> Two distinct shapes — both loud-fail rather
+/// than silent-coerce, by design (no <c>IValidateOptions&lt;&gt;</c> needed
+/// for v1):
+/// <list type="number">
+/// <item>A <b>string typo</b> in the <c>Mode</c> value
+/// (e.g. <c>"Mode": "razro"</c>) throws
+/// <see cref="System.InvalidOperationException"/> at configuration-bind time
+/// (startup) — the standard
+/// <c>Microsoft.Extensions.Configuration.Binder</c> behaviour for an
+/// unparseable enum string. Diagnostic surfaces in startup logs naming the
+/// offending key.</item>
+/// <item>A <b>numeric out-of-range</b> value (e.g. <c>"Mode": "5"</c>) binds
+/// to an undefined <see cref="RenderStrategyMode"/> integer — the binder
+/// accepts any int. The undefined value lands in the dispatcher's
+/// "no strategy registered for this key" branch and is reported via
+/// <c>InvalidOperationException</c> at first render with the custom-strategy
+/// hint ("Register a custom IPageRendererStrategy keyed by this
+/// RenderStrategyMode value via services.TryAddKeyedTransient.").</item>
+/// </list>
+/// Both paths are actionable; neither silently downgrades to Razor in a way
+/// that hides operator intent. Adopters who want stricter enforcement can
+/// wire an <c>IValidateOptions&lt;RenderStrategySettings&gt;</c> in their
+/// own composer.
+/// </para>
+/// </remarks>
+public enum RenderStrategyMode
+{
+    /// <summary>
+    /// In-process Razor render (the v1.0 path). Renders Umbraco published
+    /// content through the same Razor view engine the public site uses,
+    /// captures the resulting HTML to a string, and hands it to the
+    /// extractor. Fast on clean Umbraco installs that follow the docs;
+    /// fails on agency hijacks that bind a custom view model. Story 7.1
+    /// ships this strategy as <c>RazorPageRendererStrategy</c>.
+    /// </summary>
+    Razor = 0,
+
+    /// <summary>
+    /// HTTP loopback render (Story 7.2). The package issues an inbound
+    /// HTTP request against itself to fetch the rendered HTML — the same
+    /// pipeline a real browser would hit. Handles agency-built sites with
+    /// route hijacks + custom view models that the Razor strategy cannot
+    /// render. Pinning <see cref="Loopback"/> in Story 7.1 (before Story
+    /// 7.2 lands) throws at first render with a diagnostic.
+    /// </summary>
+    Loopback = 1,
+
+    /// <summary>
+    /// Try Razor first; fall back to Loopback on
+    /// <c>ModelBindingException</c> (Story 7.3). Caches the per-(doctype
+    /// alias, template alias) decision so the wasted attempt fires once
+    /// per combination per process. Pinning <see cref="Auto"/> in Story
+    /// 7.1 (before Story 7.3 lands) throws at first render with a
+    /// diagnostic. Story 7.3 flips the default Mode to <c>Auto</c>.
+    /// </summary>
+    Auto = 2,
 }
