@@ -10,6 +10,7 @@ This document covers everything shipping in v1 — the per-page Markdown route +
 - **Umbraco CMS v17.3.2+** — floats forward via Central Package Management.
 - **Database** — anything Umbraco supports (SQL Server, Azure SQL, MySQL, PostgreSQL). SQLite is supported in development; production-realistic distributed-job verification needs a real database. See [`maintenance.md`](maintenance.md) for the two-instance verification procedure.
 - **Node.js ≥ 24.11.1** — only needed if you're rebuilding the bundled JS yourself. The Vite output ships pre-built inside the NuGet package, so adopters do NOT need Node to run the package.
+- **Traditional Umbraco install with Razor templates** — required for the Markdown rendering surfaces (`.md` route, `/llms-full.txt`). Sites running Umbraco fully-headless (Delivery API + external frontend on Vercel / Netlify / etc.) get the `/llms.txt` index, robots audit, and Settings dashboard but the Markdown rendering surfaces don't work — full headless support is planned for a future release. See [`headless.md`](headless.md) for the supported-surfaces matrix + workarounds.
 
 > **Upgrading from a v0.x pre-release install?** See [`configuration.md`](configuration.md) § "Migrating from a pre-v1 install" for the config + envvar rename mapping. The package warns at boot but does NOT honour the legacy `LlmsTxt:` prefix at runtime — you'll fall back to defaults silently otherwise.
 

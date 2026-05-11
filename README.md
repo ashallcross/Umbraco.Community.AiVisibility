@@ -19,6 +19,8 @@ A drop-in Umbraco v17+ package that makes your CMS visible to AI search engines 
 
 The Vite bundle ships pre-built inside the NuGet package, so adopters do not need Node.js to run the package.
 
+**Running Umbraco headless (Delivery API + external frontend)?** The Markdown rendering surfaces (`.md` route, `/llms-full.txt`) depend on Umbraco rendering pages on the same .NET process — they do not work against fully-headless setups in the current release. The `/llms.txt` index, robots audit, and Settings dashboard work regardless. Full headless support is on the v1.1 roadmap — see [`docs/headless.md`](docs/headless.md) for what works today, what's coming, and the v1 workaround via `IMarkdownContentExtractor`.
+
 ## Installation
 
 ```bash
