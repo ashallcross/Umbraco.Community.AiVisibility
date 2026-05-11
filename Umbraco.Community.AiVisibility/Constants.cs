@@ -62,6 +62,35 @@ public static class Constants
         public const string RobotsPrefix = "aiv:robots:";
     }
 
+    public static class Http
+    {
+        /// <summary>
+        /// Named <see cref="System.Net.Http.IHttpClientFactory"/> client used by
+        /// <c>LoopbackPageRendererStrategy</c> to issue the inbound HTTP request
+        /// against the package's own host. Adopters layering Polly /
+        /// instrumentation / custom handlers extend via the factory's standard
+        /// hooks (<c>services.AddHttpClient(Constants.Http.LoopbackHttpClientName).AddHttpMessageHandler(...)</c>).
+        /// Single source of truth — the composer's registration AND the
+        /// strategy's <c>CreateClient</c> call read the same constant; adopter
+        /// override extension code reads the same constant.
+        /// </summary>
+        public const string LoopbackHttpClientName = "AiVisibility.Loopback";
+
+        /// <summary>
+        /// Custom request header set on every outbound loopback request the
+        /// package issues against itself. The inbound-side recursion guard
+        /// (<c>IRecursionGuard</c>, ships in a later release) consumes the
+        /// same constant — the marker present AND <c>HttpContext.Connection.RemoteIpAddress</c>
+        /// being a loopback address together signal recursion. Mirrors the
+        /// project-context.md § Code Quality &amp; Style Rules
+        /// <c>X-AiVisibility-*</c> custom-header naming convention. The package
+        /// also publishes the conventional <c>X-Markdown-Tokens</c> header
+        /// (Cloudflare-derived); the AiVisibility prefix is for headers
+        /// originated by this package.
+        /// </summary>
+        public const string LoopbackMarkerHeaderName = "X-AiVisibility-Loopback";
+    }
+
     public static class HealthChecks
     {
         /// <summary>

@@ -87,10 +87,8 @@ internal sealed class PageRenderer
 
         var hint = mode switch
         {
-            RenderStrategyMode.Loopback =>
-                "An upcoming release ships LoopbackPageRendererStrategy. Pin Mode=Razor in appsettings.json until then.",
             RenderStrategyMode.Auto =>
-                "An upcoming release ships AutoPageRendererStrategy. Pin Mode=Razor in appsettings.json until then.",
+                "An upcoming release ships AutoPageRendererStrategy. Pin Mode=Razor (default; always works) or Mode=Loopback (for sites with controller hijacks; requires a reachable Kestrel binding) in appsettings.json until then.",
             _ =>
                 "Register a custom IPageRendererStrategy keyed by this RenderStrategyMode value via services.TryAddKeyedTransient.",
         };

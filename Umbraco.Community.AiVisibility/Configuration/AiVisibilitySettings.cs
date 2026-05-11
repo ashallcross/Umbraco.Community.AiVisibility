@@ -19,6 +19,11 @@ namespace Umbraco.Community.AiVisibility.Configuration;
 /// by <c>PageRenderer</c>'s dispatcher to select between
 /// <c>RazorPageRendererStrategy</c> (default), <c>LoopbackPageRendererStrategy</c>
 /// (Story 7.2), and <c>AutoPageRendererStrategy</c> (Story 7.3).
+/// Story 7.2 wired the <see cref="RenderStrategySettings.LoopbackBaseUrl"/>
+/// consumer (<c>LoopbackUrlResolver</c>) and the
+/// <c>LoopbackPageRendererStrategy</c> keyed registration so
+/// <c>AiVisibility:RenderStrategy:Mode=Loopback</c> is now a live, valid
+/// pin.
 /// </summary>
 public sealed class AiVisibilitySettings
 {
@@ -406,9 +411,10 @@ public sealed class AnalyticsSettings
 /// <summary>
 /// Story 7.1 — configuration block for the page renderer strategy
 /// dispatcher. Bound from <c>AiVisibility:RenderStrategy</c>. Story 7.1
-/// ships <see cref="Mode"/> + a forward-compatibility binding for
-/// <see cref="LoopbackBaseUrl"/> (the resolver consuming the latter
-/// arrives in Story 7.2).
+/// shipped <see cref="Mode"/> + the binding for <see cref="LoopbackBaseUrl"/>;
+/// Story 7.2 wired the <see cref="LoopbackBaseUrl"/> consumer
+/// (<c>LoopbackUrlResolver</c>) and the
+/// <c>LoopbackPageRendererStrategy</c> keyed registration.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -429,25 +435,29 @@ public sealed class RenderStrategySettings
 {
     /// <summary>
     /// Strategy used to render published content to HTML before extraction.
-    /// Default <see cref="RenderStrategyMode.Razor"/> in v1.0
-    /// (only the Razor strategy is registered; selecting
-    /// <see cref="RenderStrategyMode.Auto"/> or
-    /// <see cref="RenderStrategyMode.Loopback"/> throws at first render
-    /// with a diagnostic naming the missing strategy). The default flips to
-    /// <see cref="RenderStrategyMode.Auto"/> in the release that ships the
-    /// fallback strategy. See <see cref="RenderStrategyMode"/> remarks for
-    /// the full bad-value-handling shape.
+    /// Default <see cref="RenderStrategyMode.Razor"/>. Story 7.2 ships the
+    /// <see cref="RenderStrategyMode.Loopback"/> strategy as a live pin;
+    /// selecting <see cref="RenderStrategyMode.Auto"/> still throws at first
+    /// render with a diagnostic naming the missing strategy. The default
+    /// flips to <see cref="RenderStrategyMode.Auto"/> in the release that
+    /// ships the fallback strategy. See <see cref="RenderStrategyMode"/>
+    /// remarks for the full bad-value-handling shape.
     /// </summary>
     public RenderStrategyMode Mode { get; init; } = RenderStrategyMode.Razor;
 
     /// <summary>
-    /// Story 7.2 — loopback transport target override. Story 7.1 binds
-    /// the property as a forward-compatibility seam; the
-    /// <c>ILoopbackUrlResolver</c> consuming it ships in Story 7.2. When
-    /// set, the loopback strategy uses this URL as the TCP transport
-    /// target instead of resolving via <c>IServerAddressesFeature</c>.
-    /// Has no effect when
-    /// <see cref="Mode"/> is <see cref="RenderStrategyMode.Razor"/>.
+    /// Loopback transport target override. Consumed by
+    /// <c>LoopbackUrlResolver.Resolve()</c>. When set, the loopback
+    /// strategy uses this URL as the TCP transport target instead of
+    /// resolving via <c>IServerAddressesFeature</c>. Has no effect when
+    /// <see cref="Mode"/> is <see cref="RenderStrategyMode.Razor"/> (the
+    /// resolver is never called). Use cases: containers / reverse-proxy
+    /// deployments where the local Kestrel binding is not directly
+    /// loopback-addressable, exotic networking topologies. Malformed values
+    /// surface as <see cref="System.InvalidOperationException"/> at the
+    /// first loopback render — NOT at startup, so adopters pinned to
+    /// <see cref="RenderStrategyMode.Razor"/> with a typo'd value still
+    /// boot clean.
     /// </summary>
     public string? LoopbackBaseUrl { get; init; }
 }
@@ -831,12 +841,13 @@ public enum RenderStrategyMode
     Razor = 0,
 
     /// <summary>
-    /// HTTP loopback render (Story 7.2). The package issues an inbound
-    /// HTTP request against itself to fetch the rendered HTML — the same
-    /// pipeline a real browser would hit. Handles agency-built sites with
-    /// route hijacks + custom view models that the Razor strategy cannot
-    /// render. Pinning <see cref="Loopback"/> in Story 7.1 (before Story
-    /// 7.2 lands) throws at first render with a diagnostic.
+    /// HTTP loopback render. The package issues an inbound HTTP request
+    /// against itself to fetch the rendered HTML — the same pipeline a real
+    /// browser would hit. Handles agency-built sites with route hijacks +
+    /// custom view models that the Razor strategy cannot render.
+    /// Implemented as <c>LoopbackPageRendererStrategy</c>. The default
+    /// <c>Mode</c> flips to <see cref="Auto"/> once the fallback strategy
+    /// ships in an upcoming release.
     /// </summary>
     Loopback = 1,
 

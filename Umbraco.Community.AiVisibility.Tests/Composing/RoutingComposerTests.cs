@@ -5,17 +5,20 @@ using Umbraco.Community.AiVisibility.Composing;
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
 using Umbraco.Community.AiVisibility.Routing;
+using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Models.PublishedContent;
+using Umbraco.Cms.Core.Routing;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Web;
 
@@ -568,6 +571,136 @@ public class RoutingComposerTests
 
         Assert.That(renderer, Is.Not.Null,
             "PageRenderer (new orchestrator) must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
+    /// <summary>
+    /// Story 7.2 AC9 — sanity: composer registers the Loopback strategy as
+    /// a keyed Transient against <see cref="RenderStrategyMode.Loopback"/>.
+    /// Mirrors the Story 7.1 Razor-strategy registration test.
+    /// </summary>
+    [Test]
+    public void Compose_RegistersLoopbackStrategyAsKeyedTransient()
+    {
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        var registrations = services.Where(d =>
+            d.ServiceType == typeof(IPageRendererStrategy)
+            && d.IsKeyedService
+            && d.ServiceKey is RenderStrategyMode key
+            && key == RenderStrategyMode.Loopback).ToList();
+
+        Assert.That(registrations, Has.Count.EqualTo(1),
+            "exactly one IPageRendererStrategy registration keyed by Loopback — "
+            + "TryAddKeyedTransient must NOT register a duplicate");
+
+        var registration = registrations[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(registration.Lifetime, Is.EqualTo(ServiceLifetime.Transient),
+                "Loopback strategy lifetime must be Transient (matches Razor strategy precedent + IPageRendererStrategy captive-IServiceProvider safety constraint)");
+            Assert.That(registration.KeyedImplementationType, Is.EqualTo(typeof(LoopbackPageRendererStrategy)),
+                "Loopback strategy must be LoopbackPageRendererStrategy");
+        });
+    }
+
+    /// <summary>
+    /// Story 7.2 AC10 — DI lifetime correctness gate for the Loopback
+    /// strategy. Stub the four transitive deps (<see cref="IHttpClientFactory"/>,
+    /// <see cref="ILoopbackUrlResolver"/>, <see cref="IPublishedUrlProvider"/>,
+    /// <see cref="ILogger{TCategoryName}"/>) + the production
+    /// <c>TryAddKeyedTransient</c> registration, then resolve under
+    /// <see cref="ServiceProviderOptions.ValidateScopes"/> +
+    /// <see cref="ServiceProviderOptions.ValidateOnBuild"/>. Clean build is
+    /// the gate.
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_LoopbackPageRendererStrategy_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        services.AddSingleton(Substitute.For<IHttpClientFactory>());
+        services.AddSingleton(Substitute.For<ILoopbackUrlResolver>());
+        services.AddSingleton(Substitute.For<IPublishedUrlProvider>());
+        services.AddSingleton(NullLoggerFactory.Instance);
+        services.AddLogging();
+
+        services.TryAddKeyedTransient<IPageRendererStrategy, LoopbackPageRendererStrategy>(RenderStrategyMode.Loopback);
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        var strategy = sp.GetRequiredKeyedService<IPageRendererStrategy>(RenderStrategyMode.Loopback);
+
+        Assert.That(strategy, Is.InstanceOf<LoopbackPageRendererStrategy>(),
+            "LoopbackPageRendererStrategy must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
+    /// <summary>
+    /// Story 7.2 AC10 — DI lifetime correctness gate for the loopback URL
+    /// resolver. Singleton-clean dep graph: <see cref="IServer"/> +
+    /// <see cref="IOptionsMonitor{TOptions}"/> +
+    /// <see cref="ILogger{TCategoryName}"/>. Singleton lifetime explicitly
+    /// asserted because <see cref="ILoopbackUrlResolver"/> is one of the
+    /// few new types in Epic 7 registered as Singleton (resolver caches the
+    /// first-call resolution; <c>IServer.Features</c> is stable post-startup).
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_LoopbackUrlResolver_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        services.AddSingleton(Substitute.For<IServer>());
+        var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        monitor.CurrentValue.Returns(new AiVisibilitySettings());
+        services.AddSingleton(monitor);
+        services.AddSingleton(NullLoggerFactory.Instance);
+        services.AddLogging();
+
+        services.TryAddSingleton<ILoopbackUrlResolver, LoopbackUrlResolver>();
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        var resolver = sp.GetRequiredService<ILoopbackUrlResolver>();
+
+        Assert.That(resolver, Is.InstanceOf<LoopbackUrlResolver>(),
+            "LoopbackUrlResolver must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
+    /// <summary>
+    /// Story 7.2 AC10 — composer-shape sanity: invoking
+    /// <see cref="RoutingComposer.Compose"/> wires the named-HttpClient
+    /// pipeline. Asserts that <see cref="IHttpClientFactory"/> is registered
+    /// (transitively by <c>services.AddHttpClient</c>) AND that a
+    /// named-options descriptor for
+    /// <see cref="HttpClientFactoryOptions"/> appears (the named-client
+    /// configuration the loopback strategy reads via
+    /// <c>CreateClient(Constants.Http.LoopbackHttpClientName)</c>).
+    /// </summary>
+    [Test]
+    public void Compose_RegistersLoopbackHttpClient()
+    {
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        var factoryRegs = services.Where(d => d.ServiceType == typeof(IHttpClientFactory)).ToList();
+        Assert.That(factoryRegs, Is.Not.Empty,
+            "AddHttpClient must register IHttpClientFactory transitively");
+
+        var namedOptions = services.Where(d =>
+            d.ServiceType == typeof(IConfigureOptions<HttpClientFactoryOptions>)).ToList();
+        Assert.That(namedOptions, Is.Not.Empty,
+            "AddHttpClient must register a named-options configurer that scopes options to "
+            + Constants.Http.LoopbackHttpClientName);
     }
 
     private static (RoutingComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)

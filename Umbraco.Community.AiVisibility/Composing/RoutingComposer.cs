@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using System.Net.Http;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Web.Common.ApplicationBuilder;
@@ -84,6 +85,35 @@ public sealed class RoutingComposer : IComposer
         // mutates IVariationContextAccessor.VariationContext per render — Singleton
         // would race; Transient is mandatory.
         builder.Services.TryAddKeyedTransient<IPageRendererStrategy, RazorPageRendererStrategy>(RenderStrategyMode.Razor);
+
+        // Story 7.2 — Loopback strategy + HTTP infrastructure.
+        builder.Services.TryAddKeyedTransient<IPageRendererStrategy, LoopbackPageRendererStrategy>(RenderStrategyMode.Loopback);
+
+        // Story 7.2 — loopback URL resolver. Singleton: caches the first-call
+        // resolution for the process lifetime; IServer.Features is stable
+        // post-startup so re-walking on every render adds cost without value.
+        // Lazy by contract — never throws at construction; environment-without-
+        // a-binding adopters pinned to Mode=Razor boot clean.
+        builder.Services.TryAddSingleton<ILoopbackUrlResolver, LoopbackUrlResolver>();
+
+        // Story 7.2 — named HttpClient with primary handler whose
+        // ServerCertificateCustomValidationCallback bypasses cert validation
+        // IFF the transport-target host resolves to a loopback IP — never
+        // blanket bypass. AllowAutoRedirect=false so 3xx responses surface as
+        // render failures with Location-header diagnostic. 30s timeout absorbs
+        // Spike 0.A's documented ~6s cold-start JIT cost + headroom. Adopters
+        // layering Polly / instrumentation extend via .AddHttpMessageHandler(...)
+        // on this same client name.
+        builder.Services.AddHttpClient(Constants.Http.LoopbackHttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                ServerCertificateCustomValidationCallback = LoopbackCertificateValidator.Validate,
+            })
+            .ConfigureHttpClient(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
 
         builder.Services.TryAddSingleton<MarkdownConverter>();
         builder.Services.TryAddTransient<IContentRegionSelector, DefaultContentRegionSelector>();

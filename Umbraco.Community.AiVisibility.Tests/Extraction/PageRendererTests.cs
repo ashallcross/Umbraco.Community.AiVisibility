@@ -13,9 +13,12 @@ namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 /// <see cref="PageRenderer"/>. Tests prove (a) the orchestrator delegates to
 /// the keyed strategy resolved from the DI container without doing any of its
 /// own rendering work, and (b) when the configured Mode resolves to a strategy
-/// that is NOT registered (Loopback in 7.1, Auto in 7.1) the orchestrator
-/// surfaces a project-context-aware diagnostic naming the missing strategy and
-/// the Story that ships it — fail-loud, no silent fall-back.
+/// that is NOT registered the orchestrator surfaces a project-context-aware
+/// diagnostic naming the missing strategy that an upcoming release ships —
+/// fail-loud, no silent fall-back. Story 7.2 added the Loopback-delegation
+/// test (replacing the Story-7.1-era Loopback-throw test now that Loopback
+/// is registered); the Auto-throw test stays until Story 7.3 ships
+/// <c>AutoPageRendererStrategy</c>.
 /// </summary>
 [TestFixture]
 public class PageRendererTests
@@ -59,37 +62,45 @@ public class PageRendererTests
     }
 
     /// <summary>
-    /// AC3 + Failure & Edge Case 1 — pinning Mode=Loopback before the
-    /// Loopback strategy ships throws an <see cref="InvalidOperationException"/>
-    /// whose message names both <c>Mode=Loopback</c> AND the missing strategy
-    /// (<c>LoopbackPageRendererStrategy</c>). NO silent fall-back to Razor.
+    /// Story 7.2 — replaces the Story 7.1 Loopback-throw test now that the
+    /// Loopback strategy is registered. Mirror of
+    /// <see cref="RenderAsync_ModeRazor_DelegatesToRazorStrategy"/>: the
+    /// orchestrator reads <c>Mode=Loopback</c>, resolves the keyed strategy,
+    /// and forwards arguments unchanged.
     /// </summary>
     [Test]
-    public void RenderAsync_ModeLoopback_ThrowsInvalidOperationExceptionWithDiagnostic()
+    public async Task RenderAsync_ModeLoopback_DelegatesToLoopbackStrategy()
     {
         var content = Substitute.For<IPublishedContent>();
         var uri = new Uri("https://example.test/foo");
+        const string culture = "en-GB";
+        var ct = CancellationToken.None;
+
+        var stubResult = PageRenderResult.Ok(
+            html: "<html>loopback-delegated</html>",
+            content: content,
+            templateAlias: "fooDoctype",
+            resolvedCulture: culture);
+
+        var loopbackStrategy = Substitute.For<IPageRendererStrategy>();
+        loopbackStrategy.RenderAsync(content, uri, culture, ct).Returns(stubResult);
 
         var (renderer, sp) = BuildRenderer(
             mode: RenderStrategyMode.Loopback,
-            keyedStrategies: new (RenderStrategyMode, IPageRendererStrategy)[]
+            keyedStrategies: new[]
             {
                 (RenderStrategyMode.Razor, Substitute.For<IPageRendererStrategy>()),
-                // Loopback intentionally NOT registered — a future release ships it.
+                (RenderStrategyMode.Loopback, loopbackStrategy),
             });
         using var _ = sp;
 
-        var ex = Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await renderer.RenderAsync(content, uri, culture: null, CancellationToken.None));
+        var result = await renderer.RenderAsync(content, uri, culture, ct);
 
         Assert.Multiple(() =>
         {
-            Assert.That(ex!.Message, Does.Contain("Mode=Loopback"),
-                "diagnostic must name the requested mode explicitly");
-            Assert.That(ex.Message, Does.Contain("LoopbackPageRendererStrategy"),
-                "diagnostic must name the missing strategy that an upcoming release ships");
-            Assert.That(ex.Message, Does.Contain("Pin Mode=Razor"),
-                "diagnostic must name the workaround (pin Razor) so adopters can recover");
+            Assert.That(result, Is.SameAs(stubResult),
+                "orchestrator must return the strategy's result unchanged");
+            loopbackStrategy.Received(1).RenderAsync(content, uri, culture, ct);
         });
     }
 
