@@ -52,6 +52,18 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// accepts all three shapes in <c>ASPNETCORE_URLS</c>.
 /// </para>
 /// <para>
+/// <b>Sub-path / path-base hosting not supported.</b> The loopback strategy
+/// constructs the internal request URI by replacing the transport target's
+/// path with the published-URL path; a path-base prefix on the transport
+/// target would be silently dropped. The resolver rejects both shapes:
+/// <c>LoopbackBaseUrl</c> values containing a non-root path throw with an
+/// actionable diagnostic; <c>IServer.Features</c> bindings with a path-base
+/// (e.g. <c>http://+:8080/myapp</c>) are skipped at <c>Debug</c> log level
+/// alongside the other "unusable binding" skip paths. Adopters mounting
+/// Umbraco at a non-root path base need a follow-up that propagates the
+/// path-base through the request construction; tracked as deferred work.
+/// </para>
+/// <para>
 /// <b>Scheme preference:</b> when both HTTP and HTTPS bindings are present,
 /// the resolver prefers the HTTP binding. Loopback inside the same kernel
 /// adds zero security value over HTTPS; the HTTP path also avoids the cert
@@ -107,6 +119,20 @@ internal sealed class LoopbackUrlResolver : ILoopbackUrlResolver
                     $"AiVisibility:RenderStrategy:LoopbackBaseUrl is set to '{configuredOverride}' which is not a valid absolute http(s) URL with a non-empty host. Set the value to an absolute http(s) URL pointing at the local Kestrel binding (e.g. \"http://127.0.0.1:5000\").");
             }
 
+            // Sub-path / path-base hosting not supported in this release.
+            // The strategy builds the loopback URI by REPLACING the transport
+            // target's path with the published-URL path — a path-base prefix
+            // on the override (e.g. "http://127.0.0.1:5000/myapp") would be
+            // silently dropped, and the internal request would land on the
+            // wrong route. Fail loud with an actionable diagnostic. Real
+            // path-base support is a separate routing concern; track as
+            // deferred work if an adopter needs it.
+            if (!HasRootPath(overrideUri))
+            {
+                throw new InvalidOperationException(
+                    $"AiVisibility:RenderStrategy:LoopbackBaseUrl is set to '{configuredOverride}' which includes a path component ('{overrideUri.AbsolutePath}'). Sub-path / path-base hosting is not supported by the loopback strategy in this release — the path would be silently dropped when the loopback request is constructed. Set the value to scheme + host + optional port only (e.g. \"http://127.0.0.1:5000\" rather than \"http://127.0.0.1:5000/myapp\").");
+            }
+
             var overrideTarget = new LoopbackTarget(overrideUri, IsLoopbackHost(overrideUri.Host));
             Volatile.Write(ref _cachedTarget, new TargetHolder(overrideTarget));
             return overrideTarget;
@@ -138,6 +164,22 @@ internal sealed class LoopbackUrlResolver : ILoopbackUrlResolver
                 {
                     _logger.LogDebug(
                         "PageRenderer: Loopback resolver skipped unparseable binding '{Binding}'",
+                        binding);
+                    continue;
+                }
+
+                // Sub-path / path-base bindings (e.g. "http://+:8080/myapp")
+                // are skipped — same rationale as the LoopbackBaseUrl path-base
+                // rejection above. The strategy would silently drop the path
+                // prefix when constructing the loopback URI, sending the
+                // internal request to the wrong route. If all bindings are
+                // path-base, the resolver falls through to the "no usable
+                // binding" diagnostic which already prompts the adopter to
+                // set LoopbackBaseUrl explicitly.
+                if (!HasRootPath(uri))
+                {
+                    _logger.LogDebug(
+                        "PageRenderer: Loopback resolver skipped path-base binding '{Binding}' (path-base hosting is not supported in this release; set AiVisibility:RenderStrategy:LoopbackBaseUrl explicitly if needed)",
                         binding);
                     continue;
                 }
@@ -235,6 +277,15 @@ internal sealed class LoopbackUrlResolver : ILoopbackUrlResolver
         normalised = binding;
         return false;
     }
+
+    /// <summary>
+    /// Returns <c>true</c> when the URI's path is the root (<c>/</c>) — i.e.
+    /// the URI has no path-base / sub-path prefix that the loopback strategy
+    /// would silently drop when constructing the internal request. .NET's
+    /// <see cref="Uri"/> normalises an empty path to <c>/</c>, so a single
+    /// equality check covers both forms.
+    /// </summary>
+    private static bool HasRootPath(Uri uri) => uri.AbsolutePath == "/";
 
     private static bool IsLoopbackHost(string host)
     {

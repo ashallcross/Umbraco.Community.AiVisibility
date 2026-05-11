@@ -101,6 +101,85 @@ public class LoopbackUrlResolverTests
     }
 
     /// <summary>
+    /// CR7.2 follow-on patch — <c>LoopbackBaseUrl</c> with a non-root path
+    /// must fail loud. The strategy builds the loopback URI by REPLACING
+    /// the transport target's path with the published-URL path, so a
+    /// path-base prefix would be silently dropped. Real path-base support
+    /// is deferred; the diagnostic must name the offending path AND the
+    /// scheme + host + optional port shape the adopter should use instead.
+    /// </summary>
+    [TestCase("http://127.0.0.1:5000/myapp", "/myapp")]
+    [TestCase("http://localhost:5000/path/with/multiple/segments", "/path/with/multiple/segments")]
+    [TestCase("https://contoso.example/path", "/path")]
+    public void Resolve_ConfigOverride_SubPath_Throws(string configuredOverride, string offendingPath)
+    {
+        var server = Substitute.For<IServer>();
+        var resolver = BuildResolver(server, loopbackBaseUrl: configuredOverride);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => resolver.Resolve());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ex!.Message, Does.Contain(configuredOverride),
+                "diagnostic must name the offending value");
+            Assert.That(ex.Message, Does.Contain(offendingPath),
+                "diagnostic must surface the offending path component so adopters can see what to strip");
+            Assert.That(ex.Message, Does.Contain("path-base hosting"),
+                "diagnostic must name the limitation explicitly so the adopter knows it's a scope choice");
+        });
+    }
+
+    /// <summary>
+    /// CR7.2 follow-on patch — trailing-slash forms (canonical root path)
+    /// are accepted; only non-root paths are rejected. <c>Uri</c> normalises
+    /// an empty path to <c>/</c>, so both <c>http://127.0.0.1:5000</c> and
+    /// <c>http://127.0.0.1:5000/</c> parse with <see cref="Uri.AbsolutePath"/>
+    /// equal to <c>/</c>.
+    /// </summary>
+    [TestCase("http://127.0.0.1:5000")]
+    [TestCase("http://127.0.0.1:5000/")]
+    [TestCase("https://localhost")]
+    [TestCase("https://localhost/")]
+    public void Resolve_ConfigOverride_RootPath_Accepted(string configuredOverride)
+    {
+        var server = Substitute.For<IServer>();
+        var resolver = BuildResolver(server, loopbackBaseUrl: configuredOverride);
+
+        Assert.DoesNotThrow(() => resolver.Resolve(),
+            "trailing-slash and bare-authority forms both canonicalise to AbsolutePath='/' — must be accepted");
+    }
+
+    /// <summary>
+    /// CR7.2 follow-on patch — path-base Kestrel bindings (e.g.
+    /// <c>http://+:8080/myapp</c>) must be skipped during the
+    /// <see cref="IServerAddressesFeature"/> walk for the same reason as
+    /// the <c>LoopbackBaseUrl</c> path-base rejection. When the path-base
+    /// binding is the only one present, the resolver falls through to the
+    /// "no usable binding" diagnostic (which already prompts the adopter
+    /// to set <c>LoopbackBaseUrl</c>). When a sibling root-path binding
+    /// also exists, the path-base one is skipped and the root one wins.
+    /// </summary>
+    [Test]
+    public void Resolve_BindingsWithPathBase_AreSkipped()
+    {
+        // Path-base binding alone — resolver should fall through to "no usable binding"
+        var server1 = BuildServerWithAddresses("http://+:8080/myapp");
+        var resolver1 = BuildResolver(server1);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => resolver1.Resolve());
+        Assert.That(ex!.Message, Does.Contain("AiVisibility:RenderStrategy:LoopbackBaseUrl"),
+            "with only a path-base binding present, the resolver must fall through to the actionable workaround diagnostic");
+
+        // Path-base binding alongside a root-path binding — root one wins.
+        var server2 = BuildServerWithAddresses("http://+:8080/myapp", "http://+:5000");
+        var resolver2 = BuildResolver(server2);
+
+        var target = resolver2.Resolve();
+        Assert.That(target.TransportUri, Is.EqualTo(new Uri("http://127.0.0.1:5000/")),
+            "path-base binding skipped; root-path binding selected");
+    }
+
+    /// <summary>
     /// CR7.2 patch — <see cref="IServerAddressesFeature.Addresses"/> is a
     /// live collection; concurrent mutation by another hosted service mid-
     /// iteration would otherwise surface as a confusing "Collection was
@@ -252,10 +331,6 @@ public class LoopbackUrlResolverTests
     [TestCase("http://*", "http://127.0.0.1/")]
     [TestCase("http://0.0.0.0", "http://127.0.0.1/")]
     [TestCase("http://[::]", "http://[::1]/")]
-    // Wildcard token followed by a path (no port). Kestrel accepts this shape
-    // for path-base-bound hosts.
-    [TestCase("http://+/myapp", "http://127.0.0.1/myapp")]
-    [TestCase("http://*/myapp", "http://127.0.0.1/myapp")]
     public void Resolve_NormalisesWildcardBindings(string binding, string expectedTransportUri)
     {
         var server = BuildServerWithAddresses(binding);
