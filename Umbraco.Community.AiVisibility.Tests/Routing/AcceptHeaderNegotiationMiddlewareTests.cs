@@ -519,7 +519,12 @@ public class AcceptHeaderNegotiationMiddlewareTests
         var controllerExclusion = new DefaultExclusionEvaluator(
             settingsResolver,
             NullLogger<DefaultExclusionEvaluator>.Instance);
+        // Story 7.4 — guard returns false so this Story-1.3 cache-key-symmetry
+        // test keeps exercising the post-guard render path unchanged.
+        var recursionGuard = Substitute.For<IRecursionGuard>();
+        recursionGuard.IsRecursion(Arg.Any<HttpContext>()).Returns(false);
         var controller = new MarkdownController(
+            recursionGuard,
             controllerExtractor,
             resolver,
             writer,

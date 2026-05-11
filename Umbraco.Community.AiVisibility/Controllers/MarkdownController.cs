@@ -37,6 +37,7 @@ namespace Umbraco.Community.AiVisibility.Controllers;
 /// </summary>
 public sealed class MarkdownController : Controller
 {
+    private readonly IRecursionGuard _recursionGuard;
     private readonly IMarkdownContentExtractor _extractor;
     private readonly IMarkdownRouteResolver _routeResolver;
     private readonly IMarkdownResponseWriter _responseWriter;
@@ -46,6 +47,7 @@ public sealed class MarkdownController : Controller
     private readonly ILogger<MarkdownController> _logger;
 
     public MarkdownController(
+        IRecursionGuard recursionGuard,
         IMarkdownContentExtractor extractor,
         IMarkdownRouteResolver routeResolver,
         IMarkdownResponseWriter responseWriter,
@@ -54,6 +56,7 @@ public sealed class MarkdownController : Controller
         INotificationPublisher notificationPublisher,
         ILogger<MarkdownController> logger)
     {
+        _recursionGuard = recursionGuard;
         _extractor = extractor;
         _routeResolver = routeResolver;
         _responseWriter = responseWriter;
@@ -67,6 +70,23 @@ public sealed class MarkdownController : Controller
     [HttpHead]
     public async Task<IActionResult> Render(string path, CancellationToken cancellationToken)
     {
+        // Defence-in-depth recursion guard. The outbound Loopback strategy
+        // overrides Accept to text/html so the .md route is not the loopback
+        // target in normal operation; this guard catches the case where
+        // adopter middleware (Umbraco Redirects rule, custom route alias)
+        // re-routes the loopback hit back to .md despite that override.
+        // Header alone is insufficient — spoof defence requires the source
+        // IP to also be loopback.
+        if (_recursionGuard.IsRecursion(HttpContext))
+        {
+            _logger.LogError(
+                "PageRenderer: Loopback recursion detected for {Path}",
+                path);
+            return Problem(
+                title: $"AiVisibility loopback recursion detected for path {path}",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+
         // Route values can deliver the captured path with or without leading slash;
         // the normaliser handles both, plus URL-decoding and suffix stripping.
         string canonicalPath;

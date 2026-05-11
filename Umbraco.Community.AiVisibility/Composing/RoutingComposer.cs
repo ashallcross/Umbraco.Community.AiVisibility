@@ -102,6 +102,15 @@ public sealed class RoutingComposer : IComposer
         // deploy is the natural invalidation event).
         builder.Services.TryAddSingleton<IRendererStrategyCache, RendererStrategyCache>();
 
+        // Story 7.4 — inbound-side recursion guard. Singleton: stateless;
+        // reads only the HttpContext argument received per call (no injected
+        // dependencies — captive-graph trivially clean). Defence-in-depth
+        // against adopter middleware that aliases routes such that the
+        // Loopback strategy's outbound HTTP call lands on this controller's
+        // .md route. The primary mechanism is the outbound Accept: text/html
+        // override on the Loopback strategy; this guard catches the bypass case.
+        builder.Services.TryAddSingleton<IRecursionGuard, RecursionGuard>();
+
         // Story 7.2 — loopback URL resolver. Singleton: caches the first-call
         // resolution for the process lifetime; IServer.Features is stable
         // post-startup so re-walking on every render adds cost without value.

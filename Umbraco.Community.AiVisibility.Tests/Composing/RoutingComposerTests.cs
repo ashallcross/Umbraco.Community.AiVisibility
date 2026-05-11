@@ -839,6 +839,62 @@ public class RoutingComposerTests
             "RendererStrategyCache must resolve cleanly under ValidateScopes + ValidateOnBuild");
     }
 
+    /// <summary>
+    /// Story 7.4 AC5 + AC10 — pins the inbound recursion guard registration
+    /// shape: exactly one non-keyed registration, Singleton lifetime,
+    /// <see cref="RecursionGuard"/> as default impl. Adopters override via
+    /// <c>services.TryAddSingleton&lt;IRecursionGuard, MyGuard&gt;()</c>
+    /// before the package composer runs.
+    /// </summary>
+    [Test]
+    public void Compose_RegistersRecursionGuardAsSingleton()
+    {
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        var registrations = services.Where(d =>
+            d.ServiceType == typeof(IRecursionGuard)
+            && !d.IsKeyedService).ToList();
+
+        Assert.That(registrations, Has.Count.EqualTo(1),
+            "exactly one IRecursionGuard registration — TryAddSingleton must NOT register a duplicate");
+
+        var registration = registrations[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(registration.Lifetime, Is.EqualTo(ServiceLifetime.Singleton),
+                "RecursionGuard lifetime must be Singleton — stateless guard, no captive deps");
+            Assert.That(registration.ImplementationType, Is.EqualTo(typeof(RecursionGuard)),
+                "IRecursionGuard default impl must be RecursionGuard");
+        });
+    }
+
+    /// <summary>
+    /// Story 7.4 AC6 + AC10 — DI lifetime correctness gate for
+    /// <see cref="RecursionGuard"/>. No injected deps; Singleton
+    /// registration; trivially Singleton-clean dep graph (same shape as
+    /// Story 7.3's <see cref="RendererStrategyCache"/>).
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_RecursionGuard_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        services.TryAddSingleton<IRecursionGuard, RecursionGuard>();
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        var guard = sp.GetRequiredService<IRecursionGuard>();
+
+        Assert.That(guard, Is.InstanceOf<RecursionGuard>(),
+            "RecursionGuard must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
     private static (RoutingComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)
         BuildComposer()
     {

@@ -617,6 +617,72 @@ public class MarkdownControllerTests
             Arg.Any<CancellationToken>());
     }
 
+    // Story 7.4 AC4 + AC8 + AC9 + AC10 — recursion guard short-circuits at the
+    // top of Render with HTTP 500 + diagnostic title + structured LogError; the
+    // route resolver, extractor, and notification publisher are NEVER reached.
+    [Test]
+    public async Task Render_RecursionDetected_Returns500WithDiagnostic_AndDoesNotResolveRoute()
+    {
+        var extractor = new StubExtractor(BuildFound("never reached"));
+        var resolver = MakeStubResolver(content: BuildContent(), culture: "en-GB");
+        var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
+        var guard = Substitute.For<IRecursionGuard>();
+        guard.IsRecursion(Arg.Any<HttpContext>()).Returns(true);
+        var controller = MakeController(
+            extractor, resolver, "GET", "https", "example.test", "/home.md",
+            notificationPublisher: publisher, recursionGuard: guard);
+
+        var result = await controller.Render(path: "/home.md", CancellationToken.None);
+
+        Assert.That(result, Is.InstanceOf<ObjectResult>(), "guard fires Problem(...) which returns ObjectResult");
+        var problem = (ObjectResult)result;
+        Assert.Multiple(() =>
+        {
+            Assert.That(problem.StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+            Assert.That(problem.Value, Is.InstanceOf<ProblemDetails>());
+            var detail = (ProblemDetails)problem.Value!;
+            Assert.That(detail.Title, Does.Contain("AiVisibility loopback recursion detected for path"),
+                "diagnostic title pinned by AC4");
+            Assert.That(detail.Title, Does.Contain("/home.md"),
+                "title includes the raw inbound path for operator diagnostics");
+            Assert.That(detail.Status, Is.EqualTo(StatusCodes.Status500InternalServerError));
+        });
+        Assert.That(resolver.CallCount, Is.EqualTo(0),
+            "route resolver MUST NOT run when recursion detected (AC4 ordering)");
+        Assert.That(extractor.WasCalled, Is.False,
+            "extractor MUST NOT run when recursion detected (AC4 ordering)");
+        await publisher.DidNotReceive().PublishMarkdownPageAsync(
+            Arg.Any<HttpContext>(),
+            Arg.Any<string>(),
+            Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    // Story 7.4 AC10 — non-recursion path is the steady-state hot path; confirms
+    // the guard call doesn't perturb existing 200-render behaviour when
+    // IsRecursion returns false.
+    [Test]
+    public async Task Render_RecursionNotDetected_BehavesAsRender_AndCallsExtractor()
+    {
+        var extractor = new StubExtractor(BuildFound("# Home\n"));
+        var resolver = MakeStubResolver(content: BuildContent(), culture: "en-GB");
+        var body = new MemoryStream();
+        var guard = Substitute.For<IRecursionGuard>();
+        guard.IsRecursion(Arg.Any<HttpContext>()).Returns(false);
+        var controller = MakeController(
+            extractor, resolver, "GET", "https", "example.test", "/home.md",
+            body: body, recursionGuard: guard);
+
+        var result = await controller.Render(path: "/home.md", CancellationToken.None);
+
+        Assert.That(result, Is.InstanceOf<EmptyResult>(),
+            "non-recursion path returns the existing 200 EmptyResult shape");
+        Assert.That(controller.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+        Assert.That(extractor.WasCalled, Is.True,
+            "extractor runs when recursion is not detected");
+    }
+
     private static MarkdownExtractionResult BuildFound(
         string body,
         string? culture = "en-GB",
@@ -689,7 +755,8 @@ public class MarkdownControllerTests
         AiVisibilitySettings? settings = null,
         MemoryStream? body = null,
         ISettingsResolver? settingsResolverOverride = null,
-        Umbraco.Community.AiVisibility.Notifications.INotificationPublisher? notificationPublisher = null)
+        Umbraco.Community.AiVisibility.Notifications.INotificationPublisher? notificationPublisher = null,
+        IRecursionGuard? recursionGuard = null)
     {
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = method;
@@ -721,7 +788,18 @@ public class MarkdownControllerTests
             settingsResolver,
             NullLogger<DefaultExclusionEvaluator>.Instance);
 
+        // Story 7.4 — recursion guard. Default substitute returns false so
+        // every existing controller test continues to exercise the
+        // non-recursion path; tests that prove the guard's 500 path pass
+        // an explicit substitute via recursionGuard.
+        if (recursionGuard is null)
+        {
+            recursionGuard = Substitute.For<IRecursionGuard>();
+            recursionGuard.IsRecursion(Arg.Any<HttpContext>()).Returns(false);
+        }
+
         var controller = new MarkdownController(
+            recursionGuard,
             extractor,
             resolver,
             writer,
