@@ -85,13 +85,7 @@ internal sealed class PageRenderer
             return strategy;
         }
 
-        var hint = mode switch
-        {
-            RenderStrategyMode.Auto =>
-                "An upcoming release ships AutoPageRendererStrategy. Pin Mode=Razor (default; always works) or Mode=Loopback (for sites with controller hijacks; requires a reachable Kestrel binding) in appsettings.json until then.",
-            _ =>
-                "Register a custom IPageRendererStrategy keyed by this RenderStrategyMode value via services.TryAddKeyedTransient.",
-        };
+        var hint = "Set Mode=Auto (default; always works) or register a custom IPageRendererStrategy keyed by this RenderStrategyMode value via services.TryAddKeyedTransient.";
         var message =
             $"AiVisibility:RenderStrategy:Mode={mode} requires an IPageRendererStrategy keyed by RenderStrategyMode.{mode} which is not registered. {hint}";
         _logger.LogError("PageRenderer: render strategy {Mode} not registered. {Hint}", mode, hint);

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 
@@ -30,6 +31,7 @@ public class ReleaseGuardTests
     public void ShippedAssembly_ContainsNoSpikeControllers()
     {
         var hits = PackageAssembly.GetTypes()
+            .Where(IsAuthoredType)
             .Where(t => t.Name.Contains("Spike", StringComparison.OrdinalIgnoreCase))
             .Select(t => t.FullName)
             .ToArray();
@@ -43,6 +45,7 @@ public class ReleaseGuardTests
     public void ShippedAssembly_ContainsNoTemplateControllers()
     {
         var hits = PackageAssembly.GetTypes()
+            .Where(IsAuthoredType)
             .Where(t => t.Name.Contains("Template", StringComparison.OrdinalIgnoreCase))
             .Select(t => t.FullName)
             .ToArray();
@@ -75,6 +78,19 @@ public class ReleaseGuardTests
             $"Found: {string.Join(", ", unauthorised)}. " +
             $"Add to AllowedPingActions only if the action is intentionally exposed.");
     }
+
+    /// <summary>
+    /// Excludes compiler-generated types (async-method state machines like
+    /// <c>&lt;ResolveTemplateAliasAsync&gt;d__9</c>, lambda closure types,
+    /// iterator state machines, etc.) from the release-guard sweeps. Those
+    /// types ship in the assembly by design — they are the C# compiler's
+    /// implementation of authored async / iterator / lambda surface — and
+    /// their names reflect the authored method names verbatim, which would
+    /// false-positive the <c>"Template"</c> / <c>"Spike"</c> name match.
+    /// The release-guard's intent is authored surface only.
+    /// </summary>
+    private static bool IsAuthoredType(Type t)
+        => t.GetCustomAttribute<CompilerGeneratedAttribute>() is null;
 
     private static bool IsControllerType(Type t)
     {

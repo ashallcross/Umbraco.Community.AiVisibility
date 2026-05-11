@@ -89,6 +89,19 @@ public sealed class RoutingComposer : IComposer
         // Story 7.2 — Loopback strategy + HTTP infrastructure.
         builder.Services.TryAddKeyedTransient<IPageRendererStrategy, LoopbackPageRendererStrategy>(RenderStrategyMode.Loopback);
 
+        // Story 7.3 — Auto strategy with Razor → Loopback ModelBindingException
+        // fallback. Composes the two sibling strategies via captured
+        // IServiceProvider + keyed-DI resolution (the same primitive
+        // PageRenderer's orchestrator uses) so future strategies can be added
+        // without rewriting Auto's body.
+        builder.Services.TryAddKeyedTransient<IPageRendererStrategy, AutoPageRendererStrategy>(RenderStrategyMode.Auto);
+
+        // Story 7.3 — per-(ContentTypeAlias, TemplateAlias) hijack-decision
+        // cache. Singleton: process-lifetime, ConcurrentDictionary-backed, no
+        // invalidation hook (hijack registration changes are code changes; a
+        // deploy is the natural invalidation event).
+        builder.Services.TryAddSingleton<IRendererStrategyCache, RendererStrategyCache>();
+
         // Story 7.2 — loopback URL resolver. Singleton: caches the first-call
         // resolution for the process lifetime; IServer.Features is stable
         // post-startup so re-walking on every render adds cost without value.

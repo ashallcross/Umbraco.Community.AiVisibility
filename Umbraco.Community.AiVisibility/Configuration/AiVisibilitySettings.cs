@@ -24,6 +24,12 @@ namespace Umbraco.Community.AiVisibility.Configuration;
 /// <c>LoopbackPageRendererStrategy</c> keyed registration so
 /// <c>AiVisibility:RenderStrategy:Mode=Loopback</c> is now a live, valid
 /// pin.
+/// Story 7.3 shipped the <c>AutoPageRendererStrategy</c> keyed registration
+/// (Razor → Loopback fallback on <c>ModelBindingException</c>, with a
+/// per-<c>(ContentTypeAlias, TemplateAlias)</c> decision cache) and flipped
+/// the default <see cref="RenderStrategySettings.Mode"/> from
+/// <see cref="RenderStrategyMode.Razor"/> to
+/// <see cref="RenderStrategyMode.Auto"/>.
 /// </summary>
 public sealed class AiVisibilitySettings
 {
@@ -414,36 +420,54 @@ public sealed class AnalyticsSettings
 /// shipped <see cref="Mode"/> + the binding for <see cref="LoopbackBaseUrl"/>;
 /// Story 7.2 wired the <see cref="LoopbackBaseUrl"/> consumer
 /// (<c>LoopbackUrlResolver</c>) and the
-/// <c>LoopbackPageRendererStrategy</c> keyed registration.
+/// <c>LoopbackPageRendererStrategy</c> keyed registration; Story 7.3
+/// shipped the <c>AutoPageRendererStrategy</c> keyed registration and
+/// flipped the default <see cref="Mode"/> to
+/// <see cref="RenderStrategyMode.Auto"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Default <see cref="Mode"/> is <see cref="RenderStrategyMode.Razor"/>
-/// in Story 7.1 (the only registered strategy). Story 7.3 ships the
-/// <see cref="RenderStrategyMode.Auto"/> strategy and flips the default
-/// to <c>Auto</c> in the same release; the entire Epic 7 ships together,
-/// so adopters never see a Razor-default release after the epic lands.
+/// Default <see cref="Mode"/> is <see cref="RenderStrategyMode.Auto"/> —
+/// tries Razor first, falls back to Loopback on
+/// <c>Umbraco.Cms.Web.Common.ModelBinders.ModelBindingException</c>, with a
+/// per-<c>(ContentTypeAlias, TemplateAlias)</c> decision cache so the
+/// wasted Razor attempt fires only once per combination per process.
+/// Adopters who want explicit single-strategy semantics (e.g. for known
+/// behavioural shape on a clean install, or to skip the Razor attempt
+/// entirely on a known-hijacked install) pin
+/// <see cref="RenderStrategyMode.Razor"/> or
+/// <see cref="RenderStrategyMode.Loopback"/> in
+/// <c>appsettings.json</c>.
 /// </para>
 /// <para>
-/// The <see cref="RenderStrategyMode.Razor"/> = <c>0</c> ordinal is
-/// load-bearing — <c>default(RenderStrategyMode)</c> resolves to Razor,
-/// so any adopter who has not touched the section (typical) renders
-/// identically to the pre-Epic-7 path.
+/// <b>Binding semantics.</b> The <see cref="RenderStrategyMode.Razor"/> =
+/// <c>0</c> ordinal is still <c>default(RenderStrategyMode)</c>, but the
+/// C# property initialiser on <see cref="Mode"/> below sets
+/// <see cref="RenderStrategyMode.Auto"/>. A missing-or-absent
+/// <c>AiVisibility:RenderStrategy</c> section in <c>appsettings.json</c>
+/// keeps the initialiser value (<c>Auto</c>); only an integer-out-of-range
+/// bind that produces an undefined enum value falls through to the
+/// dispatcher's custom-strategy hint. See <see cref="RenderStrategyMode"/>
+/// remarks for the full bad-value shape.
 /// </para>
 /// </remarks>
 public sealed class RenderStrategySettings
 {
     /// <summary>
     /// Strategy used to render published content to HTML before extraction.
-    /// Default <see cref="RenderStrategyMode.Razor"/>. Story 7.2 ships the
-    /// <see cref="RenderStrategyMode.Loopback"/> strategy as a live pin;
-    /// selecting <see cref="RenderStrategyMode.Auto"/> still throws at first
-    /// render with a diagnostic naming the missing strategy. The default
-    /// flips to <see cref="RenderStrategyMode.Auto"/> in the release that
-    /// ships the fallback strategy. See <see cref="RenderStrategyMode"/>
-    /// remarks for the full bad-value-handling shape.
+    /// Default <see cref="RenderStrategyMode.Auto"/> — tries Razor first;
+    /// falls back to Loopback on
+    /// <c>Umbraco.Cms.Web.Common.ModelBinders.ModelBindingException</c>, with
+    /// a per-<c>(ContentTypeAlias, TemplateAlias)</c> decision cache.
+    /// Adopters who want to pin a single strategy (e.g. for performance
+    /// characteristics on a known-clean install, or to skip the Razor
+    /// attempt entirely on a known-hijacked install) set <c>Mode</c> to
+    /// <see cref="RenderStrategyMode.Razor"/> or
+    /// <see cref="RenderStrategyMode.Loopback"/> explicitly. See
+    /// <see cref="RenderStrategyMode"/> remarks for the full
+    /// bad-value-handling shape.
     /// </summary>
-    public RenderStrategyMode Mode { get; init; } = RenderStrategyMode.Razor;
+    public RenderStrategyMode Mode { get; init; } = RenderStrategyMode.Auto;
 
     /// <summary>
     /// Loopback transport target override. Consumed by
@@ -796,11 +820,14 @@ public enum LlmsFullOrder
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="Razor"/> = <c>0</c> is load-bearing: it is the
-/// <c>default(RenderStrategyMode)</c>, so a <b>missing</b>
-/// <c>AiVisibility:RenderStrategy</c> section coerces to Razor — the
-/// pure-refactor invariant that protects adopters who have not touched their
-/// config.
+/// <b>Binding semantics.</b> <see cref="Razor"/> = <c>0</c> is still
+/// <c>default(RenderStrategyMode)</c> at the CLR-ordinal level, but the
+/// C# property initialiser on <see cref="RenderStrategySettings.Mode"/>
+/// sets <see cref="Auto"/>. A <b>missing-or-absent</b>
+/// <c>AiVisibility:RenderStrategy</c> section keeps the initialiser value
+/// (<c>Auto</c>). Adopters who upgrade through Epic 7 land on the
+/// <c>Auto</c> default; explicit pins (<c>"Mode": "Razor"</c> /
+/// <c>"Mode": "Loopback"</c>) are respected verbatim.
 /// </para>
 /// <para>
 /// <b>Bad-value handling.</b> Two distinct shapes — both loud-fail rather
@@ -822,10 +849,10 @@ public enum LlmsFullOrder
 /// hint ("Register a custom IPageRendererStrategy keyed by this
 /// RenderStrategyMode value via services.TryAddKeyedTransient.").</item>
 /// </list>
-/// Both paths are actionable; neither silently downgrades to Razor in a way
-/// that hides operator intent. Adopters who want stricter enforcement can
-/// wire an <c>IValidateOptions&lt;RenderStrategySettings&gt;</c> in their
-/// own composer.
+/// Both paths are actionable; neither silently downgrades in a way that
+/// hides operator intent. Adopters who want stricter enforcement can wire
+/// an <c>IValidateOptions&lt;RenderStrategySettings&gt;</c> in their own
+/// composer.
 /// </para>
 /// </remarks>
 public enum RenderStrategyMode
@@ -845,19 +872,32 @@ public enum RenderStrategyMode
     /// against itself to fetch the rendered HTML — the same pipeline a real
     /// browser would hit. Handles agency-built sites with route hijacks +
     /// custom view models that the Razor strategy cannot render.
-    /// Implemented as <c>LoopbackPageRendererStrategy</c>. The default
-    /// <c>Mode</c> flips to <see cref="Auto"/> once the fallback strategy
-    /// ships in an upcoming release.
+    /// Implemented as <c>LoopbackPageRendererStrategy</c>. Adopters who
+    /// know every doctype on their site is hijacked may pin
+    /// <see cref="Loopback"/> explicitly to skip the Razor attempt
+    /// entirely; otherwise <see cref="Auto"/> (the default) is the
+    /// recommended setting.
     /// </summary>
     Loopback = 1,
 
     /// <summary>
     /// Try Razor first; fall back to Loopback on
-    /// <c>ModelBindingException</c> (Story 7.3). Caches the per-(doctype
-    /// alias, template alias) decision so the wasted attempt fires once
-    /// per combination per process. Pinning <see cref="Auto"/> in Story
-    /// 7.1 (before Story 7.3 lands) throws at first render with a
-    /// diagnostic. Story 7.3 flips the default Mode to <c>Auto</c>.
+    /// <c>Umbraco.Cms.Web.Common.ModelBinders.ModelBindingException</c>.
+    /// Caches the per-<c>(ContentTypeAlias, TemplateAlias)</c> decision so
+    /// subsequent renders of the same combination skip Razor entirely.
+    /// Implemented as <c>AutoPageRendererStrategy</c>; this is the default
+    /// <see cref="RenderStrategySettings.Mode"/> from Story 7.3 onward. Other
+    /// Razor failure modes (NRE in a misconfigured template,
+    /// <c>InvalidOperationException</c> from missing context, etc.)
+    /// propagate as the original render failure without fallback — the
+    /// trigger list is intentionally narrow to avoid silently masking
+    /// unrelated bugs.
+    /// <para>
+    /// <b>Adopters MUST NOT register <c>AutoPageRendererStrategy</c> against
+    /// the <see cref="Razor"/> or <see cref="Loopback"/> keys.</b> The Auto
+    /// strategy composes those siblings via keyed-service lookups, so
+    /// self-registration causes infinite recursion → <c>StackOverflowException</c>.
+    /// </para>
     /// </summary>
     Auto = 2,
 }

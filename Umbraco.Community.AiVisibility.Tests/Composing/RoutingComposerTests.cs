@@ -703,6 +703,142 @@ public class RoutingComposerTests
             + Constants.Http.LoopbackHttpClientName);
     }
 
+    /// <summary>
+    /// Story 7.3 AC7 — sanity: composer registers the Auto strategy as a
+    /// keyed Transient against <see cref="RenderStrategyMode.Auto"/>. Mirrors
+    /// the Story 7.1 Razor + Story 7.2 Loopback registration tests.
+    /// </summary>
+    [Test]
+    public void Compose_RegistersAutoStrategyAsKeyedTransient()
+    {
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        var registrations = services.Where(d =>
+            d.ServiceType == typeof(IPageRendererStrategy)
+            && d.IsKeyedService
+            && d.ServiceKey is RenderStrategyMode key
+            && key == RenderStrategyMode.Auto).ToList();
+
+        Assert.That(registrations, Has.Count.EqualTo(1),
+            "exactly one IPageRendererStrategy registration keyed by Auto — "
+            + "TryAddKeyedTransient must NOT register a duplicate");
+
+        var registration = registrations[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(registration.Lifetime, Is.EqualTo(ServiceLifetime.Transient),
+                "Auto strategy lifetime must be Transient — matches the sibling Razor + Loopback strategy precedent");
+            Assert.That(registration.KeyedImplementationType, Is.EqualTo(typeof(AutoPageRendererStrategy)),
+                "Auto strategy must be AutoPageRendererStrategy");
+        });
+    }
+
+    /// <summary>
+    /// Story 7.3 AC7 — composer registers the renderer-strategy decision
+    /// cache as a Singleton (shared across requests for the life of the
+    /// host process; ConcurrentDictionary-backed; thread-safe).
+    /// </summary>
+    [Test]
+    public void Compose_RegistersRendererStrategyCacheAsSingleton()
+    {
+        var (composer, builder, services) = BuildComposer();
+
+        composer.Compose(builder);
+
+        var registrations = services.Where(d =>
+            d.ServiceType == typeof(IRendererStrategyCache)
+            && !d.IsKeyedService).ToList();
+
+        Assert.That(registrations, Has.Count.EqualTo(1),
+            "exactly one IRendererStrategyCache registration — TryAddSingleton must NOT register a duplicate");
+
+        var registration = registrations[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(registration.Lifetime, Is.EqualTo(ServiceLifetime.Singleton),
+                "RendererStrategyCache lifetime must be Singleton — process-lifetime decision store shared across requests");
+            Assert.That(registration.ImplementationType, Is.EqualTo(typeof(RendererStrategyCache)),
+                "IRendererStrategyCache default impl must be RendererStrategyCache");
+        });
+    }
+
+    /// <summary>
+    /// Story 7.3 AC9 — DI lifetime correctness gate for
+    /// <see cref="AutoPageRendererStrategy"/>. Builds a stub
+    /// <see cref="ServiceCollection"/> with the four ctor deps stubbed +
+    /// keyed Razor / Loopback sibling registrations (Auto resolves them via
+    /// <see cref="System.IServiceProvider"/>.GetRequiredKeyedService) + the
+    /// production
+    /// <c>TryAddKeyedTransient&lt;IPageRendererStrategy, AutoPageRendererStrategy&gt;</c>
+    /// registration, then resolves a <see cref="ServiceProvider"/> with
+    /// <c>ValidateScopes = ValidateOnBuild = true</c>. Clean build is the
+    /// gate.
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_AutoPageRendererStrategy_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        // Auto's four ctor deps.
+        services.AddSingleton(Substitute.For<IRendererStrategyCache>());
+        services.AddSingleton(Substitute.For<ITemplateService>());
+        services.AddSingleton(NullLoggerFactory.Instance);
+        services.AddLogging();
+
+        // Sibling keyed strategies that Auto resolves via IServiceProvider at
+        // render time. Production registers Razor + Loopback as Transient
+        // factory-built instances; in the test we register substitutes via
+        // the instance-factory pattern (matches the precedent at
+        // PageRendererTests.BuildRenderer).
+        services.AddKeyedTransient<IPageRendererStrategy>(
+            RenderStrategyMode.Razor,
+            (_, _) => Substitute.For<IPageRendererStrategy>());
+        services.AddKeyedTransient<IPageRendererStrategy>(
+            RenderStrategyMode.Loopback,
+            (_, _) => Substitute.For<IPageRendererStrategy>());
+
+        // Mirror the production registration verbatim.
+        services.TryAddKeyedTransient<IPageRendererStrategy, AutoPageRendererStrategy>(RenderStrategyMode.Auto);
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        var strategy = sp.GetRequiredKeyedService<IPageRendererStrategy>(RenderStrategyMode.Auto);
+
+        Assert.That(strategy, Is.InstanceOf<AutoPageRendererStrategy>(),
+            "AutoPageRendererStrategy must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
+    /// <summary>
+    /// Story 7.3 AC9 — DI lifetime correctness gate for
+    /// <see cref="RendererStrategyCache"/>. No injected deps; Singleton
+    /// registration; trivially Singleton-clean dep graph. Test confirms
+    /// shape rather than discovers risk.
+    /// </summary>
+    [Test]
+    public void Compose_StartupValidation_RendererStrategyCache_NoCaptiveDependency()
+    {
+        var services = new ServiceCollection();
+
+        services.TryAddSingleton<IRendererStrategyCache, RendererStrategyCache>();
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+
+        var cache = sp.GetRequiredService<IRendererStrategyCache>();
+
+        Assert.That(cache, Is.InstanceOf<RendererStrategyCache>(),
+            "RendererStrategyCache must resolve cleanly under ValidateScopes + ValidateOnBuild");
+    }
+
     private static (RoutingComposer Composer, IUmbracoBuilder Builder, IServiceCollection Services)
         BuildComposer()
     {

@@ -10,15 +10,15 @@ namespace Umbraco.Community.AiVisibility.Tests.Extraction;
 
 /// <summary>
 /// Story 7.1 AC3 + AC8 — dispatcher behaviour for the new-shape thin-orchestrator
-/// <see cref="PageRenderer"/>. Tests prove (a) the orchestrator delegates to
+/// <see cref="PageRenderer"/>. Tests prove the orchestrator delegates to
 /// the keyed strategy resolved from the DI container without doing any of its
-/// own rendering work, and (b) when the configured Mode resolves to a strategy
-/// that is NOT registered the orchestrator surfaces a project-context-aware
-/// diagnostic naming the missing strategy that an upcoming release ships —
-/// fail-loud, no silent fall-back. Story 7.2 added the Loopback-delegation
-/// test (replacing the Story-7.1-era Loopback-throw test now that Loopback
-/// is registered); the Auto-throw test stays until Story 7.3 ships
-/// <c>AutoPageRendererStrategy</c>.
+/// own rendering work. Story 7.2 added the Loopback-delegation test
+/// (replacing the original Loopback-throw test now that Loopback is
+/// registered); Story 7.3 added the Auto-delegation test (replacing the
+/// original Auto-throw test now that Auto is registered). All three keyed
+/// strategies in production are now live; the only remaining throw shape
+/// covers adopters who pin a custom <c>RenderStrategyMode</c> value without
+/// registering a sibling strategy.
 /// </summary>
 [TestFixture]
 public class PageRendererTests
@@ -105,22 +105,77 @@ public class PageRendererTests
     }
 
     /// <summary>
-    /// AC3 + Failure & Edge Case 1 — sibling for Mode=Auto. Until the Auto
-    /// strategy ships, pinning Mode=Auto must fail loudly with the missing
-    /// strategy named.
+    /// Story 7.3 — replaces the original Auto-throw test now that the Auto
+    /// strategy is registered. Mirror of
+    /// <see cref="RenderAsync_ModeRazor_DelegatesToRazorStrategy"/>: the
+    /// orchestrator reads <c>Mode=Auto</c>, resolves the keyed strategy, and
+    /// forwards arguments unchanged.
     /// </summary>
     [Test]
-    public void RenderAsync_ModeAuto_ThrowsInvalidOperationExceptionWithDiagnostic()
+    public async Task RenderAsync_ModeAuto_DelegatesToAutoStrategy()
+    {
+        var content = Substitute.For<IPublishedContent>();
+        var uri = new Uri("https://example.test/foo");
+        const string culture = "en-GB";
+        var ct = CancellationToken.None;
+
+        var stubResult = PageRenderResult.Ok(
+            html: "<html>auto-delegated</html>",
+            content: content,
+            templateAlias: "fooDoctype",
+            resolvedCulture: culture);
+
+        var autoStrategy = Substitute.For<IPageRendererStrategy>();
+        autoStrategy.RenderAsync(content, uri, culture, ct).Returns(stubResult);
+
+        var (renderer, sp) = BuildRenderer(
+            mode: RenderStrategyMode.Auto,
+            keyedStrategies: new[]
+            {
+                (RenderStrategyMode.Razor, Substitute.For<IPageRendererStrategy>()),
+                (RenderStrategyMode.Loopback, Substitute.For<IPageRendererStrategy>()),
+                (RenderStrategyMode.Auto, autoStrategy),
+            });
+        using var _ = sp;
+
+        var result = await renderer.RenderAsync(content, uri, culture, ct);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.SameAs(stubResult),
+                "orchestrator must return the strategy's result unchanged");
+            autoStrategy.Received(1).RenderAsync(content, uri, culture, ct);
+        });
+    }
+
+    /// <summary>
+    /// Story 7.3 — Failure & Edge Case 11. Adopters pinning a custom
+    /// <see cref="RenderStrategyMode"/> integer value without a corresponding
+    /// keyed registration must see the orchestrator's neutral fail-loud
+    /// diagnostic. With Razor + Loopback + Auto now all registered, this is
+    /// the remaining throw branch — covering adopter-shaped misconfigurations
+    /// (numeric out-of-range bind producing an undefined enum value, or a
+    /// custom strategy registration that was removed by an adopter composer
+    /// running after the package composer).
+    /// </summary>
+    [Test]
+    public void RenderAsync_ModeUnregisteredCustomValue_ThrowsInvalidOperationExceptionWithDiagnostic()
     {
         var content = Substitute.For<IPublishedContent>();
         var uri = new Uri("https://example.test/foo");
 
+        // Cast int 99 into RenderStrategyMode — simulates a numeric
+        // out-of-range bind (e.g. {"Mode": "99"}) producing an undefined
+        // enum value that lands in the dispatcher's no-registration branch.
+        var unregisteredMode = (RenderStrategyMode)99;
+
         var (renderer, sp) = BuildRenderer(
-            mode: RenderStrategyMode.Auto,
-            keyedStrategies: new (RenderStrategyMode, IPageRendererStrategy)[]
+            mode: unregisteredMode,
+            keyedStrategies: new[]
             {
                 (RenderStrategyMode.Razor, Substitute.For<IPageRendererStrategy>()),
-                // Auto + Loopback intentionally NOT registered — future releases ship them.
+                (RenderStrategyMode.Loopback, Substitute.For<IPageRendererStrategy>()),
+                (RenderStrategyMode.Auto, Substitute.For<IPageRendererStrategy>()),
             });
         using var _ = sp;
 
@@ -129,12 +184,12 @@ public class PageRendererTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(ex!.Message, Does.Contain("Mode=Auto"),
-                "diagnostic must name the requested mode explicitly");
-            Assert.That(ex.Message, Does.Contain("AutoPageRendererStrategy"),
-                "diagnostic must name the missing strategy that an upcoming release ships");
-            Assert.That(ex.Message, Does.Contain("Pin Mode=Razor"),
-                "diagnostic must name the workaround (pin Razor) so adopters can recover");
+            Assert.That(ex!.Message, Does.Contain("Mode=99"),
+                "diagnostic must name the requested mode explicitly so the operator can map it back to the offending config value");
+            Assert.That(ex.Message, Does.Contain("Mode=Auto"),
+                "diagnostic must name a known-good recovery Mode so the operator has an immediate way out of the misconfiguration");
+            Assert.That(ex.Message, Does.Contain("services.TryAddKeyedTransient"),
+                "diagnostic must name the canonical extension shape so the operator can wire a custom strategy");
         });
     }
 
