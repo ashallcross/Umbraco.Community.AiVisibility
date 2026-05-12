@@ -7,7 +7,7 @@ A common question from adopters running Umbraco in headless mode (Delivery API +
 | Setup | Markdown rendering (`.md`, `/llms-full.txt`) | `/llms.txt` index | AI Traffic dashboard | Robots audit + Settings dashboard |
 |---|---|---|---|---|
 | Traditional Umbraco (Razor templates on the backend) | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
-| Umbraco with hijacked `RenderController` + custom ViewModels | ✅ Full (via the dual-strategy renderer landing in a near-term release) | ✅ Full | ✅ Full | ✅ Full |
+| Umbraco with hijacked `RenderController` + custom ViewModels | ✅ Full (via the dual-strategy renderer — see [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content)) | ✅ Full | ✅ Full | ✅ Full |
 | Fully headless (Delivery API + Vercel/Next/Astro frontend) | ❌ Not in current release | ⚠️ Partial — URLs only | ❌ — crawlers hit the frontend, not Umbraco | ✅ Full |
 
 If you're running a fully-headless setup, the package's Markdown surface is not useful to you yet. **Full headless support is on the roadmap as the first post-v1 feature** — see "What's coming" below.
@@ -34,9 +34,9 @@ Two surfaces work regardless:
 - **Robots audit Health Check** — pure HTTP fetch of `/robots.txt`. Configure it against your frontend host and it works fine.
 - **Settings dashboard** — pure config UI. No rendering involved.
 
-## What's coming — v1.1 fast-follower
+## What's coming — headless rendering strategy
 
-The package's renderer is built around a strategy pattern (the same one that handles in-process Razor rendering and the dual-strategy renderer for hijacked-controller sites). A **headless rendering strategy** slots in cleanly:
+The package's renderer ships today with three modes (`Razor`, `Loopback`, `Auto` — see [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content)) built around a strategy pattern. A **headless rendering strategy** slots in cleanly as a fourth mode:
 
 ```
 RenderStrategy:Mode = Headless
@@ -103,10 +103,10 @@ Then ship the v1 surfaces that work for you, and switch on the full Markdown ren
 
 ## When will the Headless strategy ship?
 
-No fixed date — it's on the v1.1 roadmap, prioritised against other post-v1 work based on actual adopter demand. If headless Umbraco is your setup and you'd benefit from this strategy landing sooner, [file an issue](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues) saying so. Demand signal moves the priority.
+No fixed date — it's on the roadmap, prioritised against other post-v1 work based on actual adopter demand. If headless Umbraco is your setup and you'd benefit from this strategy landing sooner, [file an issue](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues) saying so. Demand signal moves the priority.
 
 ## Related reading
 
-- [`docs/configuration.md`](configuration.md) — the full settings reference (the Headless strategy will add `RenderStrategy:Mode` + `RenderStrategy:HeadlessBaseUrl` when it ships)
+- [`docs/configuration.md`](configuration.md) — the full settings reference (`RenderStrategy:Mode` ships today with `Razor`/`Loopback`/`Auto`; the Headless strategy will add a fourth `Headless` mode + `RenderStrategy:HeadlessBaseUrl` when it ships)
 - [`docs/extension-points.md`](extension-points.md) — `IMarkdownContentExtractor` extension contract for the workaround path
 - [`docs/getting-started.md`](getting-started.md) — full per-feature documentation for the v1 surface

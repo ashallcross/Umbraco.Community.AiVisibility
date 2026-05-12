@@ -50,6 +50,7 @@ The `href` is computed by a single rule: trailing-slash URLs (`/blog/`) get `/in
 - Non-content responses (404 / 5xx, static assets, Backoffice URLs, surface controllers, MVC routes that don't resolve to `IPublishedContent`).
 - `.md` and `/index.html.md` self-requests (the response IS the Markdown body).
 - Pages excluded via the per-page `excludeFromLlmExports` toggle OR pages whose doctype alias is in the resolved `AiVisibility:ExcludedDoctypeAliases` list. The exclusion list is configurable in `appsettings.json` (see [Getting Started § Settings doctype + Backoffice](getting-started.md) for the resolution overlay) — top-level scope applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
+- Pages flagged via Umbraco Public Access (member-restricted access). The default `IExclusionEvaluator` consults `IPublicAccessService.IsProtected(content.Path)`; the suppression applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
 - When `AiVisibility:DiscoverabilityHeader:Enabled` is set to `false` (kill switch — see below).
 
 ### Kill switch
@@ -139,7 +140,7 @@ CSS-class-only (no inline styles) — strict CSP `style-src 'self'` adopters are
 Both helpers render **nothing** in any of the following conditions:
 
 - The request isn't an Umbraco-routed page (no `UmbracoRouteValues` feature on `HttpContext`).
-- The active page is excluded (per-page `excludeFromLlmExports` bool OR `ContentType.Alias` in the exclusion list).
+- The active page is excluded (per-page `excludeFromLlmExports` bool, `ContentType.Alias` in the exclusion list, or page flagged via Umbraco Public Access — all three are checked by the default `IExclusionEvaluator`).
 - `IPublishedUrlProvider.GetUrl(...)` returns null/empty/`#` or throws.
 
 These match the HTTP `Link` header's gating exactly — adopters who toggle a page's exclusion don't need to flush downstream caches: the next render sees the new state.
