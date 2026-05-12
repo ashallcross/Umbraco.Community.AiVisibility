@@ -1,13 +1,21 @@
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models.PublishedContent;
+using Umbraco.Cms.Core.Services;
 
 namespace Umbraco.Community.AiVisibility.Configuration;
 
 /// <summary>
-/// Story 4.1 — built-in <see cref="IExclusionEvaluator"/> lifting the
-/// per-page-bool-then-resolver-throw-fail-open shape that previously lived
-/// independently in <c>MarkdownController.IsExcludedAsync</c> +
-/// <c>AcceptHeaderNegotiationMiddleware.IsExcludedAsync</c>.
+/// Built-in <see cref="IExclusionEvaluator"/> consolidating the three exclusion
+/// sources consulted across every LlmsTxt route surface: per-page
+/// <c>excludeFromLlmExports</c> bool → Umbraco public-access protection →
+/// resolved doctype-alias exclusion list.
+/// <para>
+/// The public-access source uses
+/// <see cref="IPublicAccessService.IsProtected(string)"/> against the
+/// <see cref="IPublishedContent.Path"/> tree-path string — the same shape
+/// Umbraco's own <c>PublicAccessFilter</c> middleware uses, avoiding a content
+/// service round-trip per render.
+/// </para>
 /// <para>
 /// Public so adopters can wrap-and-delegate via the DI Decorator pattern
 /// (e.g. register their own <see cref="IExclusionEvaluator"/> that
@@ -21,13 +29,16 @@ public sealed class DefaultExclusionEvaluator : IExclusionEvaluator
     internal const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
 
     private readonly ISettingsResolver _settingsResolver;
+    private readonly IPublicAccessService _publicAccessService;
     private readonly ILogger<DefaultExclusionEvaluator> _logger;
 
     public DefaultExclusionEvaluator(
         ISettingsResolver settingsResolver,
+        IPublicAccessService publicAccessService,
         ILogger<DefaultExclusionEvaluator> logger)
     {
         _settingsResolver = settingsResolver;
+        _publicAccessService = publicAccessService;
         _logger = logger;
     }
 
@@ -43,7 +54,7 @@ public sealed class DefaultExclusionEvaluator : IExclusionEvaluator
         // The excludeFromLlmExports property lives on llmsTxtSettingsComposition
         // which is invariant. Pass culture: null — passing the request culture
         // causes Umbraco to look for a non-existent culture-variant and return
-        // false even when the bool is set (Story 3.1 manual gate Step 4).
+        // false even when the bool is set.
         _ = culture; // intentionally unused on the bool read path
         var prop = content.GetProperty(ExcludeFromLlmExportsAlias);
         if (prop is not null && prop.HasValue(culture: null))
@@ -53,6 +64,41 @@ public sealed class DefaultExclusionEvaluator : IExclusionEvaluator
             {
                 return true;
             }
+        }
+
+        // Umbraco public-access protection — checked after the per-page bool
+        // (more explicit) but before the settings resolver (cheaper —
+        // in-memory cache lookup against Umbraco's public-access entries).
+        // Path-string overload mirrors Umbraco's own PublicAccessFilter
+        // middleware; the IContent overload would force a DB round-trip per
+        // render. Throws fail-open: a public-access cache glitch should not
+        // 404 every page until it resolves — the latent issue is content
+        // quality (login-redirect HTML rendered as Markdown), not security
+        // (Umbraco's own middleware still gates the actual content render).
+        // The Umbraco API returns Attempt<PublicAccessEntry>; .Success is true
+        // when a matching entry exists for the path.
+        bool isProtected;
+        try
+        {
+            isProtected = _publicAccessService.IsProtected(content.Path).Success;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "IExclusionEvaluator — IPublicAccessService.IsProtected threw for {ContentKey} {Path}; treating as not-excluded (fail-open)",
+                content.Key,
+                content.Path);
+            isProtected = false;
+        }
+
+        if (isProtected)
+        {
+            return true;
         }
 
         ResolvedLlmsSettings resolved;

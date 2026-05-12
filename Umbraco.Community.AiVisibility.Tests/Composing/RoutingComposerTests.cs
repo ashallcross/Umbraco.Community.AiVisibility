@@ -389,6 +389,7 @@ public class RoutingComposerTests
             return monitor;
         });
         services.AddScoped<ISettingsResolver>(_ => Substitute.For<ISettingsResolver>());
+        services.AddSingleton<IPublicAccessService>(_ => Substitute.For<IPublicAccessService>());
         services.AddSingleton<global::Umbraco.Cms.Core.Routing.IPublishedUrlProvider>(
             Substitute.For<global::Umbraco.Cms.Core.Routing.IPublishedUrlProvider>());
         services.AddSingleton(NullLoggerFactory.Instance);

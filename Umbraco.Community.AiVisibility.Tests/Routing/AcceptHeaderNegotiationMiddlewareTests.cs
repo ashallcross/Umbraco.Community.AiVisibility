@@ -253,8 +253,12 @@ public class AcceptHeaderNegotiationMiddlewareTests
                 ExcludedDoctypeAliases: new HashSet<string>(new[] { "redirectPage" }, StringComparer.OrdinalIgnoreCase),
                 BaseSettings: new AiVisibilitySettings())));
 
+        var publicAccess = Substitute.For<global::Umbraco.Cms.Core.Services.IPublicAccessService>();
+        publicAccess.IsProtected(Arg.Any<string>())
+            .Returns(global::Umbraco.Cms.Core.Attempt<global::Umbraco.Cms.Core.Models.PublicAccessEntry?>.Fail());
         var exclusionEvaluator = new DefaultExclusionEvaluator(
             settingsResolver,
+            publicAccess,
             NullLogger<DefaultExclusionEvaluator>.Instance);
         var middleware = new AcceptHeaderNegotiationMiddleware(
             extractor, writer, exclusionEvaluator, optionsMonitor,
@@ -516,8 +520,12 @@ public class AcceptHeaderNegotiationMiddlewareTests
         settingsResolver
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AiVisibilitySettings().ToResolved()));
+        var controllerPublicAccess = Substitute.For<global::Umbraco.Cms.Core.Services.IPublicAccessService>();
+        controllerPublicAccess.IsProtected(Arg.Any<string>())
+            .Returns(global::Umbraco.Cms.Core.Attempt<global::Umbraco.Cms.Core.Models.PublicAccessEntry?>.Fail());
         var controllerExclusion = new DefaultExclusionEvaluator(
             settingsResolver,
+            controllerPublicAccess,
             NullLogger<DefaultExclusionEvaluator>.Instance);
         // Story 7.4 — guard returns false so this Story-1.3 cache-key-symmetry
         // test keeps exercising the post-guard render path unchanged.
@@ -661,8 +669,12 @@ public class AcceptHeaderNegotiationMiddlewareTests
             .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AiVisibilitySettings().ToResolved()));
 
+        var publicAccess = Substitute.For<global::Umbraco.Cms.Core.Services.IPublicAccessService>();
+        publicAccess.IsProtected(Arg.Any<string>())
+            .Returns(global::Umbraco.Cms.Core.Attempt<global::Umbraco.Cms.Core.Models.PublicAccessEntry?>.Fail());
         var exclusionEvaluator = new DefaultExclusionEvaluator(
             settingsResolver,
+            publicAccess,
             NullLogger<DefaultExclusionEvaluator>.Instance);
         var publisher = Substitute.For<Umbraco.Community.AiVisibility.Notifications.INotificationPublisher>();
         var middleware = new AcceptHeaderNegotiationMiddleware(
