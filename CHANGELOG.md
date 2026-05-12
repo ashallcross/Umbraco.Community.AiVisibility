@@ -2,6 +2,12 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [Unreleased]
+
+### Known limitations
+
+- **`RenderStrategy:Mode = Auto` — fallback trigger not yet runtime-verified.** The `Auto` strategy is documented to fall back to the `Loopback` renderer when the `Razor` renderer surfaces a `ModelBindingException` (the canonical "custom view model hijack" failure mode). The fallback's exception-shape match is currently asserted by unit tests using a synthetic `ModelBindingException`; it has not been verified end-to-end against a real Razor pipeline failure. Depending on which pipeline layer surfaces the failure, the real exception may arrive *wrapped* (`TargetInvocationException`, `AggregateException`, `RuntimeBinderException`) and bypass the fallback. If you set `Mode = Auto` and observe a 5xx response on a page whose controller hijacks the view model, pin `Mode = Razor` to revert to the v1.0.x default behaviour and [file an issue](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues) including the exception type from your logs so the trigger can be widened with evidence. `Mode = Razor` (the default) and `Mode = Loopback` are unaffected.
+
 ## [v1.0.1] — 2026-05-08: Marketplace listing fixes (docs-only)
 
 Patch release — package code is identical to v1.0.0. Fixes the Umbraco Marketplace listing rendering, which is the only adopter-visible surface that needed polish post-launch.

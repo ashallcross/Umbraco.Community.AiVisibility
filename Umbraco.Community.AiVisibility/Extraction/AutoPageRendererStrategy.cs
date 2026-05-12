@@ -132,6 +132,17 @@ internal sealed class AutoPageRendererStrategy : IPageRendererStrategy
         //    fallback. The trigger list is intentionally narrow and
         //    documented; widen via filed issue + observed evidence, never
         //    speculatively.
+        //
+        //    Open question — not yet runtime-verified: depending on which
+        //    layer of the Razor pipeline surfaces the failure, a custom-view-
+        //    model hijack may produce a *wrapped* form
+        //    (TargetInvocationException → MBE, AggregateException → MBE,
+        //    RuntimeBinderException → MBE). The pattern below only matches
+        //    unwrapped MBE; wrapped forms would propagate as a non-fallback
+        //    render failure. Adopters using `Mode = Auto` who observe a 5xx
+        //    on a hijacked page should pin `Mode = Razor` and file an issue
+        //    with the exception type from logs so the trigger can be widened
+        //    with evidence.
         if (razorResult.Error is not ModelBindingException)
         {
             return razorResult;
