@@ -311,6 +311,10 @@ PageRenderer: Razor → Loopback fallback fired for {Alias} {ContentKey} {Path}
 
 This is expected one-time-per-tuple-per-process signal, not a flood-of-errors — sites with N hijacked doctype/template combinations log N warnings on first reach of each tuple, then go quiet for the lifetime of the process. Subsequent renders of the same tuple cache-hit and skip Razor with no log noise.
 
+#### Redirects and bulk export
+
+The Loopback strategy treats HTTP 3xx responses as render failures. When the package fetches a page's canonical published URL and the response is a redirect (Umbraco HTTPS redirects, Skybrud Redirects, trailing-slash normalisation, etc.), it logs a `PageRenderer: Loopback received non-success` warning and the page is omitted from `/llms-full.txt` and the `.md` route. This is intentional — a redirect indicates the canonical URL should already be the post-redirect form. Sites with many redirect rules will see one warning per redirected page during bulk export of `/llms-full.txt`; that's expected, not a package bug.
+
 #### Member-protected content
 
 From v1.1, pages flagged via Umbraco's Public Access feature (member-restricted access) are **excluded** from the `.md` route, `/llms.txt`, and `/llms-full.txt` regardless of the active `RenderStrategy:Mode`. This is a v1.0.x bug fix — previously the renderer would surface the login-redirect HTML as Markdown content. The exclusion is independent of strategy choice; pinning `Razor` or `Loopback` does not change this behaviour.
