@@ -24,7 +24,7 @@ namespace Umbraco.Community.AiVisibility.LlmsTxt;
 /// Same gating shape as <see cref="LlmsLinkTagHelper"/>:
 /// out-of-Umbraco-context / excluded / URL-provider failure → nothing rendered.
 /// Body anchor uses a relative URL so copy-paste into AI tools resolves
-/// against the source page (Evil Martians' "ChatGPT URL paste" scenario).
+/// against the source page (the "user pastes a URL into a chat" scenario).
 /// </para>
 /// </summary>
 [HtmlTargetElement("llms-hint", TagStructure = TagStructure.NormalOrSelfClosing)]

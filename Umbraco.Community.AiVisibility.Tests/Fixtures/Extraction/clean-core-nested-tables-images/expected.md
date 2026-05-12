@@ -67,5 +67,5 @@ If you need a different HTML parser or Markdown converter, override `IMarkdownCo
 ## What's deliberately excluded
 
 - User-Agent sniffing (cloaking; Google penalty)
-- `rel="canonical"` from `.md` back to HTML (Cloudflare and Evil Martians both say no)
+- `rel="canonical"` from `.md` back to HTML
 - Property-walking content reconstruction (the template is the canonical visual form)

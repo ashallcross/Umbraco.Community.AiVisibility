@@ -626,5 +626,5 @@ These are common asks that the package explicitly refuses:
 - `<meta name="llms">` injection (rejected by WHATWG)
 - `/.well-known/ai.txt` (no spec, no consensus)
 - AI/human toggle UI button (decorative; AI doesn't click)
-- `rel="canonical"` from `.md` back to HTML (Cloudflare and Evil Martians both say no)
+- `rel="canonical"` from `.md` back to HTML
 - Property-walking content registry (architectural principle: the Umbraco template is the canonical visual form of content)
