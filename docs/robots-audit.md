@@ -60,7 +60,7 @@ Fallback:     Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt (comm
 | Path | Behaviour |
 |---|---|
 | **Online + SHA matches** | Embed fetched content; emit info-level message naming the SHA. |
-| **Online + SHA mismatch** | Build hard-fails. **Deliberate** — forces maintainer review. Refresh the pinned SHA via [`docs/maintenance.md`](maintenance.md) after auditing the upstream change. |
+| **Online + SHA mismatch** | Build hard-fails. **Deliberate** — forces maintainer review of the upstream change before the new bytes are embedded. |
 | **Offline / fetch failed** | Fall back to the committed snapshot; emit a warning. Build is offline-safe. |
 
 The fallback file is byte-identical to the upstream snapshot at the moment the SHA was pinned — so online and offline builds produce identical embedded bytes when the upstream content matches the pin.

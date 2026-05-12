@@ -133,8 +133,6 @@ The renderer is dual-strategy: `Auto` mode (the default) tries the in-process Ra
 - [`docs/multi-site.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/multi-site.md) — multi-host (`IDomainService.GetAll`) + multi-culture (BCP-47 routing) + per-host cache-key shapes.
 - [`docs/data-attributes.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/data-attributes.md) — `data-llms-content` / `data-llms-ignore` extraction-region attributes.
 - [`docs/robots-audit.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/robots-audit.md) — Health Check + bot-list refresh process.
-- [`docs/maintenance.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/maintenance.md) — maintainer-only operational notes (SHA refresh, two-instance Docker SQL Server setup).
-- [`docs/release-checklist.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/release-checklist.md) — recurring per-release checklist (pack output, dependency triage, smoke trio, README freshness).
 - [`docs/dependency-status.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/dependency-status.md) — NU1902/NU1903 + CS0618 catalogue with resolution status + target review dates.
 
 ## What it does NOT do (and why)
@@ -147,8 +145,6 @@ Documented anti-patterns — explicitly not shipped:
 - ❌ AI/human toggle UI (decorative; AI tools don't click buttons)
 - ❌ JSON-LD-as-AI-strategy (LLMs largely ignore it; covered by separate Schema packages)
 - ❌ Property-walking content registry (the Umbraco template is the canonical visual form of content)
-
-See [Evil Martians: How to make your website visible to LLMs](https://evilmartians.com/chronicles/how-to-make-your-website-visible-to-llms) for the source research.
 
 ## Support
 

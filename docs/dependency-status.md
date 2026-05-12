@@ -47,5 +47,3 @@ The package will migrate these in lockstep with the Umbraco floor bump (a v18 fl
 ## See also
 
 - [`README.md`](../README.md) § Compatibility — pinned Umbraco floor + .NET version.
-- [`maintenance.md`](maintenance.md) — for contributors / maintainers: how to bump deps, refresh the AI-bot list SHA, run the two-instance verification setup.
-- [`release-checklist.md`](release-checklist.md) — for contributors / maintainers: per-release verification process.

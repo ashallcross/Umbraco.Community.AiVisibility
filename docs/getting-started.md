@@ -8,7 +8,7 @@ This document covers everything shipping in v1 — the per-page Markdown route +
 
 - **.NET 10.0+** — single-target. There is no v9 backport.
 - **Umbraco CMS v17.3.2+** — floats forward via Central Package Management.
-- **Database** — anything Umbraco supports (SQL Server, Azure SQL, MySQL, PostgreSQL). SQLite is supported in development; production-realistic distributed-job verification needs a real database. See [`maintenance.md`](maintenance.md) for the two-instance verification procedure.
+- **Database** — anything Umbraco supports (SQL Server, Azure SQL, MySQL, PostgreSQL). SQLite is supported in development; production-realistic distributed-job verification needs a real database (see [`architecture.md`](architecture.md) § Production deployment notes for the verification log-line pattern).
 - **Node.js ≥ 24.11.1** — only needed if you're rebuilding the bundled JS yourself. The Vite output ships pre-built inside the NuGet package, so adopters do NOT need Node to run the package.
 - **Traditional Umbraco install with Razor templates** — required for the Markdown rendering surfaces (`.md` route, `/llms-full.txt`). Sites running Umbraco fully-headless (Delivery API + external frontend on Vercel / Netlify / etc.) get the `/llms.txt` index, robots audit, and Settings dashboard but the Markdown rendering surfaces don't work — full headless support is planned for a future release. See [`headless.md`](headless.md) for the supported-surfaces matrix + workarounds.
 
@@ -529,7 +529,7 @@ From v0.8, the Backoffice **Settings → Health Check → LLMs** group surfaces 
 | `AiVisibility:RobotsAuditor:DevFetchPort` | `null` | **Dev-only escape hatch.** Overrides the scheme default port for the audit fetch (e.g. `44314` for a TestSite on Kestrel). **DO NOT set in production** — production deploys serve `/robots.txt` on 443/80. Live in `appsettings.Development.json` only. |
 | `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev-only escape hatch.** Forces seconds-precision refresh cycles instead of `RefreshIntervalHours`. **DO NOT set in production** — would hammer adopter origins. Live in `appsettings.Development.json` only. |
 
-The AI-bot list is **synced from upstream at build time** with SHA pinning — the build hard-fails on a SHA mismatch (deliberate; protects against silent feed tampering). Offline / disconnected builds fall back to the committed snapshot at `Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt` with a warning. See [`docs/maintenance.md`](maintenance.md) for the SHA-refresh process.
+The AI-bot list is **synced from upstream at build time** with SHA pinning — the build hard-fails on a SHA mismatch (deliberate; protects against silent feed tampering). Offline / disconnected builds fall back to the committed snapshot at `Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt` with a warning.
 
 Adopters can replace the auditor entirely by registering a Singleton `IRobotsAuditor` of their own (Singleton lifetime is required — see [`docs/robots-audit.md` § Custom auditors](robots-audit.md#custom-auditors)).
 
@@ -538,7 +538,7 @@ Adopters can replace the auditor entirely by registering a Singleton `IRobotsAud
 The robots audit ships as net-new surface — existing routes, headers, and DI shapes are unchanged. Notable new artefacts:
 
 - New `Umbraco.Community.AiVisibility/Robots/` and `Umbraco.Community.AiVisibility/Telemetry/` namespaces.
-- New build-time MSBuild target `SyncAiBotList` — embeds an AI-bot list resource into the assembly. Online + offline build paths both work; see `docs/maintenance.md`.
+- New build-time MSBuild target `SyncAiBotList` — embeds an AI-bot list resource into the assembly. Online + offline build paths both work.
 - New `IRobotsAuditor` extension point. Adopters wanting custom audit semantics override via `services.AddSingleton<IRobotsAuditor, MyImpl>()`.
 - New `AiVisibility:RobotsAuditOnStartup` + `AiVisibility:RobotsAuditor:*` configuration keys.
 
