@@ -1,6 +1,6 @@
 # Umbraco.Community.AiVisibility
 
-> AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, `*.md` page rendering.
+> AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, `*.md` page rendering for Razor *and* hijacked-controller sites.
 
 [![NuGet](https://img.shields.io/nuget/v/Umbraco.Community.AiVisibility.svg)](https://www.nuget.org/packages/Umbraco.Community.AiVisibility/)
 [![Umbraco Marketplace](https://img.shields.io/badge/Umbraco%20Marketplace-Listed-blue)](https://marketplace.umbraco.com/package/umbraco.community.aivisibility)
@@ -19,7 +19,7 @@ A drop-in Umbraco v17+ package that makes your CMS visible to AI search engines 
 
 The Vite bundle ships pre-built inside the NuGet package, so adopters do not need Node.js to run the package.
 
-**Running Umbraco headless (Delivery API + external frontend)?** The Markdown rendering surfaces (`.md` route, `/llms-full.txt`) depend on Umbraco rendering pages on the same .NET process — they do not work against fully-headless setups in the current release. The `/llms.txt` index, robots audit, and Settings dashboard work regardless. Full headless support is on the v1.1 roadmap — see [`docs/headless.md`](docs/headless.md) for what works today, what's coming, and the v1 workaround via `IMarkdownContentExtractor`.
+**Running Umbraco headless (Delivery API + external frontend)?** The Markdown rendering surfaces (`.md` route, `/llms-full.txt`) depend on Umbraco rendering pages on the same .NET process — they do not work against fully-headless setups in the current release. The `/llms.txt` index, robots audit, and Settings dashboard work regardless. Full headless support is on the roadmap — see [`docs/headless.md`](docs/headless.md) for what works today, what's coming, and the current workaround via `IMarkdownContentExtractor`.
 
 ## Installation
 
@@ -62,7 +62,7 @@ A Health Check at **Settings → Health Checks → AI Visibility — Robots audi
 | **Robots.txt audit** | A Health Check warns you if `/robots.txt` blocks GPTBot / ClaudeBot / PerplexityBot / OAI-SearchBot etc. Bot list synced from upstream at build time with SHA pinning. The package never modifies `robots.txt` — it audits, you decide. |
 | **Content negotiation** | Standard `Accept: text/markdown` on any canonical URL returns Markdown. AI crawlers that don't append `.md` still get clean content. |
 | `/llms.txt` + `/llms-full.txt` | Auto-generated llms.txt-spec manifests (concatenated full-site Markdown for context loading, plus the per-page index). Hot-path-protected: `If-None-Match` / 304 / single-flight on cache miss. |
-| `/{any-page}.md` | Returns a clean Markdown version of the page — no nav, no scripts, just content. Rendered through Umbraco's normal Razor pipeline. |
+| `/{any-page}.md` | Returns a clean Markdown version of the page — no nav, no scripts, just content. Rendered through Umbraco's Razor pipeline by default; falls back to an in-process HTTP loopback render for hijacked-controller sites with custom view models (configurable via `AiVisibility:RenderStrategy:Mode`). |
 | **Discoverability headers + TagHelpers** | Auto-injected HTTP `Link: rel="alternate"` headers + optional `<llms-link />` and `<llms-hint />` Razor tag helpers so AI tools can find the Markdown surface. |
 | **Settings dashboard** | Backoffice **Settings → AI Visibility** surfaces site-name / site-summary / per-doctype exclusion overrides without editing `appsettings.json`. |
 
@@ -92,11 +92,12 @@ See [`docs/configuration.md`](https://github.com/ashallcross/Umbraco.Community.A
 
 ## Extension points
 
-Five interfaces give adopters override paths without forking:
+Six interfaces give adopters override paths without forking:
 
 | Interface | Default | Override use case |
 |---|---|---|
-| `IMarkdownContentExtractor` | `DefaultMarkdownContentExtractor` (HTML → Markdown via ReverseMarkdown + SmartReader fallback) | Replace the extraction pipeline (e.g. domain-specific Markdown shape, custom region selectors). |
+| `IMarkdownContentExtractor` | `DefaultMarkdownContentExtractor` (HTML → Markdown via ReverseMarkdown + SmartReader fallback) | Replace the whole extraction pipeline (domain-specific Markdown shape, custom HTML-to-Markdown converter). |
+| `IContentRegionSelector` | `DefaultContentRegionSelector` (`[data-llms-content]` → `<main>` → `<article>` → configured selectors) | Region-only override — point at a custom selector or content-type-specific element. Cheaper than replacing `IMarkdownContentExtractor` wholesale. |
 | `IRequestLog` | `DefaultRequestLog` (writes to `aiVisibilityRequestLog` host table) | Redirect AI traffic logging to Application Insights, Serilog, an external sink, etc. |
 | `IRobotsAuditor` | `DefaultRobotsAuditor` | Replace the audit's HTTP-fetch + bot-list-comparison logic (e.g. fetch via custom HTTP client, support a private bot list). |
 | `ISettingsResolver` | `DefaultSettingsResolver` (reads the global `aiVisibilitySettings` content node + appsettings overlay) | Per-host or per-tenant settings overrides on multi-site installs. |
@@ -108,6 +109,8 @@ Register your override with `services.TryAdd*<I, MyImpl>()` in a composer — th
 
 Renders the page through Umbraco's normal template pipeline, extracts the main content region (`data-llms-content` → `<main>` → `<article>` → SmartReader fallback), and converts that HTML to Markdown via ReverseMarkdown. The Umbraco template is the canonical visual form of content — the package respects that rather than re-implementing block rendering.
 
+The renderer is dual-strategy: `Auto` mode (the default) tries the in-process Razor render first and falls back to an HTTP loopback render for hijacked-controller pages with custom view models. Adopters can pin `Razor` or `Loopback` explicitly via `AiVisibility:RenderStrategy:Mode`. Clean Umbraco installs that render through normal Razor see no behavioural change under `Auto`. See [`docs/configuration.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content) for the full key reference.
+
 ## Security & privacy notes
 
 - **PII discipline.** `aiVisibilityRequestLog` captures path, content key, culture, UA classification, and referrer host **only**. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers replacing `IRequestLog` (e.g. App Insights forwarding) are expected to honour the same discipline.
@@ -118,7 +121,7 @@ Renders the page through Umbraco's normal template pipeline, extracts the main c
 ## Known limitations
 
 - **Custom `IRequestLog` write-sink + AI Traffic dashboard.** If you replace the default `IRequestLog` to redirect writes elsewhere (e.g. Application Insights, Serilog, an external sink), the **Settings → AI Traffic** Backoffice dashboard reads from the local `aiVisibilityRequestLog` host-DB table — it will appear empty unless your override ALSO seeds that table. The dashboard does not consume the alternate sink. See [`docs/extension-points.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/extension-points.md) § "Backoffice consumers of `IRequestLog`" for the full caveat + the suggested dual-write pattern.
-- **`/llms-full.txt` size cap.** The full-Markdown manifest enforces a hard byte cap (default 5 MB, configurable via `AiVisibility:MaxLlmsFullSizeKb`). Pages emit in tree order until the next page would push past the cap; the body then ends with a truncation footer documenting how many of the total pages were emitted. Pagination of `/llms-full.txt` for very large sites is deferred to v1.1.
+- **`/llms-full.txt` size cap.** The full-Markdown manifest enforces a hard byte cap (default 5 MB, configurable via `AiVisibility:MaxLlmsFullSizeKb`). Pages emit in tree order until the next page would push past the cap; the body then ends with a truncation footer documenting how many of the total pages were emitted. Pagination of `/llms-full.txt` for very large sites is on the roadmap.
 - **Single global Settings node by design.** There is exactly one `aiVisibilitySettings` content node per Umbraco install — the same site name, summary, and per-doctype exclusion list applies to every bound host. Adopters needing per-host or per-tenant overrides supply their own `ISettingsResolver` implementation; see [`docs/extension-points.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/extension-points.md) and [`docs/multi-site.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/multi-site.md) for the override pattern.
 - **Umbraco v17 only.** Single-target on `.NET 10` + `Umbraco.Cms 17.3.2+`. There is no v13 / v15 / v16 multi-target. The `[Obsolete]` API call sites flagged for v18 / v19 removal are catalogued in [`docs/dependency-status.md`](https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/dependency-status.md) and will be migrated when the corresponding Umbraco majors land.
 
