@@ -16,6 +16,7 @@
     <PackageTags>umbraco-marketplace;umbraco;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>v1.1.1 — Marketplace + docs polish (no code behaviour changes). See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility.git</RepositoryUrl>
