@@ -124,8 +124,13 @@ internal interface IRendererStrategyCache
     /// failed under the Razor strategy. Subsequent
     /// <see cref="IsRazorPermanentlyFailed"/> calls return <c>true</c>.
     /// Idempotent — a second call with the same tuple has no observable
-    /// effect on cache state, and a call with a tuple already marked
-    /// <see cref="IsHijacked"/> is also a no-op (the hijacked decision wins).
+    /// effect on cache state. First-decision-wins regardless of type: a call
+    /// with a tuple already marked <see cref="IsHijacked"/> is a no-op (the
+    /// pre-existing hijacked decision survives), and conversely a call to
+    /// <see cref="MarkHijacked"/> on a tuple already cached as permanently
+    /// failed is also a no-op (the pre-existing permanently-failed decision
+    /// survives). The underlying <c>ConcurrentDictionary.TryAdd</c> determines
+    /// the winner by insertion order, not by decision type.
     /// </summary>
     /// <param name="contentTypeAlias">The published content type alias.
     /// Non-null.</param>

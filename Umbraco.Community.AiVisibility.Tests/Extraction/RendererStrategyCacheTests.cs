@@ -165,4 +165,29 @@ public class RendererStrategyCacheTests
                 "competing MarkRazorPermanentlyFailed must NOT flip the cached decision away from hijacked");
         });
     }
+
+    /// <summary>
+    /// First-decision-wins in the reverse direction: a tuple cached as
+    /// permanently-failed must NOT be re-cached as hijacked. Locks the
+    /// "first-decision-wins regardless of type" half of the cache contract
+    /// that the sister test only covers in the hijacked-first direction.
+    /// </summary>
+    [Test]
+    public void MarkHijacked_AfterMarkRazorPermanentlyFailed_StateUnchanged()
+    {
+        var cache = new RendererStrategyCache();
+
+        cache.MarkRazorPermanentlyFailed("monthContainer", "monthContainer");
+        var secondInsert = cache.MarkHijacked("monthContainer", "monthContainer");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(secondInsert, Is.False,
+                "MarkHijacked must report already-marked when a competing decision (RazorPermanentlyFailed) is already cached for the same tuple");
+            Assert.That(cache.IsRazorPermanentlyFailed("monthContainer", "monthContainer"), Is.True,
+                "the original RazorPermanentlyFailed decision must survive a competing MarkHijacked call");
+            Assert.That(cache.IsHijacked("monthContainer", "monthContainer"), Is.False,
+                "competing MarkHijacked must NOT flip the cached decision away from permanently-failed");
+        });
+    }
 }

@@ -202,14 +202,25 @@ internal sealed class AutoPageRendererStrategy : IPageRendererStrategy
         //     The warning fires exactly-once per tuple (gated on
         //     MarkRazorPermanentlyFailed's return) so the operator-visible
         //     signal stays bounded under bulk-export iteration.
+        //
+        //     Null-Error guard: a Failed result with no wrapped exception
+        //     would otherwise reach this branch and cache the tuple as
+        //     permanently-failed against a null exception — better to skip
+        //     the cache write and return the result unchanged. PageRenderResult
+        //     contract requires Error on Failed, but the guard is defensive
+        //     against alternate IPageRendererStrategy implementations.
+        if (razorResult.Error is null)
+        {
+            return razorResult;
+        }
+
         var newlyMarkedFailed = _cache.MarkRazorPermanentlyFailed(contentTypeAlias, templateAlias);
         if (newlyMarkedFailed)
         {
             _logger.LogWarning(
                 razorResult.Error,
-                "PageRenderer: caching Razor render as permanently-failed for {Alias}/{Template} {ContentKey} {Path}. Subsequent renders of this tuple will skip both Razor and Loopback until host restart.",
+                "PageRenderer: caching Razor render as permanently-failed for {Alias} {ContentKey} {Path}. Subsequent renders of this tuple will skip both Razor and Loopback until host restart.",
                 contentTypeAlias,
-                templateAlias,
                 content.Key,
                 absoluteUri.AbsolutePath);
         }
