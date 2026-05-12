@@ -108,11 +108,32 @@ internal sealed class AutoPageRendererStrategy : IPageRendererStrategy
         var contentTypeAlias = content.ContentType.Alias;
         var templateAlias = await ResolveTemplateAliasAsync(content);
 
-        // 2. Cache hit (hijacked) → skip Razor, go straight to Loopback.
+        // 2a. Cache hit (hijacked) → skip Razor, go straight to Loopback.
         if (_cache.IsHijacked(contentTypeAlias, templateAlias))
         {
             var loopbackStrategy = ResolveLoopbackStrategy();
             return await loopbackStrategy.RenderAsync(content, absoluteUri, culture, cancellationToken);
+        }
+
+        // 2b. Cache hit (Razor permanently failed) → skip BOTH Razor and
+        //     Loopback. A prior render of this tuple failed with a non-MBE
+        //     error (no template, view not found, structural doctype with no
+        //     renderable view, Razor compilation issue). Loopback would hit
+        //     the same template/view through HTTP and fail identically, so
+        //     trying it would be wasted work. The cached failure shape is a
+        //     fresh PageRenderResult.Failed wrapping the per-process cache
+        //     decision — callers (the manifest builder, the .md controller)
+        //     handle this exactly the same way as a live render failure
+        //     because the absent body and Failed status are what they react
+        //     to, not the specific exception instance.
+        if (_cache.IsRazorPermanentlyFailed(contentTypeAlias, templateAlias))
+        {
+            return PageRenderResult.Failed(
+                new InvalidOperationException(
+                    $"PageRenderer: Razor render for ({contentTypeAlias}, {templateAlias}) is cached as permanently-failed; skipping both Razor and Loopback. Restart the host to clear the cache after fixing the underlying view / template issue."),
+                content,
+                templateAlias,
+                culture);
         }
 
         // 3. Cache miss → try Razor first.
@@ -127,46 +148,73 @@ internal sealed class AutoPageRendererStrategy : IPageRendererStrategy
             return razorResult;
         }
 
-        // 5. Razor failed → narrow trigger: ModelBindingException only.
-        //    Other exception types propagate as render failures with no
-        //    fallback. The trigger list is intentionally narrow and
-        //    documented; widen via filed issue + observed evidence, never
-        //    speculatively.
+        // 5. Razor failed → ModelBindingException is the hijack trigger.
+        //    Other exception types are cached as permanently-failed (step 6b)
+        //    so the same tuple doesn't re-attempt Razor on every render — a
+        //    structural doctype with no renderable template, for example,
+        //    would otherwise log a Razor failure for every page sharing its
+        //    (doctype, template) tuple every time the manifest builder
+        //    iterated them.
         //
-        //    Open question — not yet runtime-verified: depending on which
-        //    layer of the Razor pipeline surfaces the failure, a custom-view-
-        //    model hijack may produce a *wrapped* form
-        //    (TargetInvocationException → MBE, AggregateException → MBE,
-        //    RuntimeBinderException → MBE). The pattern below only matches
-        //    unwrapped MBE; wrapped forms would propagate as a non-fallback
-        //    render failure. Adopters using `Mode = Auto` who observe a 5xx
-        //    on a hijacked page should pin `Mode = Razor` and file an issue
-        //    with the exception type from logs so the trigger can be widened
-        //    with evidence.
-        if (razorResult.Error is not ModelBindingException)
+        //    The pattern below matches the unwrapped form — verified against
+        //    a real custom-view-model hijack on an agency-built site (a
+        //    RenderController subclass binding a non-IPublishedContent view
+        //    model to the template). The surfaced exception is the bare
+        //    Umbraco.Cms.Web.Common.ModelBinders.ModelBindingException; no
+        //    wrapping observed. If a future Razor pipeline change wraps the
+        //    exception in TargetInvocationException / AggregateException /
+        //    etc., adopters using `Mode = Auto` would observe the wrapped
+        //    page falling into the permanently-failed cache path (6b)
+        //    instead of the Loopback fallback. Pin `Mode = Razor` to revert
+        //    and file an issue with the exception type from logs so the
+        //    trigger can be widened with evidence.
+        if (razorResult.Error is ModelBindingException)
         {
-            return razorResult;
+            // 6a. ModelBindingException → cache as hijacked + try Loopback.
+            //     Cache is marked BEFORE the Loopback call, so a subsequent
+            //     Loopback failure (or cancellation) still leaves the cache
+            //     populated for future renders. The warning log is gated on
+            //     MarkHijacked's return so it fires exactly once per tuple
+            //     even when concurrent first-encounter bursts race past the
+            //     cache-hit check at step 2a.
+            var newlyMarked = _cache.MarkHijacked(contentTypeAlias, templateAlias);
+            if (newlyMarked)
+            {
+                _logger.LogWarning(
+                    razorResult.Error,
+                    "PageRenderer: Razor → Loopback fallback fired for {Alias} {ContentKey} {Path}",
+                    contentTypeAlias,
+                    content.Key,
+                    absoluteUri.AbsolutePath);
+            }
+
+            var loopbackOnFallback = ResolveLoopbackStrategy();
+            return await loopbackOnFallback.RenderAsync(content, absoluteUri, culture, cancellationToken);
         }
 
-        // 6. ModelBindingException → cache the (alias, template) decision
-        //    BEFORE the Loopback call, so a subsequent Loopback failure (or
-        //    cancellation) still leaves the cache populated for future
-        //    renders. The warning log is gated on MarkHijacked's return so it
-        //    fires exactly once per tuple even when concurrent first-encounter
-        //    bursts race past the cache-hit check at step 2.
-        var newlyMarked = _cache.MarkHijacked(contentTypeAlias, templateAlias);
-        if (newlyMarked)
+        // 6b. Non-MBE Razor failure → cache as permanently-failed and return
+        //     the original failure. Subsequent renders of this tuple
+        //     short-circuit at step 2b and return a fresh "cached as
+        //     permanently-failed" failure without re-attempting Razor or
+        //     Loopback. Loopback isn't tried because it would HTTP-fetch the
+        //     same content through the same Razor view engine and hit the
+        //     same failure — wasted work that would compound the log noise.
+        //     The warning fires exactly-once per tuple (gated on
+        //     MarkRazorPermanentlyFailed's return) so the operator-visible
+        //     signal stays bounded under bulk-export iteration.
+        var newlyMarkedFailed = _cache.MarkRazorPermanentlyFailed(contentTypeAlias, templateAlias);
+        if (newlyMarkedFailed)
         {
             _logger.LogWarning(
                 razorResult.Error,
-                "PageRenderer: Razor → Loopback fallback fired for {Alias} {ContentKey} {Path}",
+                "PageRenderer: caching Razor render as permanently-failed for {Alias}/{Template} {ContentKey} {Path}. Subsequent renders of this tuple will skip both Razor and Loopback until host restart.",
                 contentTypeAlias,
+                templateAlias,
                 content.Key,
                 absoluteUri.AbsolutePath);
         }
 
-        var loopbackOnFallback = ResolveLoopbackStrategy();
-        return await loopbackOnFallback.RenderAsync(content, absoluteUri, culture, cancellationToken);
+        return razorResult;
     }
 
     private async Task<string> ResolveTemplateAliasAsync(IPublishedContent content)

@@ -3,10 +3,11 @@ using System.Collections.Concurrent;
 namespace Umbraco.Community.AiVisibility.Extraction;
 
 /// <summary>
-/// Story 7.3 — default <see cref="IRendererStrategyCache"/> implementation.
-/// Backed by a thread-safe
-/// <see cref="ConcurrentDictionary{TKey, TValue}"/> keyed by the
-/// <c>(ContentTypeAlias, TemplateAlias)</c> tuple.
+/// Default <see cref="IRendererStrategyCache"/> implementation. Backed by a
+/// thread-safe <see cref="ConcurrentDictionary{TKey, TValue}"/> keyed by the
+/// <c>(ContentTypeAlias, TemplateAlias)</c> tuple, with the value indicating
+/// which cached decision applies — hijacked (try Loopback) or permanently
+/// failed (skip both Razor and Loopback).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,18 +22,40 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// <b>Process-lifetime, no notification hook.</b> See
 /// <see cref="IRendererStrategyCache"/> remarks. Adopters who remove a hijack
 /// and want to verify Razor-path performance restart the host. The cache size
-/// is bounded by the count of <c>(doctype × hijacked template)</c>
-/// combinations on the site — typically tens, never thousands; not a
-/// memory-leak risk.
+/// is bounded by the count of <c>(doctype × template)</c> combinations on the
+/// site — typically tens, never thousands; not a memory-leak risk.
+/// </para>
+/// <para>
+/// <b>Single dictionary, decision enum value.</b> Storing both decision types
+/// in a single <see cref="ConcurrentDictionary{TKey, TValue}"/> keyed by tuple
+/// preserves the invariant that a tuple has exactly one cached decision —
+/// the first decision wins. The implementation never transitions between
+/// states; a tuple cached as Hijacked stays hijacked, a tuple cached as
+/// RazorPermanentlyFailed stays permanently failed. Process restart is the
+/// only path back to "not cached" (matches the documented invalidation model).
 /// </para>
 /// </remarks>
 internal sealed class RendererStrategyCache : IRendererStrategyCache
 {
-    private readonly ConcurrentDictionary<(string ContentTypeAlias, string TemplateAlias), bool> _cache = new();
+    private enum Decision
+    {
+        Hijacked,
+        RazorPermanentlyFailed,
+    }
+
+    private readonly ConcurrentDictionary<(string ContentTypeAlias, string TemplateAlias), Decision> _cache = new();
 
     public bool IsHijacked(string contentTypeAlias, string templateAlias)
-        => _cache.TryGetValue((contentTypeAlias, templateAlias), out _);
+        => _cache.TryGetValue((contentTypeAlias, templateAlias), out var decision)
+           && decision == Decision.Hijacked;
 
     public bool MarkHijacked(string contentTypeAlias, string templateAlias)
-        => _cache.TryAdd((contentTypeAlias, templateAlias), true);
+        => _cache.TryAdd((contentTypeAlias, templateAlias), Decision.Hijacked);
+
+    public bool IsRazorPermanentlyFailed(string contentTypeAlias, string templateAlias)
+        => _cache.TryGetValue((contentTypeAlias, templateAlias), out var decision)
+           && decision == Decision.RazorPermanentlyFailed;
+
+    public bool MarkRazorPermanentlyFailed(string contentTypeAlias, string templateAlias)
+        => _cache.TryAdd((contentTypeAlias, templateAlias), Decision.RazorPermanentlyFailed);
 }
