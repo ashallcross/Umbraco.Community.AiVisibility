@@ -2,6 +2,30 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v1.1.1] — 2026-05-12: Marketplace + docs polish (no code changes)
+
+Patch release — same DLL, same Vite bundle, same DI graph, same config schema as v1.1.0. Refreshes the package's adopter-facing description text (csproj `<Description>` + Marketplace listing description), prunes Evil Martians wording across xmldoc / docs / README, refreshes the adopter docs against the v1.1.0 surface, and moves maintainer-only docs out of the public `docs/` tree so the adopter docs surface stays focused.
+
+### Changed
+
+- **csproj `<Description>`** extended to mention the dual-strategy renderer ("works on clean Umbraco installs and agency-built sites that hijack Razor with custom view models"). v1.1.0 shipped the dual-strategy feature; the Description that appears on the NuGet listing card still described the v1.0.x surface.
+- **`umbraco-marketplace.json` Description** trimmed from a ~190-word wall-of-text paragraph to a single one-line teaser. The Marketplace renders the description card as one paragraph regardless of `\n\n` separators in the JSON; the detailed content lives in the README below the card. Took effect ~2h after push via the Marketplace's standard JSON refresh cadence (no NuGet republish needed for that surface).
+- **Evil Martians references stripped** from xmldoc ([`LlmsHintTagHelper.cs`](Umbraco.Community.AiVisibility/LlmsTxt/LlmsHintTagHelper.cs)), the README, and the adopter docs. New wording uses package-neutral language ("the 'user pastes a URL into a chat' scenario") rather than referencing an external blog post.
+- **Adopter docs refreshed** for v1.1.0 surfaces — small consistency + cross-reference updates across [`docs/architecture.md`](docs/architecture.md), [`docs/data-attributes.md`](docs/data-attributes.md), [`docs/dependency-status.md`](docs/dependency-status.md), [`docs/extension-points.md`](docs/extension-points.md), [`docs/getting-started.md`](docs/getting-started.md), [`docs/headless.md`](docs/headless.md), [`docs/robots-audit.md`](docs/robots-audit.md). README polish alongside.
+
+### Removed (from public `docs/`)
+
+- **`docs/maintenance.md`**, **`docs/marketplace-listing-checklist.md`**, **`docs/release-checklist.md`** — maintainer-only operational docs moved out of the public adopter docs tree. The adopter docs surface stays focused on what adopters actually need; contributors and forkers can find these elsewhere in the repo's history.
+
+### Notes
+
+- **No code behaviour changes.** The compiled package DLL is byte-identical to v1.1.0 except for the xmldoc text change in `LlmsHintTagHelper.cs` (xmldoc comments don't affect IL; the difference is the embedded xmldoc XML resource).
+- **NuGet republish required** because the README, csproj `<Description>`, xmldoc, and embedded resources ship inside the `.nupkg` and are immutable post-publish. Adopters installing via `dotnet add package Umbraco.Community.AiVisibility` from v1.1.1 onward see the refreshed README + Description card on NuGet and the Marketplace.
+
+### Migration from v1.1.0
+
+- No action required. Runtime behaviour is identical; no config keys added or removed; no breaking changes.
+
 ## [v1.1.0] — 2026-05-12: Dual-strategy renderer for hijacked pages
 
 This release adds an HTTP loopback render path for sites that hijack the Razor pipeline (agency-built sites with custom non-`IPublishedContent` view models), driven by a new `AiVisibility:RenderStrategy` config block. The default `Auto` mode tries the in-process Razor render first and falls back to loopback automatically — clean Umbraco installs that worked under v1.0.x see no behavioural change. Member-protected pages are now correctly excluded from all Markdown surfaces (a latent v1.0.x bug fix).
