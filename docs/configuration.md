@@ -101,6 +101,17 @@ ASP.NET Core's `__` (double-underscore) configuration-section separator means:
 | `AiVisibility:RobotsAuditOnStartup` | `bool` | `true` | When `true`, the robots audit fires once on host startup. The Backoffice Health Check view + `RobotsAuditRefreshJob` continue regardless. |
 | `AiVisibility:MainContentSelectors` | `string[]` | `[]` | Adopter CSS selectors consulted after the built-in `data-llms-content` → `<main>` → `<article>` chain, before the SmartReader fallback. |
 
+## `AiVisibility:RenderStrategy` — page rendering for hijacked content
+
+How the package renders a page before extracting Markdown. Default behaviour covers both clean Umbraco installs and agency-built sites that hijack the Razor pipeline; explicit modes are available for adopters who measured their own site shape.
+
+| Key | Type | Default | What it controls |
+|---|---|---|---|
+| `RenderStrategy:Mode` | `Auto` \| `Razor` \| `Loopback` | `Auto` | Strategy selection. `Auto` (default) tries the in-process Razor render first and falls back to an HTTP loopback round-trip when the page's controller hijacks the view model (raises `ModelBindingException`). The per-`(ContentTypeAlias, TemplateAlias)` decision is cached for the process lifetime so the wasted Razor attempt fires once per tuple. `Razor` forces the in-process render path with no fallback. `Loopback` skips the Razor attempt entirely. See [`getting-started.md`](getting-started.md) § Rendering strategies for hijacked pages for adopter guidance on when to pin each value. |
+| `RenderStrategy:LoopbackBaseUrl` | `string?` | `null` | Escape-hatch base URL for the loopback transport target. When `null`, the strategy auto-resolves via Kestrel's bound addresses (`IServerAddressesFeature`). Set explicitly when running behind exotic networking topologies — non-default reverse-proxy mappings, multi-tenant hosting, container topologies where Kestrel doesn't bind to a loopback interface. Format: scheme + authority only, e.g. `http://127.0.0.1:8080` (no trailing path). Has no effect when `Mode = Razor` (the resolver is never called). Malformed values surface as `InvalidOperationException` at the first loopback render — NOT at startup, so adopters pinned to `Razor` with a typo'd value still boot clean. |
+
+The strategy choice is read live from `IOptionsMonitor<AiVisibilitySettings>` at the top of every render call — flipping `Mode` in `appsettings.json` takes effect on the next render with no restart required.
+
 ## `AiVisibility:LlmsTxtBuilder` — `/llms.txt` manifest builder
 
 | Key | Type | Default | What it controls |

@@ -246,6 +246,79 @@ The first Markdown render of a given template JIT-compiles the Razor view — ob
 
 If first-hit latency matters at deploy time, hit `/your-most-important-pages.md` once after a deployment so the JIT cache (and the package's per-page cache) are warm.
 
+## Rendering strategies for hijacked pages
+
+From v1.1, the package ships a configurable render strategy that handles two distinct Umbraco install shapes: clean templated sites where every view inherits `UmbracoViewPage<TPublishedModel>`, and agency-built sites that hijack the Razor pipeline by subclassing `RenderController` and binding a custom non-`IPublishedContent` view model to the template.
+
+### Why this exists
+
+The package extracts Markdown from the HTML your Razor templates produce. On a clean Umbraco install, the package's renderer invokes Razor in-process with `Model = IPublishedContent` — fast, no HTTP round-trip, no socket cost.
+
+On agency-built sites the same in-process Razor invocation fails. A controller hijack builds a custom view model from the `IPublishedContent` before calling `CurrentTemplate(viewModel)`; the template's `@inherits UmbracoViewPage<TCustomViewModel>` declaration does not accept `IPublishedContent`, and Razor's model-binder throws `ModelBindingException` at bind time. The fix is to issue an in-process HTTP loopback request to the canonical published URL — Kestrel routes the request through the full controller pipeline (including the hijack), the controller builds the view model correctly, and the rendered HTML lands in the response body for the package to parse.
+
+Type-introspecting the published content does not work — agency-built sites use bespoke ViewModels with no shared base class, so there's no way to decide which strategy to use without trying one and observing the failure.
+
+### The three modes
+
+| Mode | Behaviour | When to pick |
+|---|---|---|
+| `Auto` (default) | Try Razor first; on `ModelBindingException`, fall back to a Loopback HTTP round-trip and cache the per-`(ContentTypeAlias, TemplateAlias)` decision for the process lifetime. Subsequent renders of the same tuple skip the wasted Razor attempt. | Clean Umbraco installs (`Razor` strategy always succeeds, no fallback ever fires, zero overhead); mixed sites with hijacks on some doctypes (`Auto` covers both classes — one warning per hijacked tuple per process cold start, then cache-hits forever after). **The default — leave it unless you have a specific reason to pin.** |
+| `Razor` | In-process Razor render only. No fallback. Failures surface as 500 with diagnostic logs. | You measured your site, you know every doctype renders cleanly under `UmbracoViewPage<TPublishedModel>`, you want to remove any possibility of HTTP loopback overhead. |
+| `Loopback` | Skip the Razor attempt; always issue an HTTP loopback round-trip. | You measured your site, you know every doctype hijacks the Razor pipeline, you want to skip the wasted Razor attempt + one-time fallback warning per tuple. |
+
+### Adopter guidance
+
+```jsonc
+{
+  "AiVisibility": {
+    "RenderStrategy": {
+      "Mode": "Auto"  // or "Razor" or "Loopback"
+    }
+  }
+}
+```
+
+The full key reference lives in [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content). Mode is read live via `IOptionsMonitor` so flipping it in `appsettings.json` takes effect on the next render with no restart.
+
+#### `LoopbackBaseUrl` — escape hatch
+
+When `Mode` is `Auto` or `Loopback`, the strategy auto-resolves the loopback transport target from Kestrel's bound addresses (`IServerAddressesFeature`). For containers, reverse-proxy topologies, multi-tenant hosting where Kestrel binds to a non-loopback interface, or sites where autodetection fails, set `RenderStrategy:LoopbackBaseUrl` explicitly:
+
+```jsonc
+{
+  "AiVisibility": {
+    "RenderStrategy": {
+      "Mode": "Auto",
+      "LoopbackBaseUrl": "http://127.0.0.1:8080"
+    }
+  }
+}
+```
+
+Scheme + authority only — no path component. Malformed values surface as `InvalidOperationException` at the first loopback render attempt (NOT at startup) — adopters pinned to `Razor` mode never hit the resolver and never see the error.
+
+#### Cold-start cost is unchanged
+
+Both `Razor` and `Loopback` strategies invoke the same Razor view engine and pay the same first-render JIT cost (~6s against Clean.Core 7.0.5; observed during the in-process-rendering spike). The per-page cache absorbs this from the second hit onwards. The strategy choice does not affect cold-start latency.
+
+#### `Auto` mode log signal on cold process
+
+On a cold process, `Auto` mode logs exactly one `Warning` per unique hijacked `(ContentTypeAlias, TemplateAlias)` tuple as the fallback fires:
+
+```
+PageRenderer: Razor → Loopback fallback fired for {Alias} {ContentKey} {Path}
+```
+
+This is expected one-time-per-tuple-per-process signal, not a flood-of-errors — sites with N hijacked doctype/template combinations log N warnings on first reach of each tuple, then go quiet for the lifetime of the process. Subsequent renders of the same tuple cache-hit and skip Razor with no log noise.
+
+#### Member-protected content
+
+From v1.1, pages flagged via Umbraco's Public Access feature (member-restricted access) are **excluded** from the `.md` route, `/llms.txt`, and `/llms-full.txt` regardless of the active `RenderStrategy:Mode`. This is a v1.0.x bug fix — previously the renderer would surface the login-redirect HTML as Markdown content. The exclusion is independent of strategy choice; pinning `Razor` or `Loopback` does not change this behaviour.
+
+#### Headless installs
+
+`RenderStrategy:Mode` is only meaningful for traditional Razor-template Umbraco installs. Sites running fully-headless (Delivery API + external frontend on Vercel / Netlify / etc.) cannot use any of the three modes for the `.md` route — the package's renderer needs Razor templates on the same .NET process. See [`headless.md`](headless.md) for the supported-surfaces matrix.
+
 ## Conditional GET
 
 From v0.3, both `/llms.txt` and `/llms-full.txt` honour `If-None-Match` and respond with `304 Not Modified` for unchanged manifests. The `ETag` is content-derived (SHA-256 of the manifest body, base64-url-encoded, quoted as a strong validator) and travels alongside the cached body, so cache hits reuse the ETag without re-hashing. AI crawlers that revalidate (most do) save round-trip bytes; first-fetch latency is unchanged.

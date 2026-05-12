@@ -128,6 +128,56 @@ curl -X POST https://functions.marketplace.umbraco.com/api/InitiateSinglePackage
 - [ ] Verify the Marketplace listing is updated (if changed)
 - [ ] GitHub Release was created at the tag-push step above; double-check the body matches the CHANGELOG entry and the `.nupkg` is attached
 
+### 10. Post-publish install verification (non-skippable)
+
+**The release is not considered shipped until this step passes.** Locally-tested `.nupkg` artefacts can pass the pack output review (§ 2) and still fail to install cleanly against a real-world consumer for non-obvious reasons (NuGet feed caching, deps.json resolution drift, missing `<None Pack="true">` entry, etc.). The post-publish install verification confirms that the package an adopter would `dotnet add` from nuget.org actually boots and serves traffic on a representative consumer working tree.
+
+The canonical consumer to verify against is the working tree previously used as a live-fire integration target during this release's manual gates (for v1.1.0, that was PRC0250). Subsequent releases follow the same convention: the working tree used for the release's pre-release manual gate becomes the install-verification target post-publish.
+
+```bash
+# 1. Wait for NuGet propagation (~5-15 min after push). The package's nuget.org
+#    page should show "Listed" status; the search index lag is the bottleneck.
+open "https://www.nuget.org/packages/Umbraco.Community.AiVisibility/<version>"
+
+# 2. On the consumer working tree (NOT the package repo), clear local NuGet
+#    caches to defeat any stale resolution from a prior `<ProjectReference>` or
+#    test-feed install:
+dotnet nuget locals all --clear
+
+# 3. Switch the consumer from <ProjectReference> (or older <PackageReference>) to
+#    the freshly-published version:
+dotnet add package Umbraco.Community.AiVisibility --version <version>
+
+# 4. Build + boot the consumer. Confirm clean startup + migration runs (or
+#    short-circuits idempotently if the doctype already exists in the host DB).
+dotnet build
+dotnet run
+```
+
+Walk the following five surfaces and confirm each one preserves behaviour observed during the pre-release gate:
+
+- [ ] `GET /llms.txt` returns 200 with `Content-Type: text/markdown; charset=utf-8`; manifest body shape unchanged
+- [ ] `GET /llms-full.txt` returns 200 with the bulk export; body cap respected; truncation footer present if applicable
+- [ ] `GET /{any-published-page}.md` returns 200 with valid Markdown + frontmatter (under the default `RenderStrategy:Mode = Auto`)
+- [ ] Backoffice **Settings → AI Visibility** dashboard loads (read-write)
+- [ ] Backoffice **Settings → AI Traffic** dashboard loads (read-only); rows accumulated during the pre-release gate walk are visible
+
+Record the verdict in the GitHub Release body (or the local release log if no GitHub Release is cut):
+
+```
+Post-publish install verification: PASS / FAIL
+Consumer working tree: <name>
+NuGet propagation latency observed: <minutes>
+Evidence: <one-line summary of preserved-behaviour walk>
+```
+
+**Failure path (one of the five surfaces regresses):**
+
+1. **Unlist immediately** — `dotnet nuget unlist Umbraco.Community.AiVisibility <version>`. Adopters who already installed via `dotnet add package` keep working; new adopters get the previous version from the search index until a patch ships.
+2. **Do NOT attempt to live-patch the published version.** NuGet package immutability — `<version>` is reserved forever. The fix path is a patch release (`<version>+0.0.1`).
+3. **Open a patch story immediately** with the regression as the only AC; pin the failing surface as the reproduction; ship a clean `<version>+0.0.1` through the same checklist.
+4. **Document the missed surface** so the pre-release gate (§ Pre-release verification + the per-release manual strategy-parity walk) can add a step covering it for future releases — either as an issue against this repo, an entry in your fork's release retrospective, or both.
+
 ## v1 release-readiness audit
 
 This is the cross-cutting verification matrix for a v1.0.0 (or v1.x patch) release. Walk it line by line at sign-off time and tick each row against the listed evidence. The rows are organised by concern; every row is verifiable against a file path, a test name, a doc link, or an `unzip -l` of the packed `.nupkg`.
