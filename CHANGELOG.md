@@ -2,7 +2,7 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
-## [v1.1.2] — YYYY-MM-DD: Agency-site correctness + adoption friction
+## [v1.1.2] — 2026-05-30: Agency-site correctness + adoption friction
 
 Patch release — three correctness/defaults fixes surfaced when integrating v1.1.1 into a real agency-built Umbraco 17.4 site. No new features, no API changes, no breaking changes.
 
