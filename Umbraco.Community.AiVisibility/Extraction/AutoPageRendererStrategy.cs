@@ -33,13 +33,16 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// invariant), so root-provider resolution is safe.
 /// </para>
 /// <para>
-/// <b>Narrow fallback trigger.</b> Only <see cref="ModelBindingException"/>
-/// triggers fallback to Loopback — every other Razor failure propagates as
-/// the original <c>PageRenderResult.Failed</c>. The trigger list is
-/// intentionally narrow and documented; widen via filed issue + observed
-/// evidence, never speculatively. A <c>NullReferenceException</c> in a
-/// misconfigured Razor template should surface, NOT trigger Loopback which
-/// would hide the root cause.
+/// <b>Narrow fallback trigger.</b> Only failures classified as view-model
+/// hijacks by <see cref="IsViewModelHijack"/> trigger fallback to Loopback
+/// — every other Razor failure propagates as the original
+/// <c>PageRenderResult.Failed</c>. The predicate matches two unwrapped
+/// shapes (model-binding-layer + view-activation-layer); see the helper's
+/// own xmldoc for the canonical phrases / stack-frame tokens. The trigger
+/// list is intentionally narrow and documented; widen via filed issue +
+/// observed evidence, never speculatively. A <c>NullReferenceException</c>
+/// in a misconfigured Razor template should surface, NOT trigger Loopback
+/// which would hide the root cause.
 /// </para>
 /// <para>
 /// <b>Cache key tuple <c>(ContentTypeAlias, TemplateAlias)</c>.</b>
@@ -148,29 +151,34 @@ internal sealed class AutoPageRendererStrategy : IPageRendererStrategy
             return razorResult;
         }
 
-        // 5. Razor failed → ModelBindingException is the hijack trigger.
-        //    Other exception types are cached as permanently-failed (step 6b)
-        //    so the same tuple doesn't re-attempt Razor on every render — a
+        // 5. Razor failed → IsViewModelHijack decides whether this is a
+        //    view-model hijack we can route around via Loopback, or a
+        //    non-hijack failure cached as permanently-failed (step 6b) so
+        //    the same tuple doesn't re-attempt Razor on every render — a
         //    structural doctype with no renderable template, for example,
-        //    would otherwise log a Razor failure for every page sharing its
-        //    (doctype, template) tuple every time the manifest builder
+        //    would otherwise log a Razor failure for every page sharing
+        //    its (doctype, template) tuple every time the manifest builder
         //    iterated them.
         //
-        //    The pattern below matches the unwrapped form — verified against
-        //    a real custom-view-model hijack on an agency-built site (a
-        //    RenderController subclass binding a non-IPublishedContent view
-        //    model to the template). The surfaced exception is the bare
-        //    Umbraco.Cms.Web.Common.ModelBinders.ModelBindingException; no
-        //    wrapping observed. If a future Razor pipeline change wraps the
-        //    exception in TargetInvocationException / AggregateException /
-        //    etc., adopters using `Mode = Auto` would observe the wrapped
-        //    page falling into the permanently-failed cache path (6b)
-        //    instead of the Loopback fallback. Pin `Mode = Razor` to revert
-        //    and file an issue with the exception type from logs so the
+        //    The predicate matches two unwrapped shapes — verified against
+        //    real agency-site hijacks: the model-binding-layer hijack
+        //    (Umbraco.Cms.Web.Common.ModelBinders.ModelBindingException)
+        //    and the view-activation-layer hijack (an
+        //    InvalidOperationException raised by ASP.NET Core's
+        //    RazorPagePropertyActivator when a RenderController subclass
+        //    returns CurrentTemplate(customViewModel) against a view
+        //    declared @model CustomViewModel). See IsViewModelHijack
+        //    xmldoc for the canonical Message + StackTrace tokens. If a
+        //    future Razor pipeline change wraps either exception in
+        //    TargetInvocationException / AggregateException / etc.,
+        //    adopters using `Mode = Auto` would observe the wrapped page
+        //    falling into the permanently-failed cache path (6b) instead
+        //    of the Loopback fallback. Pin `Mode = Razor` to revert and
+        //    file an issue with the exception type from logs so the
         //    trigger can be widened with evidence.
-        if (razorResult.Error is ModelBindingException)
+        if (IsViewModelHijack(razorResult.Error))
         {
-            // 6a. ModelBindingException → cache as hijacked + try Loopback.
+            // 6a. View-model hijack → cache as hijacked + try Loopback.
             //     Cache is marked BEFORE the Loopback call, so a subsequent
             //     Loopback failure (or cancellation) still leaves the cache
             //     populated for future renders. The warning log is gated on
@@ -192,16 +200,26 @@ internal sealed class AutoPageRendererStrategy : IPageRendererStrategy
             return await loopbackOnFallback.RenderAsync(content, absoluteUri, culture, cancellationToken);
         }
 
-        // 6b. Non-MBE Razor failure → cache as permanently-failed and return
-        //     the original failure. Subsequent renders of this tuple
-        //     short-circuit at step 2b and return a fresh "cached as
-        //     permanently-failed" failure without re-attempting Razor or
-        //     Loopback. Loopback isn't tried because it would HTTP-fetch the
-        //     same content through the same Razor view engine and hit the
-        //     same failure — wasted work that would compound the log noise.
-        //     The warning fires exactly-once per tuple (gated on
+        // 6b. Non-hijack Razor failure → cache as permanently-failed and
+        //     return the original failure. Hijack failures (handled at
+        //     step 6a) ARE retried via Loopback because the loopback HTTP
+        //     request traverses the agency's hijack controller, which
+        //     constructs whatever shape the view expects; non-hijack
+        //     failures (missing view, Razor compile error, structural
+        //     doctype with no renderable template) are the opposite — the
+        //     HTTP path would re-enter the same view engine and hit the
+        //     same failure, wasted work that would compound the log noise.
+        //     Subsequent renders of this tuple short-circuit at step 2b
+        //     and return a fresh "cached as permanently-failed" failure
+        //     without re-attempting Razor or Loopback. The warning fires
+        //     exactly-once per tuple (gated on
         //     MarkRazorPermanentlyFailed's return) so the operator-visible
-        //     signal stays bounded under bulk-export iteration.
+        //     signal stays bounded under bulk-export iteration. Widening
+        //     the hijack trigger (step 6a / IsViewModelHijack) requires
+        //     filed issue + observed evidence, never speculation — a
+        //     NullReferenceException in a misconfigured Razor template
+        //     must surface, NOT silently fall through to Loopback which
+        //     would hide the root cause.
         //
         //     Null-Error guard: a Failed result with no wrapped exception
         //     would otherwise reach this branch and cache the tuple as
@@ -260,4 +278,99 @@ internal sealed class AutoPageRendererStrategy : IPageRendererStrategy
 
     private IPageRendererStrategy ResolveLoopbackStrategy()
         => _serviceProvider.GetRequiredKeyedService<IPageRendererStrategy>(RenderStrategyMode.Loopback);
+
+    /// <summary>
+    /// Classifies a Razor render failure as a view-model hijack we can
+    /// route around via Loopback.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Shape A — model-binding-layer hijack:</b>
+    /// <see cref="ModelBindingException"/>. Surfaced when Umbraco's model
+    /// binders refuse to bind a non-<see cref="IPublishedContent"/> view
+    /// model to the template. The original <c>Mode = Auto</c> trigger,
+    /// verified against real agency-built sites.
+    /// </para>
+    /// <para>
+    /// <b>Shape B — view-activation-layer hijack:</b>
+    /// <see cref="InvalidOperationException"/> whose
+    /// <see cref="Exception.Message"/> contains the canonical phrase
+    /// <c>"ViewDataDictionary instance requires a model item of type"</c>
+    /// AND whose <see cref="Exception.StackTrace"/> contains the literal
+    /// token <c>"RazorPagePropertyActivator"</c>. Surfaced when an agency
+    /// <c>RenderController</c> subclass returns
+    /// <c>CurrentTemplate(customViewModel)</c> against a view declared
+    /// <c>@model CustomViewModel</c> — the model binders accept the bound
+    /// content but ASP.NET Core's view activator rejects the
+    /// <c>ViewDataDictionary</c> type mismatch.
+    /// </para>
+    /// <para>
+    /// <b>Brittleness contract.</b> The stack-frame literal-token match
+    /// against <c>"RazorPagePropertyActivator"</c> is the canonical
+    /// predicate for shape B. A future ASP.NET Core rename of that
+    /// internal type will surface as fall-through to the
+    /// <c>RazorPermanentlyFailed</c> path (fail-loud, NOT silent
+    /// fall-through to Loopback). Widen via filed issue + observed
+    /// evidence, never speculatively. A <c>NullReferenceException</c> in
+    /// a misconfigured Razor template must surface, NOT trigger Loopback
+    /// which would hide the root cause.
+    /// </para>
+    /// <para>
+    /// <b>Belt-and-braces rationale.</b> The message-fragment match alone
+    /// risks false positives on a future ASP.NET Core release that reuses
+    /// the same phrasing in an unrelated diagnostic; the stack-frame
+    /// check alone risks brittleness if Microsoft renames the activator
+    /// class. Combined, the only thing satisfying both predicates is a
+    /// genuine view-activation type mismatch.
+    /// </para>
+    /// <para>
+    /// <b>String comparisons.</b> Both <c>Contains</c> calls use
+    /// <see cref="StringComparison.Ordinal"/> — the canonical ASP.NET
+    /// Core diagnostic text + the stack-frame type-name token are both
+    /// case-sensitive in the real runtime output; ordinal comparison is
+    /// also allocation-cheaper than the culture-sensitive overloads.
+    /// </para>
+    /// <para>
+    /// <b>Null-safe.</b> Accepts <see cref="Exception"/>? so a
+    /// <c>PageRenderResult.Failed</c> with a null <c>Error</c> composes
+    /// safely: <c>IsViewModelHijack(null)</c> returns <c>false</c> and
+    /// the existing null-Error guard in <see cref="RenderAsync"/>
+    /// continues to short-circuit before any cache-write path is
+    /// reached.
+    /// </para>
+    /// <para>
+    /// <b>Cache implications across widening.</b>
+    /// <see cref="IRendererStrategyCache"/> is per-process in-memory.
+    /// Hosts that observed the view-activation-layer hijack BEFORE this
+    /// predicate widened (and therefore cached it as
+    /// <c>RazorPermanentlyFailed</c>) retain that classification until
+    /// the host process restarts. A host restart is the canonical
+    /// recovery path after a version upgrade that widens the trigger.
+    /// </para>
+    /// <para>
+    /// <b>Cannot distinguish package-internal binder misconfiguration
+    /// from genuine hijack.</b> Both shape A and shape B exception
+    /// signatures can also surface when Umbraco's
+    /// <c>ContentModelBinder</c> is unregistered or misconfigured (e.g.
+    /// the host removed <c>AddUmbracoCms()</c>) — the package's own
+    /// direct-view-render path then triggers the exact same exception
+    /// shapes the predicate is widened to catch, and Loopback fallback
+    /// silently masks the root cause. Adopters who see persistent
+    /// <see cref="IRendererStrategyCache.MarkHijacked"/> writes without
+    /// any actual <c>RenderController</c> hijack controller in their
+    /// codebase should verify <c>AddUmbracoCms()</c> + Umbraco's
+    /// content-model-binder registrations are present. Cheap diagnostic:
+    /// pin <c>AiVisibility:RenderStrategy:Mode = Razor</c> temporarily
+    /// to surface the underlying failure without Loopback masking.
+    /// </para>
+    /// </remarks>
+    private static bool IsViewModelHijack(Exception? ex) =>
+        ex is ModelBindingException
+        || (ex is InvalidOperationException ioe
+            && ioe.Message.Contains(
+                "ViewDataDictionary instance requires a model item of type",
+                StringComparison.Ordinal)
+            && ioe.StackTrace?.Contains(
+                "RazorPagePropertyActivator",
+                StringComparison.Ordinal) == true);
 }

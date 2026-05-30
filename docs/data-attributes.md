@@ -77,13 +77,15 @@ The TagHelpers are **opt-in** alternatives to the auto-emitted HTTP `Link` heade
 
 ### Setup
 
-Add the package's TagHelper namespace to your `_ViewImports.cshtml`:
+Installing the package auto-registers the TagHelpers via an MSBuild target shipped in the `.nupkg`. The target ensures that `Views/_ViewImports.cshtml` contains the namespace-scoped directive:
 
 ```cshtml
 @addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility
 ```
 
-Both TagHelpers are auto-discovered once the directive is in scope. No `services.AddXxx()` call required. The namespace scope (rather than wildcard `*, Umbraco.Community.AiVisibility`) is deliberate so future internal types in other namespaces don't auto-register as adopter-facing TagHelpers.
+Both TagHelpers are auto-discovered once the directive is in scope. No `services.AddXxx()` call required. On a fresh `dotnet new umbraco` project the file is created with this single directive. On an existing project the directive is appended once if a directive referencing the `Umbraco.Community.AiVisibility` assembly is not already present — your existing wildcard or scoping choice is preserved. See the install section of [README](../README.md) and [`docs/getting-started.md`](getting-started.md) for the surprise-modified-file caveat.
+
+The namespace scope (rather than wildcard `*, Umbraco.Community.AiVisibility`) is deliberate so future internal types in other namespaces don't auto-register as adopter-facing TagHelpers.
 
 ### `<llms-link />` — emits `<link rel="alternate">` in `<head>`
 

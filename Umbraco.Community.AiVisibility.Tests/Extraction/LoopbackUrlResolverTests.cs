@@ -248,21 +248,55 @@ public class LoopbackUrlResolverTests
     }
 
     /// <summary>
-    /// AC1 Step 2 + AC2 — when both HTTP and HTTPS bindings are present in
-    /// <see cref="IServerAddressesFeature.Addresses"/>, HTTP wins regardless
-    /// of order in the list. Loopback inside the same kernel adds zero
-    /// security value over HTTPS, and the HTTP path avoids the cert chain.
+    /// HTTPS-preference invariant — when both HTTP and HTTPS bindings are
+    /// present in <see cref="IServerAddressesFeature.Addresses"/>, HTTPS
+    /// wins. Default <c>dotnet new umbraco</c> launchSettings declare both
+    /// schemes and <c>UseHttpsRedirection</c> 307s every HTTP loopback
+    /// request, so picking HTTPS up-front avoids the redirect clash.
     /// </summary>
     [Test]
-    public void Resolve_NoConfigOverride_PrefersHttpBinding()
+    public void Resolve_NoConfigOverride_PrefersHttpsBinding_WhenBothHttpAndHttpsBindingsExist()
+    {
+        var server = BuildServerWithAddresses("http://localhost:5000", "https://localhost:5001");
+        var resolver = BuildResolver(server);
+
+        var target = resolver.Resolve();
+
+        Assert.That(target.TransportUri, Is.EqualTo(new Uri("https://localhost:5001/")),
+            "HTTPS wins when both bindings are observed");
+    }
+
+    /// <summary>
+    /// Order-insensitive HTTPS preference — HTTPS wins regardless of its
+    /// position in the bindings list. Preference is scheme-only.
+    /// </summary>
+    [Test]
+    public void Resolve_NoConfigOverride_PrefersHttpsBinding_WhenBindingOrderHasHttpsFirst()
     {
         var server = BuildServerWithAddresses("https://localhost:5001", "http://localhost:5000");
         var resolver = BuildResolver(server);
 
         var target = resolver.Resolve();
 
+        Assert.That(target.TransportUri, Is.EqualTo(new Uri("https://localhost:5001/")),
+            "HTTPS wins even when HTTPS appears first in the list — preference is NOT order-sensitive");
+    }
+
+    /// <summary>
+    /// Single-binding HTTP-only invariant — HTTPS preference applies only
+    /// when both schemes are observed. HTTP-only deployments (containers
+    /// with TLS termination upstream) keep their HTTP binding.
+    /// </summary>
+    [Test]
+    public void Resolve_NoConfigOverride_UsesHttpBinding_WhenOnlyHttpBindingExists()
+    {
+        var server = BuildServerWithAddresses("http://localhost:5000");
+        var resolver = BuildResolver(server);
+
+        var target = resolver.Resolve();
+
         Assert.That(target.TransportUri, Is.EqualTo(new Uri("http://localhost:5000/")),
-            "HTTP wins over HTTPS even when HTTPS appears first in the list");
+            "HTTP-only single-binding case unchanged — HTTPS preference applies only when ≥ 2 bindings observed");
     }
 
     /// <summary>

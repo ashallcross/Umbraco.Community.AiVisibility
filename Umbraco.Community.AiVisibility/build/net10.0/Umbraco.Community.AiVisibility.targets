@@ -1,0 +1,136 @@
+<Project>
+  <!--
+    Auto-register the package's TagHelper namespace in the consuming
+    project's Views/_ViewImports.cshtml. The directive uses the
+    namespace-scoped form per docs/data-attributes.md — deliberately
+    narrower than the wildcard so future internal types in other
+    namespaces don't auto-register as adopter-facing TagHelpers.
+
+    Idempotency: literal-string match on the assembly name
+    "Umbraco.Community.AiVisibility". Adopters using either the
+    namespace-scoped form OR an existing wildcard
+    @addTagHelper *, Umbraco.Community.AiVisibility (or any subset
+    referencing the same assembly) are no-op'd. The existing scoping
+    choice is preserved.
+
+    Idempotency edge cases — silent no-op surface. The substring check
+    fires True for any occurrence of "Umbraco.Community.AiVisibility"
+    in the file, not just inside an @addTagHelper directive:
+      - Razor comments mentioning the assembly name
+        (e.g. @* see Umbraco.Community.AiVisibility docs *@)
+      - @using directives for sub-namespaces consumed only as types
+        (e.g. @using Umbraco.Community.AiVisibility.Configuration for
+         reading the settings record from a view)
+      - Future sibling assemblies whose name starts with the same
+        prefix (e.g. Umbraco.Community.AiVisibilityExtras)
+    In all three cases the directive is silently never appended and
+    the TagHelpers do not resolve. The simpler-and-spec-faithful
+    substring check was kept as-is; remedy when an adopter hits this
+    is to grep _ViewImports.cshtml for stale references and remove
+    them, or set AiVisibilityDisableTagHelperAutoImport=true (see
+    opt-out below) and add the @addTagHelper directive manually.
+
+    Razor item-evaluation timing: BeforeTargets="ResolveRazorGenerateInputs"
+    runs BEFORE Razor input collection on the .NET 10 Razor SDK so the
+    file we write enters the Razor input set on the SAME build
+    invocation. The belt-and-braces explicit <Content Include="..."/>
+    amendment is added only in the fresh-create branch so an existing
+    file's existing Content entry (via the SDK's **/*.cshtml glob) is
+    NOT double-included.
+
+    Self-exclusion: the target does not run during dotnet pack of the
+    package's own csproj — the condition gates on MSBuildProjectName,
+    and the package source tree has no Views/_ViewImports.cshtml to
+    mutate at the package root anyway.
+
+    Adopter opt-out: set <AiVisibilityDisableTagHelperAutoImport>true
+    </AiVisibilityDisableTagHelperAutoImport> in Directory.Build.props
+    or the consuming csproj to disable the auto-registration entirely.
+    Adopters who do this are responsible for manually adding the
+    @addTagHelper directive (the README + docs/getting-started.md
+    document the canonical form).
+  -->
+  <Target Name="AiVisibilityEnsureTagHelperImport"
+          BeforeTargets="ResolveRazorGenerateInputs"
+          Condition=" '$(MSBuildProjectName)' != 'Umbraco.Community.AiVisibility'
+                  AND '$(AiVisibilityDisableTagHelperAutoImport)' != 'true' ">
+
+    <PropertyGroup>
+      <_AiVisibilityViewImports>$(MSBuildProjectDirectory)/Views/_ViewImports.cshtml</_AiVisibilityViewImports>
+      <_AiVisibilityDirective>@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility</_AiVisibilityDirective>
+      <_AiVisibilityAssemblyToken>Umbraco.Community.AiVisibility</_AiVisibilityAssemblyToken>
+      <!-- Snapshot existence BEFORE we write — the Content amendment
+           below needs to know whether the file pre-existed (in which
+           case the SDK's **/*.cshtml glob already picked it up) or
+           was created by this target (in which case the glob ran
+           before the file existed and won't include it). -->
+      <_AiVisibilityFileExistedAtStart Condition="Exists('$(_AiVisibilityViewImports)')">true</_AiVisibilityFileExistedAtStart>
+      <_AiVisibilityFileExistedAtStart Condition="!Exists('$(_AiVisibilityViewImports)')">false</_AiVisibilityFileExistedAtStart>
+    </PropertyGroup>
+
+    <!-- Read existing file content (if any) for the idempotency check.
+         ReadLinesFromFile is an MSBuild built-in task; ships with the
+         SDK and needs no <UsingTask> declaration. -->
+    <ReadLinesFromFile File="$(_AiVisibilityViewImports)"
+                       Condition="Exists('$(_AiVisibilityViewImports)')">
+      <Output TaskParameter="Lines" ItemName="_AiVisibilityExistingLines" />
+    </ReadLinesFromFile>
+
+    <PropertyGroup Condition="Exists('$(_AiVisibilityViewImports)')">
+      <!-- Join the lines into a single string so the substring check
+           runs once. %0A is the MSBuild-escaped newline separator;
+           any non-empty separator is fine here because the search
+           token "Umbraco.Community.AiVisibility" never contains a
+           newline. -->
+      <_AiVisibilityExistingText>@(_AiVisibilityExistingLines, '%0A')</_AiVisibilityExistingText>
+      <_AiVisibilityAlreadyRegistered>$(_AiVisibilityExistingText.Contains('$(_AiVisibilityAssemblyToken)'))</_AiVisibilityAlreadyRegistered>
+    </PropertyGroup>
+
+    <!-- Branch 1b: file exists + token missing → rewrite the file via
+         Overwrite="true" with the existing content joined to a final
+         newline + the directive. WriteLinesToFile appends a trailing
+         newline of its own, so the directive lands on its own line
+         regardless of whether the existing file ended with a newline
+         byte. Append-mode would glue the directive onto the previous
+         last line if the existing file lacked a trailing newline —
+         that failure mode would be sticky (the substring idempotency
+         check then treats the broken concatenation as already-
+         registered forever) and the `dotnet new umbraco` Umbraco 17
+         template ships _ViewImports.cshtml without a trailing
+         newline, making append-mode dangerous on the most common
+         adopter shape. Passing Lines as a property string (not an
+         item collection) sidesteps an MSBuild glob-expansion gotcha:
+         the directive contains a literal `*` that an `<Include>`
+         attribute interprets as a file-pattern wildcard, silently
+         dropping the directive when no matching files exist. The
+         property-string path stores `*` as a literal character.
+         Branch 1a (file exists + token present) is the silent no-op
+         — no Message emitted to keep log noise bounded across N
+         adopter builds. -->
+    <PropertyGroup Condition="Exists('$(_AiVisibilityViewImports)') AND '$(_AiVisibilityAlreadyRegistered)' == 'False'">
+      <_AiVisibilityRewriteContent>$(_AiVisibilityExistingText)%0A$(_AiVisibilityDirective)</_AiVisibilityRewriteContent>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_AiVisibilityViewImports)"
+                      Lines="$(_AiVisibilityRewriteContent)"
+                      Overwrite="true"
+                      Condition="Exists('$(_AiVisibilityViewImports)') AND '$(_AiVisibilityAlreadyRegistered)' == 'False'" />
+
+    <!-- Branch 2: file does NOT exist → create it containing exactly
+         the directive as its only content. -->
+    <WriteLinesToFile File="$(_AiVisibilityViewImports)"
+                      Lines="$(_AiVisibilityDirective)"
+                      Overwrite="true"
+                      Condition="!Exists('$(_AiVisibilityViewImports)')" />
+
+    <!-- Razor input-set fold (combination strategy): in the fresh-create
+         branch the Razor SDK's default Content Include="**/*.cshtml"
+         glob already ran during item evaluation BEFORE this target,
+         so the freshly-written _ViewImports.cshtml is NOT in the
+         Content item set unless we explicitly add it. For the
+         existing-file case the SDK's glob already picked it up —
+         skip the amendment to avoid double-including. -->
+    <ItemGroup Condition="'$(_AiVisibilityFileExistedAtStart)' == 'false'">
+      <Content Include="$(_AiVisibilityViewImports)" />
+    </ItemGroup>
+  </Target>
+</Project>

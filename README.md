@@ -29,6 +29,10 @@ dotnet add package Umbraco.Community.AiVisibility
 
 That's it. The package's `PackageMigrationPlan` runs on first boot and creates an `aiVisibilitySettings` doctype + the `aiVisibilityRequestLog` table; no manual migration step needed.
 
+Installing the package also auto-registers the `<llms-link />` TagHelper by ensuring `@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility` is present in `Views/_ViewImports.cshtml` — the namespace-scoped form per [`docs/data-attributes.md`](docs/data-attributes.md), deliberately narrower than the wildcard so future internal types don't auto-register as adopter-facing TagHelpers. On a fresh `dotnet new umbraco` project the file is created with just that directive; on an existing project the directive is appended once and the target is idempotent thereafter — your existing scoping choice (wildcard, namespace-scoped, or a more-specific subset) is preserved as long as any directive referencing the `Umbraco.Community.AiVisibility` assembly is already present. Expect `Views/_ViewImports.cshtml` to show up as modified in `git status` after the first build; this is intentional and only happens once.
+
+For adopters who hit edge cases — stale `Umbraco.Community.AiVisibility` references in `_ViewImports.cshtml` blocking re-registration, `Areas/*` view layouts, or strict-clean-tree CI workflows — see [`docs/getting-started.md`](docs/getting-started.md) for the opt-out toggle (`<AiVisibilityDisableTagHelperAutoImport>`) and the grep-for-stale-references remedy.
+
 ## Zero-config quick-start
 
 After install, the Markdown surface is immediately reachable. Replace `/about/` with any published page on your site:

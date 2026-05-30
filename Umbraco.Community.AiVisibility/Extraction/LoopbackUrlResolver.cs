@@ -65,9 +65,18 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// </para>
 /// <para>
 /// <b>Scheme preference:</b> when both HTTP and HTTPS bindings are present,
-/// the resolver prefers the HTTP binding. Loopback inside the same kernel
-/// adds zero security value over HTTPS; the HTTP path also avoids the cert
-/// chain entirely on the loopback transport.
+/// the resolver prefers the HTTPS binding. Default <c>dotnet new umbraco</c>
+/// launchSettings declare both schemes, and
+/// <c>WebApplication.CreateBuilder</c> auto-registers
+/// <c>UseHttpsRedirection</c> which 307s every HTTP loopback request —
+/// picking HTTPS up-front avoids the redirect clash. Single-binding
+/// deployments (HTTP-only containers with TLS terminated upstream;
+/// HTTPS-only deployments) keep their existing behaviour unchanged.
+/// Preference is scheme-only (not order-sensitive): the first observed
+/// HTTPS binding wins regardless of position in the
+/// <c>IServerAddressesFeature.Addresses</c> list. If multiple HTTPS
+/// bindings are observed (e.g. dev + staging-style), first-observed-wins
+/// is the deterministic tie-break.
 /// </para>
 /// </remarks>
 internal sealed class LoopbackUrlResolver : ILoopbackUrlResolver
@@ -148,8 +157,9 @@ internal sealed class LoopbackUrlResolver : ILoopbackUrlResolver
         if (snapshot.Length > 0)
         {
             // Single-pass collect: track the first usable HTTP and the first
-            // usable HTTPS binding. Decide at the end so HTTP wins regardless
-            // of order in the list.
+            // usable HTTPS binding. Decide at the end so HTTPS wins regardless
+            // of order in the list — see <remarks> for the dev-launchSettings +
+            // HttpsRedirection rationale.
             Uri? firstHttp = null;
             Uri? firstHttps = null;
 
@@ -194,7 +204,7 @@ internal sealed class LoopbackUrlResolver : ILoopbackUrlResolver
                 }
             }
 
-            var chosen = firstHttp ?? firstHttps;
+            var chosen = firstHttps ?? firstHttp;
             if (chosen is not null)
             {
                 var target = new LoopbackTarget(chosen, IsLoopbackHost(chosen.Host));

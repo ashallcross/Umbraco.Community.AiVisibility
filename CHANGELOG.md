@@ -2,6 +2,28 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v1.1.2] — YYYY-MM-DD: Agency-site correctness + adoption friction
+
+Patch release — three correctness/defaults fixes surfaced when integrating v1.1.1 into a real agency-built Umbraco 17.4 site. No new features, no API changes, no breaking changes.
+
+### Fixed
+
+- **Auto-strategy now falls back to Loopback on view-activation hijacks**, not just model-binding hijacks. The `RenderController.CurrentTemplate(customViewModel)` pattern (a common agency convention where the view declares `@model CustomViewModel`) used to surface as `InvalidOperationException` from `RazorPagePropertyActivator.Activate`, which the Auto strategy classified as permanently-failed. Now it's recognised as a hijack and Loopback handles it. Pure widening of the predicate — no other Razor failure modes are affected. Restore the previous behaviour by pinning `AiVisibility:RenderStrategy:Mode = Razor`.
+
+### Added
+
+- **MSBuild target auto-registers the `<llms-link />` TagHelper.** Installing the package now ensures `@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility` exists in `Views/_ViewImports.cshtml`. Idempotent on existing projects (any directive referencing the `Umbraco.Community.AiVisibility` assembly is treated as already-registered; no duplicate appended); creates the file on a fresh `dotnet new umbraco` project. You may see `Views/_ViewImports.cshtml` modified in `git status` after the first build — this is expected. See README + [`docs/getting-started.md`](docs/getting-started.md) install sections for details.
+
+### Changed
+
+- **`LoopbackUrlResolver` now prefers HTTPS over HTTP when both Kestrel bindings are observed.** Previously the resolver picked HTTP first, which deterministically clashed with `WebApplication.CreateBuilder`'s auto-registered `UseHttpsRedirection` on default `dotnet new umbraco` launchSettings (every loopback request 307'd to HTTPS). HTTPS-first matches the dominant production deployment shape. Single-binding deployments (HTTP-only containers with TLS terminated upstream; HTTPS-only deployments) are unaffected. The `LoopbackBaseUrl` override remains the escape hatch.
+- **[`docs/data-attributes.md`](docs/data-attributes.md) TagHelper setup section** updated to document the auto-registration (the manual `@addTagHelper` instruction is no longer needed for the typical adopter path; the architectural rationale paragraph explaining the namespace-scoped choice stays as load-bearing context).
+
+### Migration from v1.1.1
+
+- No action required for the three fixes themselves. The existing `AiVisibility:RenderStrategy:Mode` + `AiVisibility:RenderStrategy:LoopbackBaseUrl` config keys remain the canonical escape hatches if the new defaults don't fit a specific deployment.
+- **Opt-out for the new TagHelper auto-registration:** set `<AiVisibilityDisableTagHelperAutoImport>true</AiVisibilityDisableTagHelperAutoImport>` in `Directory.Build.props` or the consuming `csproj` if you need a strict-clean-tree CI workflow, run an `Areas/*` view layout where the project-root `Views/_ViewImports.cshtml` doesn't apply, or want to manage the `@addTagHelper` directive yourself. Adopters who opt out are responsible for manually adding the directive — see [`docs/getting-started.md`](docs/getting-started.md) for the canonical form.
+
 ## [v1.1.1] — 2026-05-12: Marketplace + docs polish (no code changes)
 
 Patch release — same DLL, same Vite bundle, same DI graph, same config schema as v1.1.0. Refreshes the package's adopter-facing description text (csproj `<Description>` + Marketplace listing description), prunes Evil Martians wording across xmldoc / docs / README, refreshes the adopter docs against the v1.1.0 surface, and moves maintainer-only docs out of the public `docs/` tree so the adopter docs surface stays focused.

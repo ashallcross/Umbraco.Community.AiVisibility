@@ -128,6 +128,108 @@ public class AutoPageRendererStrategyTests
         });
     }
 
+    /// <summary>
+    /// View-activation-layer hijack — the second shape recognised by
+    /// <c>IsViewModelHijack</c>: an <see cref="InvalidOperationException"/>
+    /// raised by ASP.NET Core's <c>RazorPagePropertyActivator</c> when a
+    /// <c>RenderController</c> subclass returns
+    /// <c>CurrentTemplate(customViewModel)</c> against a view declared
+    /// <c>@model CustomViewModel</c>. Both the canonical message phrase AND
+    /// the canonical stack-frame token must be present (belt-and-braces) for
+    /// the predicate to match; the synthetic stack trace is supplied via the
+    /// nested <see cref="TestExceptionWithStackTrace"/> derived type because
+    /// NSubstitute cannot stub the value of <see cref="Exception.StackTrace"/>
+    /// on a substituted exception (the runtime only populates a real value
+    /// once the CLR actually throws); a derived type that overrides the
+    /// virtual <see cref="Exception.StackTrace"/> getter is the canonical
+    /// way to inject a synthetic stack trace.
+    /// </summary>
+    [Test]
+    public async Task RenderAsync_RazorFailsViewActivationHijack_FallsBackToLoopback_AndCachesDecision()
+    {
+        var content = StubPublishedContent(LandingDoctype, templateId: 42);
+        var razor = Substitute.For<IPageRendererStrategy>();
+        var loopback = Substitute.For<IPageRendererStrategy>();
+        var cache = Substitute.For<IRendererStrategyCache>();
+        var templateService = StubTemplateService(42, LandingTemplate);
+
+        // Canonical hijack shape from the real Orama / agency-built-site
+        // reproduction: message contains the ASP.NET Core view-activation
+        // phrase verbatim AND stack trace contains the RazorPagePropertyActivator
+        // type-name token. Both predicates must hold; either alone is not enough.
+        var hijackException = new TestExceptionWithStackTrace(
+            "The model item passed into the ViewDataDictionary is of type 'TestNs.IPublishedContent', but this ViewDataDictionary instance requires a model item of type 'TestNs.TestPageViewModel'.",
+            "   at Microsoft.AspNetCore.Mvc.Razor.RazorPagePropertyActivator.Activate(...)\n   at Microsoft.AspNetCore.Mvc.Razor.RazorViewEngine.RenderAsync(...)");
+        var razorFailed = PageRenderResult.Failed(hijackException, content, LandingTemplate, SampleCulture);
+        razor.RenderAsync(content, SampleUri, SampleCulture, Arg.Any<CancellationToken>()).Returns(razorFailed);
+
+        var loopbackOk = PageRenderResult.Ok("<html>loopback-ok</html>", content, LandingTemplate, SampleCulture);
+        loopback.RenderAsync(content, SampleUri, SampleCulture, Arg.Any<CancellationToken>()).Returns(loopbackOk);
+
+        var (auto, sp) = BuildStrategy(cache, templateService, razor, loopback);
+        using var spScope = sp;
+
+        var result = await auto.RenderAsync(content, SampleUri, SampleCulture, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.SameAs(loopbackOk),
+                "View-activation-layer hijack must trigger fallback; Loopback's result must be returned");
+            cache.Received(1).MarkHijacked(LandingDoctype, LandingTemplate);
+            cache.DidNotReceive().MarkRazorPermanentlyFailed(Arg.Any<string>(), Arg.Any<string>());
+            razor.Received(1).RenderAsync(content, SampleUri, SampleCulture, Arg.Any<CancellationToken>());
+            loopback.Received(1).RenderAsync(content, SampleUri, SampleCulture, Arg.Any<CancellationToken>());
+        });
+    }
+
+    /// <summary>
+    /// Negative guard — a generic <see cref="InvalidOperationException"/>
+    /// whose message does NOT contain the canonical view-activation phrase
+    /// AND whose stack trace does NOT contain the
+    /// <c>RazorPagePropertyActivator</c> token must NOT be classified as a
+    /// hijack. The narrow-trigger invariant: real programmer errors
+    /// (null derefs in custom rendering, transient context errors,
+    /// misconfigured view paths) must surface, NOT silently fall through to
+    /// Loopback. The tuple is cached as permanently-failed so subsequent
+    /// renders short-circuit at the step 2b cache-hit branch.
+    /// </summary>
+    [Test]
+    public async Task RenderAsync_RazorFailsGenericInvalidOperationException_StaysPermanentlyFailed()
+    {
+        var content = StubPublishedContent(LandingDoctype, templateId: 42);
+        var razor = Substitute.For<IPageRendererStrategy>();
+        var loopback = Substitute.For<IPageRendererStrategy>();
+        var cache = Substitute.For<IRendererStrategyCache>();
+        var templateService = StubTemplateService(42, LandingTemplate);
+
+        // Message differs from the canonical view-activation phrase AND
+        // (because we use the plain InvalidOperationException constructor,
+        // not the synthetic-stack-trace helper) the runtime-captured stack
+        // does not contain the RazorPagePropertyActivator token. Either
+        // shortfall alone is sufficient to disqualify the hijack predicate;
+        // having neither hold is the canonical negative.
+        var unrelatedException = new InvalidOperationException("transient Umbraco context error");
+        var razorFailed = PageRenderResult.Failed(unrelatedException, content, LandingTemplate, SampleCulture);
+        razor.RenderAsync(content, SampleUri, SampleCulture, Arg.Any<CancellationToken>()).Returns(razorFailed);
+
+        var (auto, sp) = BuildStrategy(cache, templateService, razor, loopback);
+        using var spScope = sp;
+
+        var result = await auto.RenderAsync(content, SampleUri, SampleCulture, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.SameAs(razorFailed),
+                "Generic InvalidOperationException must propagate verbatim — predicate must NOT widen to all IOEs");
+            Assert.That(result.Status, Is.EqualTo(PageRenderStatus.Error),
+                "Result status remains Error (the failure outcome)");
+            cache.Received(1).MarkRazorPermanentlyFailed(LandingDoctype, LandingTemplate);
+            cache.DidNotReceive().MarkHijacked(Arg.Any<string>(), Arg.Any<string>());
+            loopback.DidNotReceive().RenderAsync(
+                Arg.Any<IPublishedContent>(), Arg.Any<Uri>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        });
+    }
+
     [Test]
     public async Task RenderAsync_CacheHit_SkipsRazor_GoesStraightToLoopback()
     {
@@ -409,5 +511,27 @@ public class AutoPageRendererStrategyTests
         template.Alias.Returns(templateAlias);
         service.GetAsync(templateId).Returns(template);
         return service;
+    }
+
+    /// <summary>
+    /// NSubstitute cannot inject a synthetic <see cref="Exception.StackTrace"/>
+    /// value onto a substituted exception — the property is virtual on the
+    /// base type, but its real value is populated by the CLR at throw time,
+    /// so a substitute that was never thrown returns <c>null</c>. A derived
+    /// <c>InvalidOperationException</c> that overrides
+    /// <see cref="StackTrace"/> is the canonical shape for synthesising the
+    /// <c>RazorPagePropertyActivator</c> stack-frame token in
+    /// <c>IsViewModelHijack</c>'s predicate test.
+    /// </summary>
+    private sealed class TestExceptionWithStackTrace : InvalidOperationException
+    {
+        private readonly string _stackTrace;
+
+        public TestExceptionWithStackTrace(string message, string stackTrace) : base(message)
+        {
+            _stackTrace = stackTrace;
+        }
+
+        public override string? StackTrace => _stackTrace;
     }
 }

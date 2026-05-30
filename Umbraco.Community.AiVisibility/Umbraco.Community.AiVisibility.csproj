@@ -10,13 +10,13 @@
     <PackageId>Umbraco.Community.AiVisibility</PackageId>
     <Product>Umbraco.Community.AiVisibility</Product>
     <Title>AI Visibility for Umbraco</Title>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <Description>AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, and *.md page rendering. Auto-generates per-page Markdown at {url}.md, /llms.txt, and /llms-full.txt; surfaces an AI Traffic dashboard so editors can see who's reading the site; audits robots.txt against the AI-crawler list. Dual-strategy renderer (in-process Razor with HTTP loopback fallback) works on clean Umbraco installs and agency-built sites that hijack Razor with custom view models. Built for Umbraco v17+.</Description>
     <Authors>Adam Shallcross</Authors>
     <PackageTags>umbraco-marketplace;umbraco;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>v1.1.1 — Marketplace + docs polish (no code behaviour changes). See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.1.2 — agency-site correctness + adoption friction. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility.git</RepositoryUrl>
@@ -35,7 +35,7 @@
   <PropertyGroup>
     <!-- SHA-256 of the upstream snapshot we last reviewed. Refresh both this
          and ExpectedAiBotListFallbackSha256 in lockstep (see docs/maintenance.md). -->
-    <ExpectedAiBotListSha256>27e5fd38751c2bdf64994d91239f4a653614145def6103e7da8882929edc7bf0</ExpectedAiBotListSha256>
+    <ExpectedAiBotListSha256>d2e645e790e738eca2ad7d2a9117ede44cd5ea36171cb673674c63dfbd88e93b</ExpectedAiBotListSha256>
     <!-- SHA-256 of the committed fallback file. Verified at build time so the
          csproj pin and the on-disk fallback can never drift independently. When
          the fallback is byte-identical to upstream (the common case) this equals
@@ -43,7 +43,7 @@
          maintainer can deliberately ship a fallback that differs from upstream
          (e.g. during an upstream-broken interregnum) without losing the
          tampering-detection layer. -->
-    <ExpectedAiBotListFallbackSha256>27e5fd38751c2bdf64994d91239f4a653614145def6103e7da8882929edc7bf0</ExpectedAiBotListFallbackSha256>
+    <ExpectedAiBotListFallbackSha256>d2e645e790e738eca2ad7d2a9117ede44cd5ea36171cb673674c63dfbd88e93b</ExpectedAiBotListFallbackSha256>
     <AiBotListSourceUrl>https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt</AiBotListSourceUrl>
     <AiBotListFallback>$(MSBuildThisFileDirectory)Robots\AiBotList.fallback.txt</AiBotListFallback>
   </PropertyGroup>
@@ -173,6 +173,16 @@
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\README.md')" />
     <None Include="..\icon.png" Pack="true" PackagePath="\" Condition="Exists('..\icon.png')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- MSBuild auto-registers the TagHelper namespace in the consuming
+         project's Views/_ViewImports.cshtml on dotnet build. The targets
+         file ships under build/<TFM>/ so NuGet auto-imports it when the
+         package is referenced by a net10.0 project. -->
+    <None Include="build\net10.0\Umbraco.Community.AiVisibility.targets"
+          Pack="true"
+          PackagePath="build\net10.0\" />
   </ItemGroup>
 
 </Project>
