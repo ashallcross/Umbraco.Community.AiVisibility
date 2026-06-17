@@ -7,24 +7,30 @@
   <!-- Story 9.1 — Core library multi-target package versions (CPM approach (a)).
        Umbraco.Cms.Core + Umbraco.Cms.Infrastructure are TFM-conditional so the
        same Core source compiles against v13 (net8) and v17 (net10). The v17 ship
-       package + TestSite + Tests are net10-only and pick up the net10 row. -->
+       package + TestSite + Tests are net10-only and pick up the net10 row.
+       Story 9.2 — Umbraco.Cms.Web.Common + Umbraco.Cms.Web.Website are also
+       TFM-conditional now: the v13 shell (net8) references them at 13.14.0, the
+       v17 ship package (net10) at 17.3.2. They MUST NOT stay unconditional, or
+       the v13 net8 restore hits a duplicate-PackageVersion (NU1011) error. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageVersion Include="Umbraco.Cms.Core" Version="13.14.0" />
     <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="13.14.0" />
+    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="13.14.0" />
+    <PackageVersion Include="Umbraco.Cms.Web.Website" Version="13.14.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageVersion Include="Umbraco.Cms.Core" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="17.3.2" />
+    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="17.3.2" />
+    <PackageVersion Include="Umbraco.Cms.Web.Website" Version="17.3.2" />
   </ItemGroup>
   <ItemGroup>
     <!-- Umbraco core (TestSite host) -->
     <PackageVersion Include="Umbraco.Cms" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="17.3.2" />
-    <!-- Umbraco APIs (LlmsTxt.Umbraco package) -->
+    <!-- Umbraco APIs (v17 ship package only — Api.* does not exist for v13) -->
     <PackageVersion Include="Umbraco.Cms.Api.Common" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Api.Management" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.Web.Website" Version="17.3.2" />
     <!-- TestSite theme (Cogworks Clean Starter): meta-package "Clean" drives the
          demo-content package migration and install hooks; "Clean.Core" is the
          components library it depends on. Pinned in lockstep — both required. -->

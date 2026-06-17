@@ -49,6 +49,7 @@
          types directly — composers register internal default impls (e.g.
          DefaultSettingsResolver) by concrete type. -->
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility" />
+    <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.V13" />
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.Core.Tests" />
     <!-- The existing v17 test project keeps testing the moved types in place
          (zero-churn topology — see Story 9.1 Dev Agent Record / Open Question 2). -->

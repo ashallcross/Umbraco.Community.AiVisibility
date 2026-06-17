@@ -1,0 +1,153 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+    <!-- Root namespace stays the package family name; the V13-divergent source
+         (composers, jobs, sync migrations, health check) lives under the
+         .V13 sub-namespace. Compile-linked web files keep their original
+         Umbraco.Community.AiVisibility.* namespaces (hybrid shell strategy). -->
+    <RootNamespace>Umbraco.Community.AiVisibility.V13</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Umbraco.Community.AiVisibility.V13</PackageId>
+    <Product>Umbraco.Community.AiVisibility.V13</Product>
+    <Title>AI Visibility for Umbraco (v13 lite)</Title>
+    <Version>1.1.2</Version>
+    <Description>AI visibility for Umbraco v13 / .NET 8 — auto-generates per-page Markdown at {url}.md plus /llms.txt and /llms-full.txt manifests, negotiates Accept: text/markdown, advertises the Markdown alternate via Link header and &lt;link rel="alternate"&gt;, audits robots.txt against the AI-crawler list (health check), and logs AI traffic. The "lite" SKU for the most recent AngularJS-backoffice LTS: configure via appsettings.json and read the request log via SQL — no Settings or AI Traffic dashboards (those ship in the Umbraco v17+ package). Shares the same content-extraction engine as the v17 package.</Description>
+    <Authors>Adam Shallcross</Authors>
+    <PackageTags>umbraco-marketplace;umbraco;umbraco-v13;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>v1.1.2 — Umbraco v13 / .NET 8 "lite" SKU. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- v13 web-shell packages. NOT Umbraco.Cms.Api.* — that assembly family is
+         v14+ only and the lite SKU has no Management API surface. NOT the
+         Umbraco.Cms meta-package — that is for sites/TestSites, not a shell. -->
+    <PackageReference Include="Umbraco.Cms.Web.Common" />
+    <PackageReference Include="Umbraco.Cms.Web.Website" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Extraction pipeline libs. These are DIRECT refs (not transitive via
+         Core) on purpose: the Core ProjectReference below is PrivateAssets="all",
+         which suppresses Core's own AngleSharp/ReverseMarkdown/SmartReader
+         dependencies from the packed .nupkg. Without these direct refs the v13
+         package would bundle Core.dll but declare no extraction-lib dependency
+         and throw FileNotFoundException on first .md render. -->
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="ReverseMarkdown" />
+    <PackageReference Include="SmartReader" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.V13.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <!-- Story 9.2 — HYBRID shell-source strategy (Adam 2026-06-17).
+       Compile-link the byte-portable web files from the v17 ship package so
+       there is ONE source of truth (bug fixes land in both SKUs, zero drift).
+       These keep their original Umbraco.Community.AiVisibility.* namespaces.
+       The v13-DIVERGENT pieces (composers, IRecurringBackgroundJob jobs,
+       sync migrations, the GetStatus() health check) are authored fresh in
+       this project under the .V13.* namespace — NOT linked.
+       EXCLUDED from the link: Composing/ (fresh composers), Telemetry/ (fresh
+       jobs), Robots/ (fresh health check), Backoffice/ (no Management API on
+       v13), TypeForwarders.cs (v17-only binary compat), AiVisibilityComposer.cs
+       (fresh root composer). -->
+  <ItemGroup>
+    <Compile Include="..\Umbraco.Community.AiVisibility\Caching\**\*.cs" LinkBase="Caching" />
+    <Compile Include="..\Umbraco.Community.AiVisibility\Controllers\**\*.cs" LinkBase="Controllers" />
+    <Compile Include="..\Umbraco.Community.AiVisibility\Extraction\**\*.cs" LinkBase="Extraction" />
+    <Compile Include="..\Umbraco.Community.AiVisibility\LlmsTxt\**\*.cs" LinkBase="LlmsTxt" />
+    <Compile Include="..\Umbraco.Community.AiVisibility\Notifications\**\*.cs" LinkBase="Notifications" />
+    <Compile Include="..\Umbraco.Community.AiVisibility\Routing\**\*.cs" LinkBase="Routing" />
+    <!-- Copy-with-edit v13 variants (NOT linked): these v17 files reference
+         v14+/v17-only APIs absent on v13 — IDocumentNavigationQueryService
+         (Umbraco.Cms.Core.Services.Navigation) and ITemplateService. The v13
+         copies live under V13Variants/ with the API swapped to the v13
+         equivalent (IPublishedContentCache.GetAtRoot fallback / IFileService).
+         Reclassified from "link" to "copy-with-edit" during implementation —
+         see Spec Drift Notes. -->
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Caching\ContentCacheRefresherHandler.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\LlmsTxt\LlmsTxtController.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\LlmsTxt\LlmsFullTxtController.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Extraction\AutoPageRendererStrategy.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Extraction\RazorPageRendererStrategy.cs" />
+  </ItemGroup>
+
+  <!-- Composers: link the ones that only wire Core + web impls (they reference
+       the v13-variant types by namespace, so they bind correctly). Author fresh
+       v13 variants for the divergent ones: NotificationsComposer + RobotsComposer
+       (register IDistributedBackgroundJob, v17-only → IRecurringBackgroundJob on
+       v13), SettingsComposer (references the net10-only Core migration plan →
+       v13 sync plan). SKIP BackofficeApiComposer (no Management API on v13) and
+       the root AiVisibilityComposer is authored fresh. -->
+  <ItemGroup>
+    <Compile Include="..\Umbraco.Community.AiVisibility\Composing\**\*.cs" LinkBase="Composing" />
+    <!-- Linked clean: RoutingComposer, BuildersComposer. v13 variants authored
+         under V13Variants/ (Composing): -->
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Composing\BackofficeApiComposer.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Composing\CachingComposer.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Composing\NotificationsComposer.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Composing\RobotsComposer.cs" />
+    <Compile Remove="..\Umbraco.Community.AiVisibility\Composing\SettingsComposer.cs" />
+    <!-- Root composer links clean (registers LegacyConfigurationProbe). -->
+    <Compile Include="..\Umbraco.Community.AiVisibility\AiVisibilityComposer.cs" Link="AiVisibilityComposer.cs" />
+  </ItemGroup>
+
+  <!-- Story 9.2 — the v13 ship package consumes the extracted HTTP-agnostic
+       business logic from Core via ProjectReference (mirrors the v17 package).
+       PrivateAssets="all" suppresses the auto-generated NuGet <dependency> on an
+       (unpublished) Core package; Core.dll is bundled into the v13 .nupkg
+       instead (IncludeCoreAssemblyInPackage target below) so the package is
+       self-contained. Story 9.4 owns the final bundle-vs-separate-NuGet decision. -->
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeCoreAssemblyInPackage</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Umbraco.Community.AiVisibility.Core\Umbraco.Community.AiVisibility.Core.csproj" PrivateAssets="all" />
+  </ItemGroup>
+  <Target Name="IncludeCoreAssemblyInPackage">
+    <PropertyGroup>
+      <_CoreAssemblyToBundle>$(OutputPath)Umbraco.Community.AiVisibility.Core.dll</_CoreAssemblyToBundle>
+    </PropertyGroup>
+    <!-- Fail the pack loudly rather than shipping a .nupkg silently missing
+         Core.dll (the package would then throw TypeLoadException at runtime). -->
+    <Error Condition="!Exists('$(_CoreAssemblyToBundle)')"
+           Text="AiVisibility.V13: expected the bundled Core assembly at '$(_CoreAssemblyToBundle)' but it was not found — the v13 package would ship without its Core dependency. Build the solution before packing." />
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(_CoreAssemblyToBundle)" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\README.md')" />
+    <None Include="..\icon.png" Pack="true" PackagePath="\" Condition="Exists('..\icon.png')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- MSBuild auto-registers the TagHelper namespace in the consuming project's
+         Views/_ViewImports.cshtml on dotnet build. Ships under build/net8.0/ so
+         NuGet auto-imports it when the package is referenced by a net8.0 project.
+         The directive uses the V13 ASSEMBLY name with the (compile-linked)
+         TagHelpers' original namespace — authored in Task 8. -->
+    <None Include="build\net8.0\Umbraco.Community.AiVisibility.V13.targets"
+          Pack="true"
+          PackagePath="build\net8.0\" />
+  </ItemGroup>
+
+</Project>

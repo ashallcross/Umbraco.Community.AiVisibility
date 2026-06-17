@@ -1,0 +1,68 @@
+<Project>
+  <!--
+    v13 SKU TagHelper auto-registration (Story 9.2). A COPY of the v17
+    build/net10.0/Umbraco.Community.AiVisibility.targets with v13 identifiers —
+    NOT a shared file (per the Epic 9 boundary contract). Ships under
+    build/net8.0/ so NuGet auto-imports it when the V13 package is referenced
+    by a net8.0 project.
+
+    The injected directive uses the V13 ASSEMBLY name with the (compile-linked)
+    TagHelpers' ORIGINAL namespace Umbraco.Community.AiVisibility.LlmsTxt — the
+    hybrid shell links the v17 TagHelper source unchanged, so they keep that
+    namespace while living in the Umbraco.Community.AiVisibility.V13 assembly.
+
+    Idempotency token is the V13 assembly name "Umbraco.Community.AiVisibility.V13"
+    — distinct from the v17 token so a (unsupported, MinimumUmbracoVersion-gated)
+    co-install would register each independently. See the v17 targets file for the
+    full rationale on the idempotency substring check, Razor input timing, and the
+    self-exclusion / opt-out behaviour, all of which this file mirrors.
+  -->
+  <Target Name="AiVisibilityV13EnsureTagHelperImport"
+          BeforeTargets="ResolveRazorGenerateInputs"
+          Condition=" '$(MSBuildProjectName)' != 'Umbraco.Community.AiVisibility.V13'
+                  AND '$(AiVisibilityDisableTagHelperAutoImport)' != 'true' ">
+
+    <PropertyGroup>
+      <_AiVisibilityViewImports>$(MSBuildProjectDirectory)/Views/_ViewImports.cshtml</_AiVisibilityViewImports>
+      <_AiVisibilityDirective>@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility.V13</_AiVisibilityDirective>
+      <_AiVisibilityAssemblyToken>Umbraco.Community.AiVisibility.V13</_AiVisibilityAssemblyToken>
+      <_AiVisibilityFileExistedAtStart Condition="Exists('$(_AiVisibilityViewImports)')">true</_AiVisibilityFileExistedAtStart>
+      <_AiVisibilityFileExistedAtStart Condition="!Exists('$(_AiVisibilityViewImports)')">false</_AiVisibilityFileExistedAtStart>
+    </PropertyGroup>
+
+    <ReadLinesFromFile File="$(_AiVisibilityViewImports)"
+                       Condition="Exists('$(_AiVisibilityViewImports)')">
+      <Output TaskParameter="Lines" ItemName="_AiVisibilityExistingLines" />
+    </ReadLinesFromFile>
+
+    <PropertyGroup Condition="Exists('$(_AiVisibilityViewImports)')">
+      <_AiVisibilityExistingText>@(_AiVisibilityExistingLines, '%0A')</_AiVisibilityExistingText>
+      <_AiVisibilityAlreadyRegistered>$(_AiVisibilityExistingText.Contains('$(_AiVisibilityAssemblyToken)'))</_AiVisibilityAlreadyRegistered>
+    </PropertyGroup>
+
+    <!-- Branch 1b: file exists + token missing → rewrite with the directive
+         appended on its own line (property-string Lines preserves the literal
+         '*' that an Include attribute would mis-glob). Branch 1a (token present)
+         is the silent no-op. -->
+    <PropertyGroup Condition="Exists('$(_AiVisibilityViewImports)') AND '$(_AiVisibilityAlreadyRegistered)' == 'False'">
+      <_AiVisibilityRewriteContent>$(_AiVisibilityExistingText)%0A$(_AiVisibilityDirective)</_AiVisibilityRewriteContent>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_AiVisibilityViewImports)"
+                      Lines="$(_AiVisibilityRewriteContent)"
+                      Overwrite="true"
+                      Condition="Exists('$(_AiVisibilityViewImports)') AND '$(_AiVisibilityAlreadyRegistered)' == 'False'" />
+
+    <!-- Branch 2: file does NOT exist → create it containing only the directive. -->
+    <WriteLinesToFile File="$(_AiVisibilityViewImports)"
+                      Lines="$(_AiVisibilityDirective)"
+                      Overwrite="true"
+                      Condition="!Exists('$(_AiVisibilityViewImports)')" />
+
+    <!-- Fresh-create only: fold the new file into the Razor input set (the SDK
+         glob already ran before this target). Existing files are already picked
+         up — skip to avoid double-including. -->
+    <ItemGroup Condition="'$(_AiVisibilityFileExistedAtStart)' == 'false'">
+      <Content Include="$(_AiVisibilityViewImports)" />
+    </ItemGroup>
+  </Target>
+</Project>

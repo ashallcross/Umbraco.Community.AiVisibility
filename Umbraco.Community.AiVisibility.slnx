@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="Umbraco.Community.AiVisibility.Core/Umbraco.Community.AiVisibility.Core.csproj" />
   <Project Path="Umbraco.Community.AiVisibility.Core.Tests/Umbraco.Community.AiVisibility.Core.Tests.csproj" />
+  <Project Path="Umbraco.Community.AiVisibility.V13/Umbraco.Community.AiVisibility.V13.csproj" />
+  <Project Path="Umbraco.Community.AiVisibility.V13.Tests/Umbraco.Community.AiVisibility.V13.Tests.csproj" />
   <Project Path="Umbraco.Community.AiVisibility.Tests/Umbraco.Community.AiVisibility.Tests.csproj" />
   <Project Path="Umbraco.Community.AiVisibility.TestSite/Umbraco.Community.AiVisibility.TestSite.csproj" />
   <Project Path="Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj" />

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- V13.Tests runs on net8.0 (the v13 shell TFM). It exercises the V13
+         shell's DI wiring, recurring jobs, and sync migrations. The full
+         integration/smoke suite + V13 TestSite are Story 9.3. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Umbraco.Community.AiVisibility.V13\Umbraco.Community.AiVisibility.V13.csproj" />
+    <!-- V13 references Core with PrivateAssets="all" (bundled, not flowed), so the
+         test project references Core directly for the shared config/types. -->
+    <ProjectReference Include="..\Umbraco.Community.AiVisibility.Core\Umbraco.Community.AiVisibility.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+</Project>
