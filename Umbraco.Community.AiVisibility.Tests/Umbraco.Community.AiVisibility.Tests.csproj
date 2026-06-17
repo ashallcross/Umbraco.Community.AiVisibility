@@ -28,6 +28,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Umbraco.Community.AiVisibility\Umbraco.Community.AiVisibility.csproj" />
+    <!-- Story 9.1 — the v17 package references Core with PrivateAssets="all" (so the
+         .nupkg carries no dangling Core dependency), which hides Core from transitive
+         consumers. The test project tests moved Core types directly, so it references
+         Core explicitly. Core grants InternalsVisibleTo to this project. -->
+    <ProjectReference Include="..\Umbraco.Community.AiVisibility.Core\Umbraco.Community.AiVisibility.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

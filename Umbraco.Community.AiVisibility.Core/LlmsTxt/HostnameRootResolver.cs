@@ -3,7 +3,9 @@ using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.Services;
+#if NET10_0
 using Umbraco.Cms.Core.Services.Navigation;
+#endif
 using Umbraco.Cms.Core.Web;
 
 namespace Umbraco.Community.AiVisibility.LlmsTxt;
@@ -37,18 +39,31 @@ public sealed class HostnameRootResolver : IHostnameRootResolver
 
     private readonly IDomainService _domainService;
     private readonly ILocalizationService _localizationService;
+#if NET10_0
+    // === v13/net8 multi-target shim (Story 9.1, Epic 9) ===
+    // v17 discovers root content via IDocumentNavigationQueryService;
+    // IPublishedContentCache.GetAtRoot() is [Obsolete] and off-interface on v17.
+    // Umbraco v13 (net8) has no IDocumentNavigationQueryService and uses
+    // GetAtRoot() instead — see the #else branches below. When the net8.0/v13
+    // target is retired, DELETE every "#if NET10_0 / #else / #endif" block in
+    // this file and keep only the v17 path.
     private readonly IDocumentNavigationQueryService _navigation;
+#endif
     private readonly ILogger<HostnameRootResolver> _logger;
 
     public HostnameRootResolver(
         IDomainService domainService,
         ILocalizationService localizationService,
+#if NET10_0
         IDocumentNavigationQueryService navigation,
+#endif
         ILogger<HostnameRootResolver> logger)
     {
         _domainService = domainService;
         _localizationService = localizationService;
+#if NET10_0
         _navigation = navigation;
+#endif
         _logger = logger;
     }
 
@@ -100,6 +115,10 @@ public sealed class HostnameRootResolver : IHostnameRootResolver
         // path (IPublishedContentCache.GetAtRoot is marked [Obsolete] and not on
         // the interface).
         var defaultCulture = GetDefaultCulture();
+
+        IPublishedContent? fallbackRoot = null;
+#if NET10_0
+        // v17 root-node fallback — IDocumentNavigationQueryService.TryGetRootKeys.
         if (!_navigation.TryGetRootKeys(out var rootKeys))
         {
             _logger.LogWarning(
@@ -108,7 +127,6 @@ public sealed class HostnameRootResolver : IHostnameRootResolver
             return HostnameRootResolution.NotFound();
         }
 
-        IPublishedContent? fallbackRoot = null;
         foreach (var rootKey in rootKeys)
         {
             fallbackRoot = publishedSnapshot.GetById(rootKey);
@@ -117,6 +135,16 @@ public sealed class HostnameRootResolver : IHostnameRootResolver
                 break;
             }
         }
+#else
+        // v13 root-node fallback — IPublishedContentCache.GetAtRoot(culture) (the
+        // supported API on Umbraco 13). Pass the resolved default culture so the
+        // fallback root matches the culture this method returns (Found(..,
+        // defaultCulture)) — parity with the v17 path's intent. Fall back to the
+        // uncultured roots if an install's default-language lookup returns empty.
+        // Delete this branch when the net8.0/v13 target is retired.
+        fallbackRoot = publishedSnapshot.GetAtRoot(defaultCulture).FirstOrDefault()
+                       ?? publishedSnapshot.GetAtRoot().FirstOrDefault();
+#endif
 
         if (fallbackRoot is null)
         {

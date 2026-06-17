@@ -1,0 +1,175 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Story 9.1 — Core library extraction. Multi-target net8.0 (Umbraco v13 LTS)
+         + net10.0 (Umbraco v17). Plain Microsoft.NET.Sdk: Core has no views,
+         static assets, or client bundle (the Razor SDK stays in the v17 ship
+         package). See project-context.md § Technology Stack. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- Refactor-only extraction: keep the assembly identity stable so the v17
+         package's transitive public surface is unchanged. -->
+    <AssemblyName>Umbraco.Community.AiVisibility.Core</AssemblyName>
+    <RootNamespace>Umbraco.Community.AiVisibility</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Core depends on the HTTP-agnostic Umbraco framework layer only:
+       Umbraco.Cms.Core (models, services, routing, cache, notifications) +
+       Umbraco.Cms.Infrastructure (NPoco persistence/scoping, migrations,
+       background jobs). Per the Epic 9 boundary contract (epics.md:2677) Core
+       MUST NOT reference Umbraco.Cms.Web.* / Umbraco.Cms.Api.* (the web
+       pipeline). Versions are TFM-conditional via CPM approach (a) in the
+       shared Directory.Packages.props (13.14.0 for net8 / 17.3.2 for net10). -->
+  <ItemGroup>
+    <PackageReference Include="Umbraco.Cms.Core" />
+    <PackageReference Include="Umbraco.Cms.Infrastructure" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Markdown extraction pipeline (HTML-shape-agnostic; netstandard libs,
+         identical on both TFMs). -->
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="ReverseMarkdown" />
+    <PackageReference Include="SmartReader" />
+  </ItemGroup>
+
+  <!-- Story 9.1 AC4/Open-Question-5 — the package migrations inherit
+       AsyncMigrationBase (Umbraco.Cms.Infrastructure.Migrations), which is ABSENT
+       on Umbraco v13 / net8 (Story 9.0 § (a) Probe 6). They are v17 schema
+       migrations; a fresh v13 install gets its own sync-MigrationBase variants
+       authored in Story 9.2. Exclude them from the net8 compile (cleanest — no
+       #if). The net10 target still compiles + auto-discovers them. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <Compile Remove="Persistence\Migrations\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The v17 (and, from Story 9.2, v13) ship package consumes Core's internal
+         types directly — composers register internal default impls (e.g.
+         DefaultSettingsResolver) by concrete type. -->
+    <InternalsVisibleTo Include="Umbraco.Community.AiVisibility" />
+    <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.Core.Tests" />
+    <!-- The existing v17 test project keeps testing the moved types in place
+         (zero-churn topology — see Story 9.1 Dev Agent Record / Open Question 2). -->
+    <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <!--
+    Story 4.2 / moved to Core in Story 9.1 — build-time AI-bot-list sync.
+    Source of truth: ai-robots-txt/ai.robots.txt. The embedded resource + its
+    SHA-pin tampering-protection layers live in the SAME assembly that
+    DefaultRobotsAuditor reads them from (Core). The logical resource name
+    `Umbraco.Community.AiVisibility.Robots.AiBotList.txt` is kept byte-identical so
+    Assembly.GetManifestResourceStream resolves against the Core assembly. See
+    docs/maintenance.md (path reference updated in Story 9.4 docs sweep).
+  -->
+  <PropertyGroup>
+    <ExpectedAiBotListSha256>d2e645e790e738eca2ad7d2a9117ede44cd5ea36171cb673674c63dfbd88e93b</ExpectedAiBotListSha256>
+    <ExpectedAiBotListFallbackSha256>d2e645e790e738eca2ad7d2a9117ede44cd5ea36171cb673674c63dfbd88e93b</ExpectedAiBotListFallbackSha256>
+    <AiBotListSourceUrl>https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt</AiBotListSourceUrl>
+    <AiBotListFallback>$(MSBuildThisFileDirectory)Robots\AiBotList.fallback.txt</AiBotListFallback>
+  </PropertyGroup>
+
+  <!-- The committed fallback file is NOT packed (it gets embedded as a resource
+       via the SyncAiBotList target). -->
+  <ItemGroup>
+    <None Include="Robots\AiBotList.fallback.txt" Pack="false" />
+  </ItemGroup>
+
+  <!-- Tampering protection layer 1: the committed fallback file's SHA-256 MUST
+       match the pinned ExpectedAiBotListFallbackSha256. -->
+  <Target Name="VerifyAiBotListFallbackHash" BeforeTargets="BeforeBuild">
+    <GetFileHash Files="$(AiBotListFallback)" Algorithm="SHA256" HashEncoding="hex">
+      <Output TaskParameter="Hash" PropertyName="_AiBotListFallbackSha" />
+    </GetFileHash>
+    <PropertyGroup>
+      <_AiBotListFallbackShaLower>$(_AiBotListFallbackSha.ToLowerInvariant())</_AiBotListFallbackShaLower>
+      <_ExpectedAiBotListFallbackShaLower>$(ExpectedAiBotListFallbackSha256.ToLowerInvariant())</_ExpectedAiBotListFallbackShaLower>
+    </PropertyGroup>
+    <Error Condition="'$(_AiBotListFallbackShaLower)' != '$(_ExpectedAiBotListFallbackShaLower)'"
+           Text="AiVisibility: AI bot list FALLBACK SHA mismatch — expected $(_ExpectedAiBotListFallbackShaLower), got $(_AiBotListFallbackShaLower). Refresh ExpectedAiBotListFallbackSha256 in the csproj alongside the fallback file (see docs/maintenance.md)." />
+  </Target>
+
+  <Target Name="SyncAiBotList" BeforeTargets="BeforeBuild" DependsOnTargets="VerifyAiBotListFallbackHash">
+    <PropertyGroup>
+      <_AiBotListEmbed>$(IntermediateOutputPath)AiBotList.embed.txt</_AiBotListEmbed>
+      <_AiBotListFetched>$(IntermediateOutputPath)AiBotList.fetched.txt</_AiBotListFetched>
+      <_ExpectedAiBotListShaLower>$(ExpectedAiBotListSha256.ToLowerInvariant())</_ExpectedAiBotListShaLower>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+
+    <Delete Files="$(_AiBotListFetched)" Condition="Exists('$(_AiBotListFetched)')" />
+
+    <DownloadFile SourceUrl="$(AiBotListSourceUrl)"
+                  DestinationFolder="$(IntermediateOutputPath)"
+                  DestinationFileName="AiBotList.fetched.txt"
+                  Timeout="5000"
+                  Retries="0"
+                  SkipUnchangedFiles="false"
+                  ContinueOnError="WarnAndContinue">
+      <Output TaskParameter="DownloadedFile" ItemName="_FetchedAiBotList" />
+    </DownloadFile>
+
+    <GetFileHash Files="@(_FetchedAiBotList)"
+                 Algorithm="SHA256"
+                 HashEncoding="hex"
+                 Condition="'@(_FetchedAiBotList)' != ''">
+      <Output TaskParameter="Hash" PropertyName="_FetchedAiBotListSha" />
+    </GetFileHash>
+
+    <PropertyGroup Condition="'$(_FetchedAiBotListSha)' != ''">
+      <_FetchedAiBotListShaLower>$(_FetchedAiBotListSha.ToLowerInvariant())</_FetchedAiBotListShaLower>
+    </PropertyGroup>
+
+    <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == ''"
+           Text="AiVisibility: AI bot list fetch produced an unreadable or zero-byte file at $(_AiBotListFetched). Network or proxy may be returning truncated content; investigate before bumping the pinned SHA." />
+
+    <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' != '' AND '$(_FetchedAiBotListShaLower)' != '$(_ExpectedAiBotListShaLower)'"
+           Text="AiVisibility: AI bot list SHA mismatch — expected $(_ExpectedAiBotListShaLower), got $(_FetchedAiBotListShaLower). Refresh the pinned SHA via docs/maintenance.md after reviewing the upstream change." />
+
+    <Copy SourceFiles="@(_FetchedAiBotList)"
+          DestinationFiles="$(_AiBotListEmbed)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
+    <Message Importance="High"
+             Text="AiVisibility: AI bot list synced from upstream (SHA $(_FetchedAiBotListShaLower))."
+             Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
+
+    <Copy SourceFiles="$(AiBotListFallback)"
+          DestinationFiles="$(_AiBotListEmbed)"
+          SkipUnchangedFiles="false"
+          Condition="'@(_FetchedAiBotList)' == ''" />
+    <Warning Text="AiVisibility: Falling back to AiBotList.fallback.txt — upstream fetch failed (network unreachable, timeout, or HTTP non-2xx). Build is offline-safe."
+             Condition="'@(_FetchedAiBotList)' == ''" />
+
+    <ItemGroup>
+      <EmbeddedResource Include="$(_AiBotListEmbed)"
+                        LogicalName="Umbraco.Community.AiVisibility.Robots.AiBotList.txt" />
+    </ItemGroup>
+  </Target>
+
+  <!-- AC3 — compile-time dependency-boundary guard. Fails the build if Core's
+       resolved references include any forbidden web/API assembly. Permanent
+       fixture: protects against future drift (Story 9.2 v13 shell + the v17
+       consumer must not be able to sneak a web reference back into Core). -->
+  <Target Name="GuardCoreDependencyBoundary" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <!-- Forbid the Umbraco web/API pipeline AND the ASP.NET Core web pipeline
+           (Mvc / Http / Routing / Hosting / Authentication / Authorization …).
+           Microsoft.AspNetCore.Cryptography.* is explicitly allowed — it is a
+           password-hashing utility pulled transitively by Umbraco.Cms.Infrastructure,
+           NOT a web-pipeline assembly. -->
+      <_ForbiddenCoreReference Include="@(ReferencePath)" Condition="
+        $([System.String]::Copy('%(FileName)').StartsWith('Umbraco.Cms.Web')) Or
+        $([System.String]::Copy('%(FileName)').StartsWith('Umbraco.Cms.Api')) Or
+        ($([System.String]::Copy('%(FileName)').StartsWith('Microsoft.AspNetCore')) And
+         !$([System.String]::Copy('%(FileName)').StartsWith('Microsoft.AspNetCore.Cryptography')))" />
+    </ItemGroup>
+    <Error Condition="'@(_ForbiddenCoreReference)' != ''"
+           Text="AiVisibility.Core boundary violation (Epic 9 boundary contract, epics.md:2677): Core resolved a forbidden web/API reference: @(_ForbiddenCoreReference->'%(FileName)', ', '). Re-classify the offending file as STAYS-IN-V17 or SPLIT-NEEDED." />
+  </Target>
+
+</Project>

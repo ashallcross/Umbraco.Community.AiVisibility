@@ -5,7 +5,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Cache;
 using Umbraco.Cms.Core.Models.PublishedContent;
+#if NET10_0
 using Umbraco.Cms.Core.Services.Navigation;
+#endif
 using Umbraco.Cms.Core.Web;
 using Umbraco.Extensions;
 
@@ -64,7 +66,14 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
 
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly IUmbracoContextAccessor _umbracoContextAccessor;
+#if NET10_0
+    // === v13/net8 multi-target shim (Story 9.1, Epic 9) ===
+    // v17 walks root content via IDocumentNavigationQueryService; v13 (net8) has
+    // no such service and uses IPublishedContentCache.GetAtRoot() (see the #else
+    // branch below). When the net8.0/v13 target is retired, DELETE every
+    // "#if NET10_0 / #else / #endif" block in this file and keep the v17 path.
     private readonly IDocumentNavigationQueryService _navigation;
+#endif
     private readonly AppCaches _appCaches;
     private readonly ILogger<DefaultSettingsResolver> _logger;
 
@@ -94,13 +103,17 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
     public DefaultSettingsResolver(
         IOptionsMonitor<AiVisibilitySettings> settings,
         IUmbracoContextAccessor umbracoContextAccessor,
+#if NET10_0
         IDocumentNavigationQueryService navigation,
+#endif
         AppCaches appCaches,
         ILogger<DefaultSettingsResolver> logger)
     {
         _settings = settings;
         _umbracoContextAccessor = umbracoContextAccessor;
+#if NET10_0
         _navigation = navigation;
+#endif
         _appCaches = appCaches;
         _logger = logger;
     }
@@ -131,14 +144,20 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
         // on the public surface for adopter implementations that DO want
         // per-host overlays (TryAddScoped extension point per AC8).
         var cacheKey = AiVisibilityCacheKeys.Settings(culture);
-        var resolved = _appCaches.RuntimeCache.GetCacheItem<ResolvedLlmsSettings>(
+        // Story 9.1 AC5 — use the IAppPolicyCache.Get(...) member (resolves clean
+        // on both net8/v13 and net10/v17) rather than the GetCacheItem<T>
+        // extension (Story 9.0 found it did not resolve on net10 with
+        // `using Umbraco.Cms.Core.Cache;` alone). Behaviour is byte-equivalent:
+        // same cache key, same RuntimeCache policy, same TTL/eviction — Get(...)
+        // is exactly what GetCacheItem<T> delegates to internally.
+        var resolved = _appCaches.RuntimeCache.Get(
             cacheKey,
-            () => BuildSnapshot(hostname, culture, settings),
-            timeout: TimeSpan.FromSeconds(ttlSeconds));
+            () => (object?)BuildSnapshot(hostname, culture, settings),
+            timeout: TimeSpan.FromSeconds(ttlSeconds)) as ResolvedLlmsSettings;
 
-        // GetCacheItem<T>'s factory delegate is non-null in our usage; the
-        // returned value can only be null if a previous call cached null
-        // (we never do). Defensive non-null guard for the static analyser.
+        // The factory delegate is non-null in our usage; the returned value can
+        // only be null if a previous call cached null (we never do). Defensive
+        // non-null guard for the static analyser.
         return Task.FromResult(resolved ?? BuildSnapshot(hostname, culture, settings));
     }
 
@@ -174,6 +193,10 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
             return BuildAppsettingsOnly(settings);
         }
 
+        IPublishedContent? settingsNode = null;
+#if NET10_0
+        // v17 — walk root keys via IDocumentNavigationQueryService, resolve each
+        // from the published cache, and match the settings doctype alias.
         if (!_navigation.TryGetRootKeys(out var rootKeys))
         {
             _logger.LogTrace(
@@ -183,7 +206,6 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
             return BuildAppsettingsOnly(settings);
         }
 
-        IPublishedContent? settingsNode = null;
         foreach (var rootKey in rootKeys)
         {
             var node = publishedSnapshot.GetById(rootKey);
@@ -194,6 +216,19 @@ internal sealed class DefaultSettingsResolver : ISettingsResolver
                 break;
             }
         }
+#else
+        // v13 — IPublishedContentCache.GetAtRoot() returns published roots
+        // directly. Delete this branch when the net8.0/v13 target is retired.
+        foreach (var node in publishedSnapshot.GetAtRoot())
+        {
+            if (node is not null
+                && string.Equals(node.ContentType.Alias, SettingsDoctypeAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                settingsNode = node;
+                break;
+            }
+        }
+#endif
 
         if (settingsNode is null)
         {
