@@ -340,6 +340,14 @@ public sealed class RobotsAuditHealthCheck : HealthCheck
                     continue;
                 }
 
+                if (domain.IsWildcard || domain.DomainName.StartsWith("*.", StringComparison.Ordinal))
+                {
+                    _logger.LogTrace(
+                        "Robots audit health check: skipping wildcard IDomain {DomainName} — audit requires a concrete hostname",
+                        domain.DomainName);
+                    continue;
+                }
+
                 if (!Uri.TryCreate(domain.DomainName, UriKind.Absolute, out var absolute))
                 {
                     if (!Uri.TryCreate($"https://{domain.DomainName}", UriKind.Absolute, out absolute))

@@ -1,10 +1,7 @@
 using Umbraco.Community.AiVisibility.Configuration;
-using Umbraco.Community.AiVisibility.V13.Persistence.Migrations;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
-using Umbraco.Extensions;
 
 namespace Umbraco.Community.AiVisibility.Composing;
 
@@ -24,8 +21,10 @@ namespace Umbraco.Community.AiVisibility.Composing;
 /// <see cref="Umbraco.Cms.Core.Packaging.PackageMigrationPlan"/> discovered by
 /// <c>TypeLoader.GetPackageMigrationPlans</c>. Our composer therefore inverts
 /// the obvious shape: it does NOT call <c>Add&lt;AiVisibilityPackageMigrationPlan&gt;()</c>
-/// (the framework already does); it calls <c>Remove&lt;AiVisibilityPackageMigrationPlan&gt;()</c>
-/// when <see cref="MigrationsSettings.SkipSettingsDoctype"/> is <c>true</c>.
+/// (the framework already does). Unlike the shipped v17 composer, the v13 SKU
+/// keeps the plan registered when <see cref="MigrationsSettings.SkipSettingsDoctype"/>
+/// is <c>true</c>; the doctype step self-skips so the request-log table still
+/// migrates.
 /// </para>
 /// <para>
 /// Spec Drift Note logged in the story spec — the original spec text
@@ -51,19 +50,9 @@ public sealed class SettingsComposer : IComposer
         // SettingsComposerTests.Compose_StartupValidation_LlmsSettingsResolver_NoCaptiveDependency.
         builder.Services.TryAddScoped<ISettingsResolver, DefaultSettingsResolver>();
 
-        // Migration-plan auto-discovery via TypeLoader → opt-out only.
-        // Read the flag directly from IConfiguration; the AiVisibilitySettings
-        // binding may not yet be wired at composer time (RoutingComposer
-        // binds it independently — composer order is "default suffices",
-        // architecture line 637).
-        var skipDoctype = builder.Config
-            .GetSection(AiVisibilitySettings.SectionName)
-            .GetSection("Migrations")
-            .GetValue<bool>(nameof(MigrationsSettings.SkipSettingsDoctype));
-
-        if (skipDoctype)
-        {
-            builder.PackageMigrationPlans().Remove<AiVisibilityPackageMigrationPlan>();
-        }
+        // Migration-plan auto-discovery via TypeLoader. The v13 migration step
+        // itself reads AiVisibility:Migrations:SkipSettingsDoctype and skips only
+        // the doctype/composition. Do not remove the whole plan here: the same
+        // plan also creates aiVisibilityRequestLog, which uSync does not own.
     }
 }

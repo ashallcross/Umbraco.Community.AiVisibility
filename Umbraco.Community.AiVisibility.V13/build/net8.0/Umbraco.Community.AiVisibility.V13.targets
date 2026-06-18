@@ -24,6 +24,7 @@
 
     <PropertyGroup>
       <_AiVisibilityViewImports>$(MSBuildProjectDirectory)/Views/_ViewImports.cshtml</_AiVisibilityViewImports>
+      <_AiVisibilityViewsDirectory>$(MSBuildProjectDirectory)/Views</_AiVisibilityViewsDirectory>
       <_AiVisibilityDirective>@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility.V13</_AiVisibilityDirective>
       <_AiVisibilityAssemblyToken>Umbraco.Community.AiVisibility.V13</_AiVisibilityAssemblyToken>
       <_AiVisibilityFileExistedAtStart Condition="Exists('$(_AiVisibilityViewImports)')">true</_AiVisibilityFileExistedAtStart>
@@ -53,6 +54,8 @@
                       Condition="Exists('$(_AiVisibilityViewImports)') AND '$(_AiVisibilityAlreadyRegistered)' == 'False'" />
 
     <!-- Branch 2: file does NOT exist → create it containing only the directive. -->
+    <MakeDir Directories="$(_AiVisibilityViewsDirectory)"
+             Condition="!Exists('$(_AiVisibilityViewImports)') AND !Exists('$(_AiVisibilityViewsDirectory)')" />
     <WriteLinesToFile File="$(_AiVisibilityViewImports)"
                       Lines="$(_AiVisibilityDirective)"
                       Overwrite="true"

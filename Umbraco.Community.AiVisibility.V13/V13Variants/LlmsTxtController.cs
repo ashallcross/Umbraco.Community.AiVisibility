@@ -45,6 +45,7 @@ public sealed class LlmsTxtController : Controller
     private readonly IHreflangVariantsResolver _hreflangResolver;
     private readonly ISettingsResolver _settingsResolver;
     private readonly IUmbracoContextFactory _umbracoContextFactory;
+    private readonly IVariationContextAccessor _variationContextAccessor;
     private readonly AppCaches _appCaches;
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly INotificationPublisher _notificationPublisher;
@@ -56,6 +57,7 @@ public sealed class LlmsTxtController : Controller
         IHreflangVariantsResolver hreflangResolver,
         ISettingsResolver settingsResolver,
         IUmbracoContextFactory umbracoContextFactory,
+        IVariationContextAccessor variationContextAccessor,
         AppCaches appCaches,
         IOptionsMonitor<AiVisibilitySettings> settings,
         INotificationPublisher notificationPublisher,
@@ -66,6 +68,7 @@ public sealed class LlmsTxtController : Controller
         _hreflangResolver = hreflangResolver;
         _settingsResolver = settingsResolver;
         _umbracoContextFactory = umbracoContextFactory;
+        _variationContextAccessor = variationContextAccessor;
         _appCaches = appCaches;
         _settings = settings;
         _notificationPublisher = notificationPublisher;
@@ -88,9 +91,12 @@ public sealed class LlmsTxtController : Controller
         using (var ctxRef = _umbracoContextFactory.EnsureUmbracoContext())
         {
             resolution = _hostnameResolver.Resolve(host ?? string.Empty, ctxRef.UmbracoContext);
-            allPages = resolution.Root is null
-                ? Array.Empty<IPublishedContent>()
-                : CollectPages(resolution.Root, ctxRef.UmbracoContext.Content);
+            using (ApplyVariationContext(resolution.Culture))
+            {
+                allPages = resolution.Root is null
+                    ? Array.Empty<IPublishedContent>()
+                    : CollectPages(resolution.Root, ctxRef.UmbracoContext.Content);
+            }
 
             // Story 3.1 — resolve effective settings (Settings doctype overlay
             // + appsettings fallback) inside the same EnsureUmbracoContext scope
@@ -343,6 +349,34 @@ public sealed class LlmsTxtController : Controller
         result.AddRange(V13PublishedNavigation.Descendants(root));
 
         return result;
+    }
+
+    private IDisposable ApplyVariationContext(string? culture)
+    {
+        if (string.IsNullOrWhiteSpace(culture))
+        {
+            return NoopDisposable.Instance;
+        }
+
+        var previous = _variationContextAccessor.VariationContext;
+        _variationContextAccessor.VariationContext = new VariationContext(culture);
+        return new VariationContextRestore(_variationContextAccessor, previous);
+    }
+
+    private sealed class VariationContextRestore(
+        IVariationContextAccessor variationContextAccessor,
+        VariationContext? previous) : IDisposable
+    {
+        public void Dispose() => variationContextAccessor.VariationContext = previous;
+    }
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        public static readonly NoopDisposable Instance = new();
+
+        public void Dispose()
+        {
+        }
     }
 
     /// <summary>

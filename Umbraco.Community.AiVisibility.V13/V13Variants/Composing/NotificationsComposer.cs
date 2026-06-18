@@ -25,8 +25,8 @@ namespace Umbraco.Community.AiVisibility.Composing;
 /// channel).</item>
 /// <item><see cref="RequestLogDrainHostedService"/> as
 /// <see cref="Microsoft.Extensions.Hosting.IHostedService"/>.</item>
-/// <item><see cref="LogRetentionJob"/> as
-/// <see cref="IDistributedBackgroundJob"/>.</item>
+/// <item><see cref="LogRetentionJob"/> as a v13 recurring background job
+/// via <c>AddRecurringBackgroundJob</c>.</item>
 /// <item>Three <see cref="DefaultRequestLogHandler"/> registrations —
 /// one per notification, via Umbraco's
 /// <c>AddNotificationAsyncHandler&lt;TNotification, THandler&gt;</c>

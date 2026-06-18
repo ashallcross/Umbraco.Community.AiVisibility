@@ -88,9 +88,9 @@
   <!-- Composers: link the ones that only wire Core + web impls (they reference
        the v13-variant types by namespace, so they bind correctly). Author fresh
        v13 variants for the divergent ones: NotificationsComposer + RobotsComposer
-       (register IDistributedBackgroundJob, v17-only → IRecurringBackgroundJob on
-       v13), SettingsComposer (references the net10-only Core migration plan →
-       v13 sync plan). SKIP BackofficeApiComposer (no Management API on v13) and
+       (register v13 IRecurringBackgroundJob instead of v17
+       IDistributedBackgroundJob), SettingsComposer (references the net10-only
+       Core migration plan → v13 sync plan). SKIP BackofficeApiComposer (no Management API on v13) and
        the root AiVisibilityComposer is authored fresh. -->
   <ItemGroup>
     <Compile Include="..\Umbraco.Community.AiVisibility\Composing\**\*.cs" LinkBase="Composing" />

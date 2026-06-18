@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Strings;
 using Umbraco.Cms.Infrastructure.Migrations;
+using Umbraco.Community.AiVisibility.Configuration;
 
 namespace Umbraco.Community.AiVisibility.V13.Persistence.Migrations;
 
@@ -32,6 +34,7 @@ public sealed class CreateAiVisibilitySettingsDoctype : MigrationBase
     private readonly IContentTypeService _contentTypeService;
     private readonly IDataTypeService _dataTypeService;
     private readonly IShortStringHelper _shortStringHelper;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<CreateAiVisibilitySettingsDoctype> _logger;
 
     public CreateAiVisibilitySettingsDoctype(
@@ -39,17 +42,26 @@ public sealed class CreateAiVisibilitySettingsDoctype : MigrationBase
         IContentTypeService contentTypeService,
         IDataTypeService dataTypeService,
         IShortStringHelper shortStringHelper,
+        IConfiguration configuration,
         ILogger<CreateAiVisibilitySettingsDoctype> logger)
         : base(context)
     {
         _contentTypeService = contentTypeService;
         _dataTypeService = dataTypeService;
         _shortStringHelper = shortStringHelper;
+        _configuration = configuration;
         _logger = logger;
     }
 
     protected override void Migrate()
     {
+        if (ShouldSkipSettingsDoctype(_configuration))
+        {
+            _logger.LogInformation(
+                "AiVisibility (v13): SkipSettingsDoctype=true; skipping settings doctype/composition creation only. Other package migrations continue.");
+            return;
+        }
+
         var textbox = _dataTypeService.GetDataType(global::Umbraco.Cms.Core.Constants.DataTypes.Textbox)
             ?? throw new InvalidOperationException("Built-in Textbox data type not found");
         var textarea = _dataTypeService.GetDataType(global::Umbraco.Cms.Core.Constants.DataTypes.Textarea)
@@ -60,6 +72,12 @@ public sealed class CreateAiVisibilitySettingsDoctype : MigrationBase
         EnsureComposition(trueFalse);
         EnsureSettingsDoctype(textbox, textarea);
     }
+
+    internal static bool ShouldSkipSettingsDoctype(IConfiguration configuration)
+        => configuration
+            .GetSection(AiVisibilitySettings.SectionName)
+            .GetSection("Migrations")
+            .GetValue<bool>(nameof(MigrationsSettings.SkipSettingsDoctype));
 
     private void EnsureComposition(IDataType trueFalse)
     {

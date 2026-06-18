@@ -193,6 +193,14 @@ public sealed class RobotsAuditRefreshJob : IRecurringBackgroundJob
                     continue;
                 }
 
+                if (domain.IsWildcard || domain.DomainName.StartsWith("*.", StringComparison.Ordinal))
+                {
+                    logger.LogTrace(
+                        "AiVisibility (v13) robots audit refresh job: skipping wildcard IDomain {DomainName} — recurring audits need a concrete hostname",
+                        domain.DomainName);
+                    continue;
+                }
+
                 if (!Uri.TryCreate(domain.DomainName, UriKind.Absolute, out var absolute) &&
                     !Uri.TryCreate($"https://{domain.DomainName}", UriKind.Absolute, out absolute))
                 {

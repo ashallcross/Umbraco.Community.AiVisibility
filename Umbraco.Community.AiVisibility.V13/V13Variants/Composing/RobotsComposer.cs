@@ -28,10 +28,9 @@ namespace Umbraco.Community.AiVisibility.Composing;
 /// cleanly each render.</item>
 /// <item><see cref="StartupRobotsAuditRunner"/> — Singleton via
 /// <see cref="ServiceCollectionHostedServiceExtensions.AddHostedService"/>.</item>
-/// <item><see cref="RobotsAuditRefreshJob"/> registered as
-/// <see cref="IDistributedBackgroundJob"/> (Singleton — Umbraco's
-/// <c>DistributedBackgroundJobHostedService</c> resolves the registration
-/// list at startup).</item>
+/// <item><see cref="RobotsAuditRefreshJob"/> registered as a v13
+/// <see cref="Umbraco.Cms.Infrastructure.BackgroundJobs.IRecurringBackgroundJob"/>
+/// via <c>AddRecurringBackgroundJob</c>.</item>
 /// </list>
 /// </summary>
 public sealed class RobotsComposer : IComposer

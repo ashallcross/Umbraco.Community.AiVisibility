@@ -44,6 +44,7 @@ public sealed class LlmsFullTxtController : Controller
     private readonly IHostnameRootResolver _hostnameResolver;
     private readonly ISettingsResolver _settingsResolver;
     private readonly IUmbracoContextFactory _umbracoContextFactory;
+    private readonly IVariationContextAccessor _variationContextAccessor;
     private readonly AppCaches _appCaches;
     private readonly IOptionsMonitor<AiVisibilitySettings> _settings;
     private readonly Notifications.INotificationPublisher _notificationPublisher;
@@ -54,6 +55,7 @@ public sealed class LlmsFullTxtController : Controller
         IHostnameRootResolver hostnameResolver,
         ISettingsResolver settingsResolver,
         IUmbracoContextFactory umbracoContextFactory,
+        IVariationContextAccessor variationContextAccessor,
         AppCaches appCaches,
         IOptionsMonitor<AiVisibilitySettings> settings,
         Notifications.INotificationPublisher notificationPublisher,
@@ -63,6 +65,7 @@ public sealed class LlmsFullTxtController : Controller
         _hostnameResolver = hostnameResolver;
         _settingsResolver = settingsResolver;
         _umbracoContextFactory = umbracoContextFactory;
+        _variationContextAccessor = variationContextAccessor;
         _appCaches = appCaches;
         _settings = settings;
         _notificationPublisher = notificationPublisher;
@@ -119,18 +122,21 @@ public sealed class LlmsFullTxtController : Controller
                 resolvedSettings = BuildAppsettingsFallback(settingsSnapshot);
             }
 
-            scopeRoot = ResolveScopeRoot(
-                resolution.Root,
-                ctxRef.UmbracoContext.Content,
-                settingsSnapshot.LlmsFullScope.RootContentTypeAlias,
-                host);
+            using (ApplyVariationContext(resolution.Culture))
+            {
+                scopeRoot = ResolveScopeRoot(
+                    resolution.Root,
+                    ctxRef.UmbracoContext.Content,
+                    settingsSnapshot.LlmsFullScope.RootContentTypeAlias,
+                    host);
 
-            pages = CollectAndFilterPages(
-                scopeRoot,
-                ctxRef.UmbracoContext.Content,
-                settingsSnapshot.LlmsFullScope,
-                resolvedSettings,
-                resolution.Culture);
+                pages = CollectAndFilterPages(
+                    scopeRoot,
+                    ctxRef.UmbracoContext.Content,
+                    settingsSnapshot.LlmsFullScope,
+                    resolvedSettings,
+                    resolution.Culture);
+            }
         }
 
         var culture = resolution.Culture;
@@ -420,6 +426,34 @@ public sealed class LlmsFullTxtController : Controller
         }
 
         return result;
+    }
+
+    private IDisposable ApplyVariationContext(string? culture)
+    {
+        if (string.IsNullOrWhiteSpace(culture))
+        {
+            return NoopDisposable.Instance;
+        }
+
+        var previous = _variationContextAccessor.VariationContext;
+        _variationContextAccessor.VariationContext = new VariationContext(culture);
+        return new VariationContextRestore(_variationContextAccessor, previous);
+    }
+
+    private sealed class VariationContextRestore(
+        IVariationContextAccessor variationContextAccessor,
+        VariationContext? previous) : IDisposable
+    {
+        public void Dispose() => variationContextAccessor.VariationContext = previous;
+    }
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        public static readonly NoopDisposable Instance = new();
+
+        public void Dispose()
+        {
+        }
     }
 
     /// <summary>
