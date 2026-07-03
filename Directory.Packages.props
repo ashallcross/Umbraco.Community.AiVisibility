@@ -4,41 +4,52 @@
     <!-- Allow floating versions so the package can align with the host Umbraco project's package versions -->
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
-  <!-- Story 9.1 — Core library multi-target package versions (CPM approach (a)).
-       Umbraco.Cms.Core + Umbraco.Cms.Infrastructure are TFM-conditional so the
-       same Core source compiles against v13 (net8) and v17 (net10). The v17 ship
-       package + TestSite + Tests are net10-only and pick up the net10 row.
-       Story 9.2 — Umbraco.Cms.Web.Common + Umbraco.Cms.Web.Website are also
-       TFM-conditional now: the v13 shell (net8) references them at 13.14.0, the
-       v17 ship package (net10) at 17.3.2. They MUST NOT stay unconditional, or
-       the v13 net8 restore hits a duplicate-PackageVersion (NU1011) error. -->
+  <!-- Umbraco package versions are TFM-conditional so the shared Core source and
+       the two package/test-site lines restore against their matching Umbraco major.
+       Net8 projects consume the v13 line; net10 projects consume the v17 line. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageVersion Include="Umbraco.Cms.Core" Version="13.14.0" />
     <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="13.14.0" />
     <PackageVersion Include="Umbraco.Cms.Web.Common" Version="13.14.0" />
     <PackageVersion Include="Umbraco.Cms.Web.Website" Version="13.14.0" />
+    <!-- v13 TestSite host (net8) + v13 integration-test harness (net8).
+         NO Umbraco.Cms.DevelopmentMode.Backoffice row — that RCL is v14+/v17 only
+         (earliest published 17.0.0); v13's backoffice ships inside Umbraco.Cms. -->
+    <PackageVersion Include="Umbraco.Cms" Version="13.14.0" />
+    <PackageVersion Include="Clean" Version="4.2.2" />
+    <PackageVersion Include="Clean.Core" Version="4.2.2" />
+    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="13.14.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.28" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageVersion Include="Umbraco.Cms.Core" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Web.Common" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.Web.Website" Version="17.3.2" />
-  </ItemGroup>
-  <ItemGroup>
-    <!-- Umbraco core (TestSite host) -->
+    <!-- v17 TestSite host (net10) + v17 integration-test harness (net10) -->
     <PackageVersion Include="Umbraco.Cms" Version="17.3.2" />
     <PackageVersion Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="17.3.2" />
-    <!-- Umbraco APIs (v17 ship package only — Api.* does not exist for v13) -->
-    <PackageVersion Include="Umbraco.Cms.Api.Common" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.Api.Management" Version="17.3.2" />
     <!-- TestSite theme (Cogworks Clean Starter): meta-package "Clean" drives the
          demo-content package migration and install hooks; "Clean.Core" is the
-         components library it depends on. Pinned in lockstep — both required. -->
+         components library it depends on. Pinned in lockstep — both required.
+         v17 line = 7.0.5; v13 line = 4.2.2 (net8 group above). -->
     <PackageVersion Include="Clean" Version="7.0.5" />
     <PackageVersion Include="Clean.Core" Version="7.0.5" />
+    <!-- Umbraco integration-test harness; pinned to the runtime version to avoid silent test-vs-runtime drift -->
+    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="17.3.2" />
+    <!-- `WebApplicationFactory<Program>` against the TestSite.
+         Used by the launch-smoke tests to bypass `UmbracoTestServerTestBase`'s
+         content-seeding gap. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Umbraco APIs (v17 ship package only — Api.* does not exist for v13; only
+         net10 projects reference these, so an unconditional row is safe). -->
+    <PackageVersion Include="Umbraco.Cms.Api.Common" Version="17.3.2" />
+    <PackageVersion Include="Umbraco.Cms.Api.Management" Version="17.3.2" />
     <!-- Globalization (TestSite) -->
     <PackageVersion Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
-    <!-- Test infrastructure -->
+    <!-- Test infrastructure (TFM-agnostic) -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
@@ -46,12 +57,6 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
     <!-- mocking lib for caching decorator + handler tests -->
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
-    <!-- Umbraco integration-test harness; pinned to exact runtime version per Winston (2026-04-29) to avoid silent test-vs-runtime drift -->
-    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="17.3.2" />
-    <!-- `WebApplicationFactory<Program>` against the TestSite.
-         Used by `LaunchSmokeTests` to bypass `UmbracoTestServerTestBase`'s
-         content-seeding gap on 17.3.x (Story F.1 / 17.4.0 deferral). -->
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.4" />
     <!-- Package implementation dependencies (Markdown extraction pipeline) -->
     <PackageVersion Include="AngleSharp" Version="1.4.0" />
     <PackageVersion Include="ReverseMarkdown" Version="5.3.0" />

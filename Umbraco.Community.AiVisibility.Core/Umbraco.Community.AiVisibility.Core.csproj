@@ -54,6 +54,10 @@
     <!-- The existing v17 test project keeps testing the moved types in place
          (zero-churn topology — see Story 9.1 Dev Agent Record / Open Question 2). -->
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.Tests" />
+    <!-- The v13 test project runs the shared extraction-quality benchmark via
+         Core's internal HTML-to-Markdown seam, the same way the v17 Tests project
+         does. Test-only visibility grant; no runtime or behavioural change. -->
+    <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.V13.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 

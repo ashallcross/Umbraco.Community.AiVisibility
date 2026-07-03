@@ -1,15 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- V13.Tests runs on net8.0 (the v13 shell TFM). It exercises the V13
-         shell's DI wiring, recurring jobs, and sync migrations. The full
-         integration/smoke suite + V13 TestSite are Story 9.3. -->
+    <!-- Unit tests can roll forward to the net10 host because they never boot
+         Umbraco. Integration tests boot a real Umbraco v13 stack and require the
+         .NET 8 runtime. -->
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <RollForward>Major</RollForward>
+    <!-- Required by Microsoft.AspNetCore.Mvc.Testing's WebApplicationFactory<Program>.
+         Without this, the Umbraco integration harness fails on first boot with
+         'Can't find Umbraco.Tests.Integration.deps.json'. Mirrors the v17 Tests csproj. -->
+    <PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +23,12 @@
     <PackageReference Include="NUnit.Analyzers" />
     <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="NSubstitute" />
+    <!-- The v13 integration harness is WebApplicationFactory<Program> against the
+         V13.TestSite. This single harness serves every smoke including the
+         not-found 404, so the heavier UmbracoTestServerTestBase path is avoided:
+         it cannot serve seeded published content, and booting a second Umbraco
+         host in the same test process adds risk without coverage value here. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,10 +36,37 @@
     <!-- V13 references Core with PrivateAssets="all" (bundled, not flowed), so the
          test project references Core directly for the shared config/types. -->
     <ProjectReference Include="..\Umbraco.Community.AiVisibility.Core\Umbraco.Community.AiVisibility.Core.csproj" />
+    <!-- WebApplicationFactory<Program> boots the V13.TestSite in-process for the
+         content-bearing HTTP smokes. This reference brings in the TestSite's
+         public `Program` entry point. -->
+    <ProjectReference Include="..\Umbraco.Community.AiVisibility.V13.TestSite\Umbraco.Community.AiVisibility.V13.TestSite.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="NUnit.Framework" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Appsettings for the Umbraco integration test harness. Mirrors the v17 Tests project. -->
+    <None Update="appsettings.Tests.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <!-- Shared extraction-quality fixtures from the v17 Tests project. Keeping one
+         source of truth means a fixture refresh updates both package lines. -->
+    <None Include="..\Umbraco.Community.AiVisibility.Tests\Fixtures\Extraction\**\*"
+          Link="Fixtures\Extraction\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- WebApplicationFactory<Program> looks for `Umbraco.Tests.Integration.deps.json`
+       in the test bin. Alias our own test project's deps.json under that name
+       post-build so EnsureDepsFile() resolves. Mirrors the v17 Tests csproj. -->
+  <Target Name="CopyDepsJsonForUmbracoTestHarness" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).deps.json"
+          DestinationFiles="$(TargetDir)Umbraco.Tests.Integration.deps.json"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)$(AssemblyName).deps.json')" />
+  </Target>
 
 </Project>

@@ -1,0 +1,14 @@
+@using Umbraco.Extensions
+@using Umbraco.Cms.Web.Common.PublishedModels
+@using Umbraco.Cms.Web.Common.Views
+@using Umbraco.Cms.Core.Models.PublishedContent
+@using Microsoft.AspNetCore.Html
+@inject Smidge.SmidgeHelper SmidgeHelper
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Smidge
+@*
+   The package's build/net8.0/*.targets auto-injects this directive for NuGet
+   consumers, but this TestSite consumes the shell via ProjectReference, so the
+   directive is declared here manually using the V13 assembly name.
+*@
+@addTagHelper Umbraco.Community.AiVisibility.LlmsTxt.*, Umbraco.Community.AiVisibility.V13
