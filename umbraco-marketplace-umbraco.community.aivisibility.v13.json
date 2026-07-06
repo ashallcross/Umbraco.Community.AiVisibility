@@ -1,0 +1,42 @@
+{
+  "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "Title": "AI Visibility for Umbraco (v13 lite)",
+  "Description": "The Umbraco 13 / .NET 8 lite SKU: Markdown page rendering, llms.txt, and robots.txt audit for ChatGPT, Claude, Perplexity, Gemini, and Bing Copilot — configured via appsettings.json (no Backoffice dashboards).",
+  "Category": "Artificial Intelligence",
+  "AlternateCategory": "Search",
+  "PackageType": "Package",
+  "LicenseTypes": ["Free"],
+  "Tags": [
+    "ai",
+    "ai-search",
+    "ai-visibility",
+    "llms-txt",
+    "markdown",
+    "geo",
+    "chatgpt",
+    "claude",
+    "perplexity",
+    "umbraco-v13",
+    "umbraco-marketplace"
+  ],
+  "DocumentationUrl": "https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/docs/v13-support.md",
+  "IssueTrackerUrl": "https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues",
+  "AuthorDetails": {
+    "Name": "Adam Shallcross",
+    "Description": "CEO & Founder at Cogworks. Umbraco advocate, interested in how humans and AI can work together in harmony.",
+    "Url": "https://www.wearecogworks.com",
+    "ImageUrl": "https://github.com/ashallcross.png",
+    "SyncContributorsFromRepository": true
+  },
+  "VersionSpecificPackageIds": [
+    {
+      "UmbracoMajorVersion": 13,
+      "PackageId": "Umbraco.Community.AiVisibility.V13"
+    },
+    {
+      "UmbracoMajorVersion": 17,
+      "PackageId": "Umbraco.Community.AiVisibility"
+    }
+  ],
+  "Screenshots": []
+}

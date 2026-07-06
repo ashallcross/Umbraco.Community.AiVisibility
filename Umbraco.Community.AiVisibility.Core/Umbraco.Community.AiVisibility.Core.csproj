@@ -62,13 +62,13 @@
   </ItemGroup>
 
   <!--
-    Story 4.2 / moved to Core in Story 9.1 — build-time AI-bot-list sync.
-    Source of truth: ai-robots-txt/ai.robots.txt. The embedded resource + its
-    SHA-pin tampering-protection layers live in the SAME assembly that
-    DefaultRobotsAuditor reads them from (Core). The logical resource name
-    `Umbraco.Community.AiVisibility.Robots.AiBotList.txt` is kept byte-identical so
-    Assembly.GetManifestResourceStream resolves against the Core assembly. See
-    docs/maintenance.md (path reference updated in Story 9.4 docs sweep).
+    Build-time AI-bot-list sync. Source of truth: ai-robots-txt/ai.robots.txt.
+    The embedded resource + its SHA-pin tampering-protection layers live in the
+    SAME assembly that DefaultRobotsAuditor reads them from (Core). The logical
+    resource name `Umbraco.Community.AiVisibility.Robots.AiBotList.txt` is kept
+    byte-identical so Assembly.GetManifestResourceStream resolves against the Core
+    assembly. Refresh process documented in docs/robots-audit.md § Build-time
+    AI-bot-list sync.
   -->
   <PropertyGroup>
     <ExpectedAiBotListSha256>d2e645e790e738eca2ad7d2a9117ede44cd5ea36171cb673674c63dfbd88e93b</ExpectedAiBotListSha256>
@@ -94,7 +94,7 @@
       <_ExpectedAiBotListFallbackShaLower>$(ExpectedAiBotListFallbackSha256.ToLowerInvariant())</_ExpectedAiBotListFallbackShaLower>
     </PropertyGroup>
     <Error Condition="'$(_AiBotListFallbackShaLower)' != '$(_ExpectedAiBotListFallbackShaLower)'"
-           Text="AiVisibility: AI bot list FALLBACK SHA mismatch — expected $(_ExpectedAiBotListFallbackShaLower), got $(_AiBotListFallbackShaLower). Refresh ExpectedAiBotListFallbackSha256 in the csproj alongside the fallback file (see docs/maintenance.md)." />
+           Text="AiVisibility: AI bot list FALLBACK SHA mismatch — expected $(_ExpectedAiBotListFallbackShaLower), got $(_AiBotListFallbackShaLower). Refresh ExpectedAiBotListFallbackSha256 in the csproj alongside the fallback file (see docs/robots-audit.md § Build-time AI-bot-list sync)." />
   </Target>
 
   <Target Name="SyncAiBotList" BeforeTargets="BeforeBuild" DependsOnTargets="VerifyAiBotListFallbackHash">
@@ -133,7 +133,7 @@
            Text="AiVisibility: AI bot list fetch produced an unreadable or zero-byte file at $(_AiBotListFetched). Network or proxy may be returning truncated content; investigate before bumping the pinned SHA." />
 
     <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' != '' AND '$(_FetchedAiBotListShaLower)' != '$(_ExpectedAiBotListShaLower)'"
-           Text="AiVisibility: AI bot list SHA mismatch — expected $(_ExpectedAiBotListShaLower), got $(_FetchedAiBotListShaLower). Refresh the pinned SHA via docs/maintenance.md after reviewing the upstream change." />
+           Text="AiVisibility: AI bot list SHA mismatch — expected $(_ExpectedAiBotListShaLower), got $(_FetchedAiBotListShaLower). Refresh the pinned SHA per docs/robots-audit.md § Build-time AI-bot-list sync after reviewing the upstream change." />
 
     <Copy SourceFiles="@(_FetchedAiBotList)"
           DestinationFiles="$(_AiBotListEmbed)"

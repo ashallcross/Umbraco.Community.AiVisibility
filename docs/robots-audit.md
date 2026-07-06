@@ -17,7 +17,7 @@ Umbraco.Community.AiVisibility includes a Backoffice Health Check that audits yo
 | Trigger | Source |
 |---|---|
 | Host startup | `StartupRobotsAuditRunner : IHostedService` — gated by `AiVisibility:RobotsAuditOnStartup` (default `true`) and `IServerRoleAccessor.CurrentServerRole ∈ { SchedulingPublisher, Single }` (so multi-instance front-end servers don't all hammer their own origin at boot). |
-| Recurring refresh | `RobotsAuditRefreshJob : IDistributedBackgroundJob` — period is `AiVisibility:RobotsAuditor:RefreshIntervalHours` (default 24h). Umbraco coordinates exactly-once execution across a load-balanced deployment via the host-DB lock. Set the period to `0` to disable. |
+| Recurring refresh | `RobotsAuditRefreshJob : IDistributedBackgroundJob` — period is `AiVisibility:RobotsAuditor:RefreshIntervalHours` (default 24h). Umbraco coordinates exactly-once execution across a load-balanced deployment via the host-DB lock. Set the period to `0` to disable. *(On the v13 lite SKU this is a best-effort `IRecurringBackgroundJob` gated on `SchedulingPublisher \|\| Single` — see [`v13-support.md`](v13-support.md).)* |
 | On-demand | Open the Backoffice Health Check view; the cache miss path triggers a fresh audit if no cached result is available. |
 
 ## Bot categories
@@ -53,9 +53,11 @@ The list is fetched from upstream at **build time**:
 
 ```
 Source URL:   https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt
-Pinned SHA:   <ExpectedAiBotListSha256> in Umbraco.Community.AiVisibility/Umbraco.Community.AiVisibility.csproj
-Fallback:     Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt (committed)
+Pinned SHA:   <ExpectedAiBotListSha256> in Umbraco.Community.AiVisibility.Core/Umbraco.Community.AiVisibility.Core.csproj
+Fallback:     Umbraco.Community.AiVisibility.Core/Robots/AiBotList.fallback.txt (committed)
 ```
+
+The bot list, the SHA-pin, and the fallback file all live in the shared `Core` project, since that is where `DefaultRobotsAuditor` reads the embedded resource from — both the v17 and v13 packages inherit it.
 
 | Path | Behaviour |
 |---|---|
@@ -64,6 +66,17 @@ Fallback:     Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt (comm
 | **Offline / fetch failed** | Fall back to the committed snapshot; emit a warning. Build is offline-safe. |
 
 The fallback file is byte-identical to the upstream snapshot at the moment the SHA was pinned — so online and offline builds produce identical embedded bytes when the upstream content matches the pin.
+
+### Refreshing the pinned SHA
+
+When upstream `ai.robots.txt` changes, an online build hard-fails with a SHA-mismatch error (that is the point — new bot-list bytes never ship without a review). To adopt the new upstream list:
+
+1. Review the upstream change (diff the new `robots.txt` against the committed `Core/Robots/AiBotList.fallback.txt`) so you know which bots were added or removed.
+2. Update the committed fallback file to the new upstream content.
+3. Update **both** `ExpectedAiBotListSha256` and `ExpectedAiBotListFallbackSha256` in `Umbraco.Community.AiVisibility.Core/…Core.csproj` to the new SHA-256 (the build error prints the `got …` value; that is the new SHA).
+4. Rebuild — the SHA now matches and the fresh list embeds.
+
+There is no automated/scheduled refresh — releases are manual, so the maintainer refreshes the list deliberately as part of (or ahead of) a release. To build against the last-pinned list without touching the SHA — e.g. an offline or reproducibility build — force the fallback path with `-p:AiBotListSourceUrl=` pointing at an unreachable host (the build then emits the offline warning and embeds the committed snapshot).
 
 ## Custom auditors
 

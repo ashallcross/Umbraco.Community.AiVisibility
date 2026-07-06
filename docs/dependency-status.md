@@ -15,7 +15,7 @@ Two warnings surface during build. Both come from packages that Umbraco itself p
 
 - **Treat both as you would any other transitive vuln warning in the Umbraco stack.** Both are functions of Umbraco's own deps, not the package's. Bumping your Umbraco floor when 17.3.5+ (or whichever patch addresses them) ships will resolve them.
 - **If your security policy requires zero NU1903 warnings before deploy**, you can suppress them via `<NoWarn>NU1902;NU1903</NoWarn>` in your csproj — but be deliberate about that decision; the warnings are surfacing real CVEs in the underlying libraries.
-- **The package's CI fails on any NEW NU1902 / NU1903 beyond these two.** If a future package release introduces a third one, that's a regression we'll catch before shipping.
+- **Each release is checked for any NEW NU1902 / NU1903 beyond these.** Releases are cut manually (the package has no CI pipeline), so this is a manual pre-ship check; a newly-introduced third advisory is caught during that review before publishing.
 
 ## Obsolete API warnings (CS0618)
 
@@ -42,8 +42,18 @@ The package will migrate these in lockstep with the Umbraco floor bump (a v18 fl
 
 - **Nothing required for v17.x adopters** — the warnings are benign on 17.x.
 - **If you fork the package** and want to migrate ahead of the upstream cadence, the table above pinpoints every call site. PRs welcome.
-- **CS0618 warnings are NOT gated in our CI** — they're expected, and gating them would block legitimate Umbraco-side deprecation rollouts. They'll escalate to compile errors automatically when our Umbraco floor bumps to v18.
+- **CS0618 warnings are not treated as build errors** — they're expected, and failing the build on them would block legitimate Umbraco-side deprecation rollouts. They'll escalate to compile errors automatically when the Umbraco floor bumps to v18.
+
+## v13 lite SKU (`Umbraco.Community.AiVisibility.V13`)
+
+The warnings above are the **v17 / .NET 10** transitive set. The v13 lite package pulls a different Umbraco major (13.x) on .NET 8, so its transitive advisory set differs:
+
+- The v13 line floats to **Umbraco 13.15.0**, which clears the moderate transitive advisory present on the earlier 13.14.0 line ([GHSA-54mj-vcvj-q3v5](https://github.com/advisories/GHSA-54mj-vcvj-q3v5)).
+- The remaining v13-line warnings (`MailKit` / `MimeKit` NU1902, and a build-time `Microsoft.Build.Tasks.Core` NU1903) are the same class as the v17 ones — transitive from Umbraco's own dependency tree and the build tooling, awaiting upstream patches. Treat them exactly as the v17 warnings above: bump your Umbraco 13 floor when a patched 13.x ships.
+
+Both SKUs are checked for newly-introduced advisories at each manual release.
 
 ## See also
 
 - [`README.md`](../README.md) § Compatibility — pinned Umbraco floor + .NET version.
+- [`v13-support.md`](v13-support.md) — v13 vs v17 capability matrix + support window.

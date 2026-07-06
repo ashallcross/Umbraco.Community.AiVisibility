@@ -2,6 +2,35 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v1.2.0] — 2026-07-06: Umbraco v13 lite SKU (both packages ship in lockstep)
+
+This release adds a second package line — **`Umbraco.Community.AiVisibility.V13`** for Umbraco 13 / .NET 8 — shipped in version lockstep with the flagship v17 package. Both packages now share a single content-extraction engine. The v17 package's runtime behaviour is unchanged from v1.1.2.
+
+Bullets are grouped by which package line they affect: **Both:** applies to v17 and v13, **v17:** to the flagship package only, **v13:** to the new lite SKU only.
+
+### Added
+
+- **v13:** First release of **`Umbraco.Community.AiVisibility.V13`**, a "lite" SKU targeting **Umbraco 13 / .NET 8**. It ships the platform-agnostic surfaces — per-page Markdown at `/{url}.md`, `/llms.txt` + `/llms-full.txt` manifests, `Accept: text/markdown` content negotiation, the `Link: rel="alternate"; type="text/markdown"` discoverability header + `<llms-link />` / `<llms-hint />` TagHelpers, the robots.txt audit Health Check, and the AI-traffic request log. Install with `dotnet add package Umbraco.Community.AiVisibility.V13`.
+- **Both:** New [`docs/v13-support.md`](docs/v13-support.md) — a capability matrix (what the v13 lite SKU ships vs the v17 package), the .NET 8 support-window framing, and the v13-vs-v17 recurring-job-coordination difference.
+- **Both:** The two packages now have cross-linked Umbraco Marketplace listings, so a site on Umbraco 13 is pointed at the v13 package and a site on Umbraco 17 at the flagship package automatically.
+
+### Changed
+
+- **v17:** **No adopter-visible behaviour change.** Internally, the extraction / `llms.txt` / request-log / robots-audit engine was extracted into a shared `Umbraco.Community.AiVisibility.Core` library (compiled into the package DLL, not a separate NuGet dependency) so both SKUs run one engine. The v17 package is behaviourally equivalent to v1.1.2.
+- **v13:** The v13 package's Umbraco dependency floats to **13.15.0** (latest published v13 stable), clearing a transitive advisory present on the earlier 13.14.0 line.
+
+### v13 expectations (read before installing the lite SKU)
+
+- **No Backoffice dashboards, no Management API.** The v13 lite SKU has no **Settings → AI Visibility** or **Settings → AI Traffic** dashboards. Configure via `appsettings.json` under `AiVisibility:`; read the `aiVisibilityRequestLog` table directly via SQL. The Backoffice dashboards remain exclusive to the v17+ package.
+- **Best-effort recurring jobs.** On v13, the robots-refresh and log-retention jobs are best-effort (gated on `ServerRole.SchedulingPublisher || Single`), not the exactly-once coordination the v17 package gets from Umbraco's distributed background jobs. Single-server installs run normally; load-balanced v13 deployments may run a job on more than one node. Log retention is an idempotent `DELETE`; robots refresh is last-write-wins cache state — a duplicate cycle is wasteful (a second `/robots.txt` fetch per hostname), not corrupting. See [`docs/v13-support.md`](docs/v13-support.md).
+- **Installing both SKUs on one site is unsupported.** Pick the package that matches your Umbraco major.
+
+### Migration from v1.1.2
+
+- **v17 adopters:** drop-in upgrade — no action required. No config keys added or removed, no API changes, no breaking changes.
+- **v13 adopters:** this is a new package. On an Umbraco 13 / .NET 8 site, `dotnet add package Umbraco.Community.AiVisibility.V13`. First boot runs the migration (creates `aiVisibilityRequestLog`) and auto-registers the `<llms-link />` TagHelper, same as the v17 package.
+- **Building from source:** the repo requires the **.NET 10 SDK** to build (it down-targets net8.0 cleanly; the .NET 8 SDK alone cannot build the net10.0 targets). The .NET 8 runtime is only needed to *run* the v13 package.
+
 ## [v1.1.2] — 2026-05-30: Agency-site correctness + adoption friction
 
 Patch release — three correctness/defaults fixes surfaced when integrating v1.1.1 into a real agency-built Umbraco 17.4 site. No new features, no API changes, no breaking changes.

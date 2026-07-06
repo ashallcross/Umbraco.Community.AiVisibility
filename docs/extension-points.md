@@ -2,7 +2,7 @@
 
 This page is the canonical adopter reference for the package's three public notifications, two new extension-point interfaces, and the seams shipped in earlier releases — the canonical reference for **subscribing to events**, **overriding the default writer**, and **overriding UA classification**.
 
-> **PII discipline (NFR11).** Notifications and the request-log table capture **path, content key, culture, UA classification, referrer host** ONLY. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers MUST honour the same discipline if they forward data to external sinks.
+> **PII discipline.** Notifications and the request-log table capture **path, content key, culture, UA classification, referrer host** ONLY. Never query strings, cookies, tokens, session IDs, or full referrer paths. Adopter handlers MUST honour the same discipline if they forward data to external sinks.
 
 ---
 
@@ -55,7 +55,7 @@ Same pattern via `builder.AddNotificationHandler<TNotification, THandler>()`. Sy
 
 ### Adopter-handler exception isolation
 
-Adopter handler exceptions are caught at Umbraco's dispatcher layer and logged at `Warning`. **They never break our routes** (AC2). The package's own default handler (`DefaultRequestLogHandler`) adopts the same try/catch defence-in-depth around `IRequestLog.EnqueueAsync` so a custom writer fault can't degrade publication for sibling handlers.
+Adopter handler exceptions are caught at Umbraco's dispatcher layer and logged at `Warning`. **They never break our routes.** The package's own default handler (`DefaultRequestLogHandler`) adopts the same try/catch defence-in-depth around `IRequestLog.EnqueueAsync` so a custom writer fault can't degrade publication for sibling handlers.
 
 ---
 

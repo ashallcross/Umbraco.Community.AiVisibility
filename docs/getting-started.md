@@ -12,6 +12,8 @@ This document covers everything shipping in v1 — the per-page Markdown route +
 - **Node.js ≥ 24.11.1** — only needed if you're rebuilding the bundled JS yourself. The Vite output ships pre-built inside the NuGet package, so adopters do NOT need Node to run the package.
 - **Traditional Umbraco install with Razor templates** — required for the Markdown rendering surfaces (`.md` route, `/llms-full.txt`). Sites running Umbraco fully-headless (Delivery API + external frontend on Vercel / Netlify / etc.) get the `/llms.txt` index, robots audit, and Settings dashboard but the Markdown rendering surfaces don't work — full headless support is planned for a future release. See [`headless.md`](headless.md) for the supported-surfaces matrix + workarounds.
 
+> **On Umbraco 13 / .NET 8?** This guide targets the v17 package. The lite SKU `Umbraco.Community.AiVisibility.V13` ships the same content surfaces (everything in this guide except the Backoffice dashboards + Management API) — configure via `appsettings.json` instead of the editor UI. See [`v13-support.md`](v13-support.md) for what differs.
+
 > **Upgrading from a v0.x pre-release install?** See [`configuration.md`](configuration.md) § "Migrating from a pre-v1 install" for the config + envvar rename mapping. The package warns at boot but does NOT honour the legacy `LlmsTxt:` prefix at runtime — you'll fall back to defaults silently otherwise.
 
 ## What you get
@@ -117,7 +119,7 @@ GET /home
 Accept: text/markdown
 ```
 
-…returns the same Markdown body, ETag, and headers as `GET /home.md`. The middleware reads Umbraco's resolved `IPublishedRequest` from `HttpContext.Features`, calls the same extractor + cache decorator the `.md` route uses, and writes the response through the same writer — so AC1's "byte-identical bodies + same cache entry consulted" guarantee holds by construction.
+…returns the same Markdown body, ETag, and headers as `GET /home.md`. The middleware reads Umbraco's resolved `IPublishedRequest` from `HttpContext.Features`, calls the same extractor + cache decorator the `.md` route uses, and writes the response through the same writer — so the "byte-identical bodies + same cache entry consulted" guarantee holds by construction.
 
 ### Resolution rules
 
@@ -458,7 +460,7 @@ From v0.6, every route the package ships works zero-config — no `AiVisibility:
 | `AiVisibility:SettingsResolverCachePolicySeconds` | `300` | same |
 | `AiVisibility:Migrations:SkipSettingsDoctype` | `false` | same |
 
-A drift-detection fixture ([`AiVisibilitySettingsDefaultsTests`](../Umbraco.Community.AiVisibility.Tests/Configuration/AiVisibilitySettingsDefaultsTests.cs)) pins every value above; bumping a default in source without updating the fixture fails CI.
+A drift-detection fixture ([`AiVisibilitySettingsDefaultsTests`](../Umbraco.Community.AiVisibility.Tests/Configuration/AiVisibilitySettingsDefaultsTests.cs)) pins every value above; bumping a default in source without updating the fixture fails that test.
 
 ### Site name fallback chain
 
@@ -618,11 +620,12 @@ The dashboard reads DIRECTLY from the host DB's `aiVisibilityRequestLog` table v
 
 v0.10 is non-breaking. The new dashboard manifest is additive — the existing "AI Visibility" Settings tile is unaffected. Adopters upgrading from v0.9 see the new "AI Traffic" tile appear under Settings as soon as they upgrade.
 
-## What's not in v0.10
+## What's not in this release yet
 
-Coming in later epics:
+On the roadmap:
 
-- v1.0 NuGet release readiness (Epic 6)
+- Full headless rendering (Delivery API + external frontend) — see [`headless.md`](headless.md) for what works today and the current workaround.
+- `/llms-full.txt` pagination + cross-instance cache pre-warm for very large sites.
 
 ## Anti-patterns the package will NOT ship
 

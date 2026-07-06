@@ -27,5 +27,15 @@
     "ImageUrl": "https://github.com/ashallcross.png",
     "SyncContributorsFromRepository": true
   },
+  "VersionSpecificPackageIds": [
+    {
+      "UmbracoMajorVersion": 17,
+      "PackageId": "Umbraco.Community.AiVisibility"
+    },
+    {
+      "UmbracoMajorVersion": 13,
+      "PackageId": "Umbraco.Community.AiVisibility.V13"
+    }
+  ],
   "Screenshots": []
 }

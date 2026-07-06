@@ -15,13 +15,13 @@
     <PackageId>Umbraco.Community.AiVisibility.V13</PackageId>
     <Product>Umbraco.Community.AiVisibility.V13</Product>
     <Title>AI Visibility for Umbraco (v13 lite)</Title>
-    <Version>1.1.2</Version>
+    <Version>1.2.0</Version>
     <Description>AI visibility for Umbraco v13 / .NET 8 — auto-generates per-page Markdown at {url}.md plus /llms.txt and /llms-full.txt manifests, negotiates Accept: text/markdown, advertises the Markdown alternate via Link header and &lt;link rel="alternate"&gt;, audits robots.txt against the AI-crawler list (health check), and logs AI traffic. The "lite" SKU for the most recent AngularJS-backoffice LTS: configure via appsettings.json and read the request log via SQL — no Settings or AI Traffic dashboards (those ship in the Umbraco v17+ package). Shares the same content-extraction engine as the v17 package.</Description>
     <Authors>Adam Shallcross</Authors>
     <PackageTags>umbraco-marketplace;umbraco;umbraco-v13;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>v1.1.2 — Umbraco v13 / .NET 8 "lite" SKU. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.2.0 — first release of the Umbraco v13 / .NET 8 "lite" SKU, shipped in lockstep with the v17 package. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility.git</RepositoryUrl>

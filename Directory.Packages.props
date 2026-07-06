@@ -8,17 +8,20 @@
        the two package/test-site lines restore against their matching Umbraco major.
        Net8 projects consume the v13 line; net10 projects consume the v17 line. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <PackageVersion Include="Umbraco.Cms.Core" Version="13.14.0" />
-    <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="13.14.0" />
-    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="13.14.0" />
-    <PackageVersion Include="Umbraco.Cms.Web.Website" Version="13.14.0" />
+    <!-- v13 line floated to the latest published v13 stable (13.15.0) at the v1.2.0
+         ship to clear the 13.14.0 transitive advisory (GHSA-54mj-vcvj-q3v5 / NU1902).
+         Floats forward via CPM thereafter. -->
+    <PackageVersion Include="Umbraco.Cms.Core" Version="13.15.0" />
+    <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="13.15.0" />
+    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="13.15.0" />
+    <PackageVersion Include="Umbraco.Cms.Web.Website" Version="13.15.0" />
     <!-- v13 TestSite host (net8) + v13 integration-test harness (net8).
          NO Umbraco.Cms.DevelopmentMode.Backoffice row — that RCL is v14+/v17 only
          (earliest published 17.0.0); v13's backoffice ships inside Umbraco.Cms. -->
-    <PackageVersion Include="Umbraco.Cms" Version="13.14.0" />
+    <PackageVersion Include="Umbraco.Cms" Version="13.15.0" />
     <PackageVersion Include="Clean" Version="4.2.2" />
     <PackageVersion Include="Clean.Core" Version="4.2.2" />
-    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="13.14.0" />
+    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="13.15.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.28" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
