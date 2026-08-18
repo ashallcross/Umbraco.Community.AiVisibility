@@ -17,7 +17,7 @@ Bullets are grouped by which package line they affect: **Both:** applies to v17 
 ### Changed
 
 - **v17:** **No adopter-visible behaviour change.** Internally, the extraction / `llms.txt` / request-log / robots-audit engine was extracted into a shared `Umbraco.Community.AiVisibility.Core` library (compiled into the package DLL, not a separate NuGet dependency) so both SKUs run one engine. The v17 package is behaviourally equivalent to v1.1.2.
-- **v13:** The v13 package's Umbraco dependency floats to **13.15.0** (latest published v13 stable), clearing a transitive advisory present on the earlier 13.14.0 line.
+- **v13:** The v13 package requires Umbraco **13.15.0 or newer** on the Umbraco 13 LTS line. Running the latest available 13.x patch is recommended so you pick up the newest framework security fixes (the Umbraco dependency is a minimum floor, so an up-to-date 13.x site resolves forward automatically).
 - **Both:** Refreshed the bundled AI-crawler list from upstream [`ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt). The robots.txt audit Health Check now recognises around 16 additional AI crawlers (including Cursor, Kimi, TongyiBot, ExaSearchBot, and amazon-QBusiness) and drops one deprecated entry.
 
 ### v13 expectations (read before installing the lite SKU)

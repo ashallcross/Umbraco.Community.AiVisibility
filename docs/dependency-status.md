@@ -48,7 +48,7 @@ The package will migrate these in lockstep with the Umbraco floor bump (a v18 fl
 
 The warnings above are the **v17 / .NET 10** transitive set. The v13 lite package pulls a different Umbraco major (13.x) on .NET 8, so its transitive advisory set differs:
 
-- The v13 line floats to **Umbraco 13.15.0**, which clears the moderate transitive advisory present on the earlier 13.14.0 line ([GHSA-54mj-vcvj-q3v5](https://github.com/advisories/GHSA-54mj-vcvj-q3v5)).
+- The v13 line requires **Umbraco 13.15.0+**. A moderate advisory ([GHSA-54mj-vcvj-q3v5](https://github.com/advisories/GHSA-54mj-vcvj-q3v5)) currently affects the Umbraco 13.x line at the 13.15.0 floor; because the package's Umbraco dependency is a minimum floor, an up-to-date site resolves forward automatically — run the latest published 13.x patch to pick up the newest framework fixes.
 - The remaining v13-line warnings (`MailKit` / `MimeKit` NU1902, and a build-time `Microsoft.Build.Tasks.Core` NU1903) are the same class as the v17 ones — transitive from Umbraco's own dependency tree and the build tooling, awaiting upstream patches. Treat them exactly as the v17 warnings above: bump your Umbraco 13 floor when a patched 13.x ships.
 
 Both SKUs are checked for newly-introduced advisories at each manual release.
