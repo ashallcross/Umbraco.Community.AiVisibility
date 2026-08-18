@@ -2,6 +2,25 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v1.2.1] — 2026-08-18: Internals-visibility grant (no runtime change)
+
+Patch release — a **build-time visibility grant only**. No runtime behaviour changes, no new public API, no config keys added or removed, no schema or migration changes. Both packages are drop-in upgrades from v1.2.0.
+
+Bullets are grouped by which package line they affect: **Both:** applies to v17 and v13, **v17:** to the flagship package only, **v13:** to the new lite SKU only.
+
+### Changed
+
+- **Both:** The shared `Umbraco.Community.AiVisibility.Core` assembly now grants `InternalsVisibleTo` to a single named companion package (`GeoLoop.Umbraco`), so it can consume the internal page-render seam in-process rather than re-implementing it. This is a **compile-time visibility grant, not a public API commitment** — the granted types (`IPageRendererStrategy`, `PageRenderResult`, `PageRenderStatus`) remain `internal`, remain undocumented as an extension point, and remain free to change shape in any future release without a major-version bump. They are **not supported for general consumption**; no other assembly gains access, and nothing an adopter can reference is affected.
+- **v13:** No functional change. Version bumped to keep the v13 and v17 packages in the version lockstep established in v1.2.0 — the v13 package bundles the same `Core` assembly, so its shipped bits do change even though its behaviour does not.
+
+### Documentation
+
+- **Both:** [`docs/extension-points.md`](docs/extension-points.md) now lists `IPageRendererStrategy` under **"Other surfaces (no public extension)"**, stating plainly that the interface is internal and cannot be implemented by adopters, and pointing at the `AiVisibility:RenderStrategy:Mode` configuration setting as the supported way to choose between the shipped Razor / Loopback / Auto strategies.
+
+### Migration from v1.2.0
+
+- **v17 and v13 adopters:** drop-in upgrade — no action required. Same behaviour, same configuration, same database schema, same public API as v1.2.0.
+
 ## [v1.2.0] — 2026-08-18: Umbraco v13 lite SKU (both packages ship in lockstep)
 
 This release adds a second package line — **`Umbraco.Community.AiVisibility.V13`** for Umbraco 13 / .NET 8 — shipped in version lockstep with the flagship v17 package. Both packages now share a single content-extraction engine. The v17 package's runtime behaviour is unchanged from v1.1.2.

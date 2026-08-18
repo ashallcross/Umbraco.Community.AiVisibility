@@ -10,13 +10,13 @@
     <PackageId>Umbraco.Community.AiVisibility</PackageId>
     <Product>Umbraco.Community.AiVisibility</Product>
     <Title>AI Visibility for Umbraco</Title>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Description>AI visibility for Umbraco — request log + dashboard, robots.txt audit, content negotiation, llms.txt manifests, and *.md page rendering. Auto-generates per-page Markdown at {url}.md, /llms.txt, and /llms-full.txt; surfaces an AI Traffic dashboard so editors can see who's reading the site; audits robots.txt against the AI-crawler list. Dual-strategy renderer (in-process Razor with HTTP loopback fallback) works on clean Umbraco installs and agency-built sites that hijack Razor with custom view models. Built for Umbraco v17+.</Description>
     <Authors>Adam Shallcross</Authors>
     <PackageTags>umbraco-marketplace;umbraco;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>v1.2.0 — Umbraco v13 lite SKU joins the family; both packages ship in lockstep. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.2.1 — build-time internals-visibility grant for a companion package; no runtime or behavioural change, drop-in from v1.2.0. Shipped in lockstep with the v13 package. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility.git</RepositoryUrl>

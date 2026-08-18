@@ -181,6 +181,7 @@ services.AddSingleton<IUserAgentClassifier, CustomClassifier>();
 
 - **`LogRetentionJob` (`IDistributedBackgroundJob`)** — sealed; not an extension point. Adjust cadence via `AiVisibility:LogRetention:DurationDays` + `RunIntervalHours`. Set `DurationDays: 0` to disable retention entirely.
 - **`RequestLogDrainHostedService` (`IHostedService`)** — internal to the default `DefaultRequestLog` shape; bypassed when an adopter overrides `IRequestLog`.
+- **`IPageRendererStrategy`** — the render seam `PageRenderer` dispatches to, keyed by `RenderStrategyMode`. The interface and its `PageRenderResult` outcome type are **internal**, so an adopter cannot implement a custom strategy; the seam is not a public extension point and its shape is free to change between releases. What *is* adopter-facing is **selecting** among the three shipped strategies via `AiVisibility:RenderStrategy:Mode` (`Auto` | `Razor` | `Loopback`) — see [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content). Note that the runtime error text raised when a keyed strategy is missing suggests registering a custom strategy; that path is available to package-internal code only.
 
 ---
 

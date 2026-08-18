@@ -57,6 +57,11 @@
          Core's internal HTML-to-Markdown seam, the same way the v17 Tests project
          does. Test-only visibility grant; no runtime or behavioural change. -->
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.V13.Tests" />
+    <!-- GEO Loop (GeoLoop.Umbraco) consumes the internal render seam to obtain page HTML
+         in-process for its structural citability checks. Scoped grant, NOT a public API
+         commitment — IPageRendererStrategy / PageRenderResult / PageRenderStatus stay
+         internal and remain free to reshape. -->
+    <InternalsVisibleTo Include="GeoLoop.Umbraco" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
