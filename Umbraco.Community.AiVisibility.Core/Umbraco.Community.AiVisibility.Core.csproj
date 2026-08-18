@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- Story 9.1 — Core library extraction. Multi-target net8.0 (Umbraco v13 LTS)
+    <!-- Shared content-extraction library. Multi-target net8.0 (Umbraco v13 LTS)
          + net10.0 (Umbraco v17). Plain Microsoft.NET.Sdk: Core has no views,
          static assets, or client bundle (the Razor SDK stays in the v17 ship
-         package). See project-context.md § Technology Stack. -->
+         package). -->
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -17,10 +17,11 @@
   <!-- Core depends on the HTTP-agnostic Umbraco framework layer only:
        Umbraco.Cms.Core (models, services, routing, cache, notifications) +
        Umbraco.Cms.Infrastructure (NPoco persistence/scoping, migrations,
-       background jobs). Per the Epic 9 boundary contract (epics.md:2677) Core
-       MUST NOT reference Umbraco.Cms.Web.* / Umbraco.Cms.Api.* (the web
-       pipeline). Versions are TFM-conditional via CPM approach (a) in the
-       shared Directory.Packages.props (13.14.0 for net8 / 17.3.2 for net10). -->
+       background jobs). Core MUST NOT reference Umbraco.Cms.Web.* /
+       Umbraco.Cms.Api.* (the web pipeline) — that boundary lets one engine
+       serve both the v13 and v17 packages. Versions are TFM-conditional via
+       Central Package Management in Directory.Packages.props (13.x for net8 /
+       17.x for net10). -->
   <ItemGroup>
     <PackageReference Include="Umbraco.Cms.Core" />
     <PackageReference Include="Umbraco.Cms.Infrastructure" />
@@ -34,25 +35,23 @@
     <PackageReference Include="SmartReader" />
   </ItemGroup>
 
-  <!-- Story 9.1 AC4/Open-Question-5 — the package migrations inherit
-       AsyncMigrationBase (Umbraco.Cms.Infrastructure.Migrations), which is ABSENT
-       on Umbraco v13 / net8 (Story 9.0 § (a) Probe 6). They are v17 schema
-       migrations; a fresh v13 install gets its own sync-MigrationBase variants
-       authored in Story 9.2. Exclude them from the net8 compile (cleanest — no
-       #if). The net10 target still compiles + auto-discovers them. -->
+  <!-- The package migrations here inherit AsyncMigrationBase
+       (Umbraco.Cms.Infrastructure.Migrations), which is ABSENT on Umbraco v13 /
+       net8. They are v17 schema migrations; the v13 package ships its own
+       synchronous MigrationBase variants. Exclude them from the net8 compile
+       (cleanest — no #if). The net10 target still compiles + auto-discovers them. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <Compile Remove="Persistence\Migrations\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The v17 (and, from Story 9.2, v13) ship package consumes Core's internal
-         types directly — composers register internal default impls (e.g.
-         DefaultSettingsResolver) by concrete type. -->
+    <!-- Both ship packages consume Core's internal types directly — composers
+         register internal default impls (e.g. DefaultSettingsResolver) by
+         concrete type. -->
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility" />
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.V13" />
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.Core.Tests" />
-    <!-- The existing v17 test project keeps testing the moved types in place
-         (zero-churn topology — see Story 9.1 Dev Agent Record / Open Question 2). -->
+    <!-- The v17 test project tests the moved types in place. -->
     <InternalsVisibleTo Include="Umbraco.Community.AiVisibility.Tests" />
     <!-- The v13 test project runs the shared extraction-quality benchmark via
          Core's internal HTML-to-Markdown seam, the same way the v17 Tests project
@@ -156,10 +155,10 @@
     </ItemGroup>
   </Target>
 
-  <!-- AC3 — compile-time dependency-boundary guard. Fails the build if Core's
+  <!-- Compile-time dependency-boundary guard. Fails the build if Core's
        resolved references include any forbidden web/API assembly. Permanent
-       fixture: protects against future drift (Story 9.2 v13 shell + the v17
-       consumer must not be able to sneak a web reference back into Core). -->
+       fixture: protects against future drift (neither the v13 shell nor the v17
+       consumer must be able to sneak a web reference back into Core). -->
   <Target Name="GuardCoreDependencyBoundary" AfterTargets="ResolveAssemblyReferences">
     <ItemGroup>
       <!-- Forbid the Umbraco web/API pipeline AND the ASP.NET Core web pipeline
@@ -174,7 +173,7 @@
          !$([System.String]::Copy('%(FileName)').StartsWith('Microsoft.AspNetCore.Cryptography')))" />
     </ItemGroup>
     <Error Condition="'@(_ForbiddenCoreReference)' != ''"
-           Text="AiVisibility.Core boundary violation (Epic 9 boundary contract, epics.md:2677): Core resolved a forbidden web/API reference: @(_ForbiddenCoreReference->'%(FileName)', ', '). Re-classify the offending file as STAYS-IN-V17 or SPLIT-NEEDED." />
+           Text="AiVisibility.Core dependency-boundary violation: Core resolved a forbidden web/API reference: @(_ForbiddenCoreReference->'%(FileName)', ', '). Core must stay HTTP-agnostic — move the offending code into the v17/v13 web shell, or add a Core-side abstraction the shell calls." />
   </Target>
 
 </Project>

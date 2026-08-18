@@ -31,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Story 1.1 — Markdown extraction pipeline -->
+    <!-- Markdown extraction pipeline -->
     <PackageReference Include="AngleSharp" />
     <PackageReference Include="ReverseMarkdown" />
     <PackageReference Include="SmartReader" />
@@ -42,14 +42,11 @@
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
-  <!-- Story 9.1 — the v17 ship package consumes the extracted HTTP-agnostic
-       business logic from Core via ProjectReference.
-       PrivateAssets="all" suppresses the auto-generated NuGet <dependency> on an
-       (unpublished) Core package — Story 9.1 must NOT push a Core NuGet (that is
-       Story 9.4's lockstep ship). Instead Core.dll is bundled into the v17 .nupkg
-       (IncludeCoreAssemblyInPackage target below) so the package is self-contained
-       and installable for the manual gate. Story 9.4 owns the final
-       bundle-vs-separate-NuGet packaging decision (Open Question 1). -->
+  <!-- The v17 ship package consumes the HTTP-agnostic business logic from Core
+       via ProjectReference. PrivateAssets="all" suppresses the auto-generated
+       NuGet <dependency> on Core (which is not published as its own package);
+       instead Core.dll is bundled into the v17 .nupkg (IncludeCoreAssemblyInPackage
+       target below) so the package is self-contained. -->
   <PropertyGroup>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeCoreAssemblyInPackage</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>

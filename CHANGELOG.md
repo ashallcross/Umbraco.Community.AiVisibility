@@ -2,7 +2,7 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
-## [v1.2.0] — 2026-07-06: Umbraco v13 lite SKU (both packages ship in lockstep)
+## [v1.2.0] — 2026-08-18: Umbraco v13 lite SKU (both packages ship in lockstep)
 
 This release adds a second package line — **`Umbraco.Community.AiVisibility.V13`** for Umbraco 13 / .NET 8 — shipped in version lockstep with the flagship v17 package. Both packages now share a single content-extraction engine. The v17 package's runtime behaviour is unchanged from v1.1.2.
 
@@ -18,6 +18,7 @@ Bullets are grouped by which package line they affect: **Both:** applies to v17 
 
 - **v17:** **No adopter-visible behaviour change.** Internally, the extraction / `llms.txt` / request-log / robots-audit engine was extracted into a shared `Umbraco.Community.AiVisibility.Core` library (compiled into the package DLL, not a separate NuGet dependency) so both SKUs run one engine. The v17 package is behaviourally equivalent to v1.1.2.
 - **v13:** The v13 package's Umbraco dependency floats to **13.15.0** (latest published v13 stable), clearing a transitive advisory present on the earlier 13.14.0 line.
+- **Both:** Refreshed the bundled AI-crawler list from upstream [`ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt). The robots.txt audit Health Check now recognises around 16 additional AI crawlers (including Cursor, Kimi, TongyiBot, ExaSearchBot, and amazon-QBusiness) and drops one deprecated entry.
 
 ### v13 expectations (read before installing the lite SKU)
 

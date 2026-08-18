@@ -53,7 +53,7 @@
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
-  <!-- Story 9.2 — HYBRID shell-source strategy (Adam 2026-06-17).
+  <!-- Hybrid shell-source strategy.
        Compile-link the byte-portable web files from the v17 ship package so
        there is ONE source of truth (bug fixes land in both SKUs, zero drift).
        These keep their original Umbraco.Community.AiVisibility.* namespaces.
@@ -105,12 +105,12 @@
     <Compile Include="..\Umbraco.Community.AiVisibility\AiVisibilityComposer.cs" Link="AiVisibilityComposer.cs" />
   </ItemGroup>
 
-  <!-- Story 9.2 — the v13 ship package consumes the extracted HTTP-agnostic
-       business logic from Core via ProjectReference (mirrors the v17 package).
-       PrivateAssets="all" suppresses the auto-generated NuGet <dependency> on an
-       (unpublished) Core package; Core.dll is bundled into the v13 .nupkg
+  <!-- The v13 ship package consumes the HTTP-agnostic business logic from Core
+       via ProjectReference (mirrors the v17 package). PrivateAssets="all"
+       suppresses the auto-generated NuGet <dependency> on Core (which is not
+       published as its own package); Core.dll is bundled into the v13 .nupkg
        instead (IncludeCoreAssemblyInPackage target below) so the package is
-       self-contained. Story 9.4 owns the final bundle-vs-separate-NuGet decision. -->
+       self-contained. -->
   <PropertyGroup>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeCoreAssemblyInPackage</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
