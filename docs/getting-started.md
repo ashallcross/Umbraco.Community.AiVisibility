@@ -406,9 +406,11 @@ If your site uses [uSync](https://github.com/KevinJump/uSync) or `uSync.Complete
 }
 ```
 
-This stops the package from registering `AiVisibilityPackageMigrationPlan` with Umbraco's migration pipeline. uSync then serialises the doctype on first install and owns the lifecycle. The resolver still works — it just falls back fully to appsettings when no `AI Visibility Settings` content node exists.
+This skips only the creation of the `AI Visibility Settings` doctype and the `llmsTxtSettingsComposition` per-page exclusion composition. The rest of the package migration still runs — in particular the `aiVisibilityRequestLog` table that backs the AI Traffic dashboard is always created. uSync then imports the doctype and composition from the environment that owns them and manages their lifecycle. The resolver still works — it just falls back fully to appsettings when no `AI Visibility Settings` content node exists.
 
 **Caveat:** flipping this flag from `false` to `true` AFTER the migration has already run does NOT remove the doctype from the host DB (Umbraco's plan-state record persists the executed state). To relocate schema ownership to uSync, delete the doctype manually first.
+
+The reverse also holds: flipping the flag from `true` to `false` AFTER the package migration has run with it on does NOT create the doctype or composition retroactively — the skipped step is recorded as executed. Create or import (uSync) them yourself in that case.
 
 ### Resolver behaviour at request time
 

@@ -203,9 +203,8 @@ public sealed class AiVisibilitySettings
     public int SettingsResolverCachePolicySeconds { get; init; } = 300;
 
     /// <summary>
-    /// Story 3.1 — migration-plan registration controls. Currently only carries
-    /// <see cref="MigrationsSettings.SkipSettingsDoctype"/> for uSync
-    /// coexistence (architecture.md line 1092 + epics.md AC1).
+    /// Package migration controls; currently only
+    /// <see cref="MigrationsSettings.SkipSettingsDoctype"/> (uSync coexistence).
     /// </summary>
     public MigrationsSettings Migrations { get; init; } = new();
 
@@ -604,22 +603,21 @@ public sealed class ContentSignalSettings
 }
 
 /// <summary>
-/// Story 3.1 — controls for the package's schema migrations. Currently only
-/// <see cref="SkipSettingsDoctype"/> ships; future migrations (e.g. Epic 5's
-/// request-log table) may add their own opt-out flags here.
+/// Controls for the package's schema migrations. Currently only
+/// <see cref="SkipSettingsDoctype"/> ships.
 /// </summary>
 public sealed class MigrationsSettings
 {
     /// <summary>
-    /// When <c>true</c>, <c>SettingsComposer</c> does NOT register
-    /// <c>AiVisibilityPackageMigrationPlan</c> with the Umbraco package-migration
-    /// pipeline — the Settings doctype + per-page-exclusion composition are
-    /// NOT created on first boot. Default <c>false</c>.
+    /// When <c>true</c>, the package migration skips creating the Settings
+    /// doctype + per-page-exclusion composition only. The rest of the package
+    /// migration plan (including the <c>aiVisibilityRequestLog</c> table that
+    /// backs AI Traffic) still runs. Default <c>false</c>.
     /// <para>
     /// <b>Use case:</b> adopters using <a href="https://github.com/KevinJump/uSync">uSync</a>
     /// or <c>uSync.Complete</c> to own the schema lifecycle. uSync serialises
     /// the doctype on first install; setting this flag to <c>true</c> prevents
-    /// our package-migration plan from racing uSync's import or duplicating
+    /// our doctype migration step from racing uSync's import or duplicating
     /// the doctype. Documented in <c>docs/getting-started.md</c> § "uSync
     /// coexistence".
     /// </para>
@@ -629,6 +627,12 @@ public sealed class MigrationsSettings
     /// (Umbraco's package-migration plan-state record persists the executed
     /// state). Adopters relocating schema ownership to uSync must delete the
     /// doctype manually first.
+    /// </para>
+    /// <para>
+    /// <b>Caveat:</b> flipping this from <c>true</c> to <c>false</c> AFTER the
+    /// skipped step has run does NOT create the doctype retroactively — the
+    /// step is recorded as executed. Create or import (uSync) the doctype and
+    /// composition yourself in that case.
     /// </para>
     /// </summary>
     public bool SkipSettingsDoctype { get; init; }

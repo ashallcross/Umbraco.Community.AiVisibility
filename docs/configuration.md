@@ -158,7 +158,7 @@ The strategy choice is read live from `IOptionsMonitor<AiVisibilitySettings>` at
 
 | Key | Type | Default | What it controls |
 |---|---|---|---|
-| `Migrations:SkipSettingsDoctype` | `bool` | `false` | When `true`, `SettingsComposer` does NOT register `AiVisibilityPackageMigrationPlan` (uSync coexistence — see `docs/getting-started.md` § "uSync coexistence"). |
+| `Migrations:SkipSettingsDoctype` | `bool` | `false` | When `true`, the package migration skips creating the settings doctype and per-page exclusion composition only; the `aiVisibilityRequestLog` table (AI Traffic) is still created. Flipping it back to `false` after that migration has run does not create the doctype retroactively (uSync coexistence — see `docs/getting-started.md` § "uSync coexistence"). |
 
 ## `AiVisibility:RobotsAuditor` — robots audit + bot-list refresh
 

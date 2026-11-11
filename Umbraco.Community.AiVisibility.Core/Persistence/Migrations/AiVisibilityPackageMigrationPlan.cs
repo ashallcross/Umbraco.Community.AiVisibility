@@ -33,10 +33,11 @@ namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 /// </para>
 /// <para>
 /// Adopters who own the doctype via uSync set
-/// <c>AiVisibility:Migrations:SkipSettingsDoctype: true</c>;
-/// <see cref="Composing.SettingsComposer"/> calls
-/// <c>PackageMigrationPlans().Remove&lt;AiVisibilityPackageMigrationPlan&gt;()</c>
-/// when the flag is set so this plan never enters the migration pipeline.
+/// <c>AiVisibility:Migrations:SkipSettingsDoctype: true</c>; the plan still
+/// runs, but <see cref="CreateAiVisibilitySettingsDoctype"/> returns early and
+/// skips only the doctype/composition creation. The request-log table steps
+/// run regardless. Once that step has been recorded as executed, flipping the
+/// flag back to <c>false</c> does not create the doctype retroactively.
 /// </para>
 /// </remarks>
 public sealed class AiVisibilityPackageMigrationPlan : PackageMigrationPlan
