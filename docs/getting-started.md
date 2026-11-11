@@ -367,6 +367,19 @@ To let editors exclude individual pages, attach the **AI Visibility Exclusion (c
 - The page is omitted from `/llms.txt` and `/llms-full.txt`
 - HTML responses for that page are unchanged (the toggle only affects the LLM exports — the public site keeps serving normally)
 
+#### Where the checkbox appears in the editor
+
+In the v17 package the composition's **LLM exports** group sits inside an **AI Visibility** tab, so on a doctype with its own tabs (for example "Content" and "SEO") the "Exclude from LLM exports" checkbox appears under **AI Visibility** instead of an automatic "Generic" tab. (The frozen v13 package keeps the group at the root of the composition.)
+
+On a doctype that has **no tabs of its own**, adding the composition gives it its first tab, so Umbraco shows that doctype's own groups under a "Generic" tab next to **AI Visibility**. If you'd rather keep the checkbox at the root, open the **AI Visibility Exclusion (composition)** doctype and drag the **LLM exports** group out of the **AI Visibility** tab back to the root (then delete the empty tab). The package won't move it again once you've changed it.
+
+Existing installs are moved into the tab automatically on the first boot after upgrading, but only when:
+
+- the composition is unedited — just the `llmsTxt` group holding the single `excludeFromLlmExports` property. A composition you've customised (extra properties or groups, already in a tab) is left alone and the reason is logged at Information level.
+- no other doctype already has a container aliased `aiVisibility` that is a group rather than a tab, or a container aliased `aiVisibility/llmsTxt` that is a tab rather than a group. If one does, the move is skipped with a Warning naming the doctype; move the group by hand or rename that container.
+
+The property and every page's saved value are kept, so pages already excluded stay excluded. `SkipSettingsDoctype: true` (see [uSync coexistence](#usync-coexistence)) also skips this move, and turning the flag off later does not move the group. uSync users: the move changes the composition's containers, so it shows up as a uSync difference. Export and commit the moved composition from one environment so the other environments import it, rather than letting an older export put the group back; or keep `SkipSettingsDoctype: true` and make the move in uSync yourself.
+
 Cache invalidation is automatic: toggling the bool fires a `RefreshNode` notification that clears the per-page Markdown cache, both manifest caches, and the resolver settings cache for every bound hostname in a single invocation.
 
 ### Configuration overlay precedence
@@ -406,7 +419,7 @@ If your site uses [uSync](https://github.com/KevinJump/uSync) or `uSync.Complete
 }
 ```
 
-This skips only the creation of the `AI Visibility Settings` doctype and the `llmsTxtSettingsComposition` per-page exclusion composition. The rest of the package migration still runs — in particular the `aiVisibilityRequestLog` table that backs the AI Traffic dashboard is always created. uSync then imports the doctype and composition from the environment that owns them and manages their lifecycle. The resolver still works — it just falls back fully to appsettings when no `AI Visibility Settings` content node exists.
+This skips only the creation of the `AI Visibility Settings` doctype and the `llmsTxtSettingsComposition` per-page exclusion composition (and the later move of the composition's group into the "AI Visibility" tab). The rest of the package migration still runs — in particular the `aiVisibilityRequestLog` table that backs the AI Traffic dashboard is always created. uSync then imports the doctype and composition from the environment that owns them and manages their lifecycle. The resolver still works — it just falls back fully to appsettings when no `AI Visibility Settings` content node exists.
 
 **Caveat:** flipping this flag from `false` to `true` AFTER the migration has already run does NOT remove the doctype from the host DB (Umbraco's plan-state record persists the executed state). To relocate schema ownership to uSync, delete the doctype manually first.
 

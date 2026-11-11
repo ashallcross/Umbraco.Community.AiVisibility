@@ -116,6 +116,33 @@ public class CreateAiVisibilitySettingsDoctypeTests
     }
 
     [Test]
+    public async Task MigrateAsync_FreshInstall_CompositionHasShapeTheTabMoveAccepts()
+    {
+        // Pins that the composition this step creates is exactly what
+        // MoveExclusionGroupIntoTab_1_3 moves on a fresh install. A real
+        // short-string helper is needed so aliases survive.
+        _shortStringHelper = new DefaultShortStringHelper(new DefaultShortStringHelperConfig());
+        _contentTypeService.Get(Arg.Any<string>()).Returns((IContentType?)null);
+        IContentType? savedComposition = null;
+#pragma warning disable CS0618 // the step under test calls the obsolete Save
+        _contentTypeService.Save(
+            Arg.Do<IContentType>(c =>
+            {
+                if (c.Alias == CreateAiVisibilitySettingsDoctype.CompositionAlias)
+                {
+                    savedComposition = c;
+                }
+            }),
+            Arg.Any<int>());
+#pragma warning restore CS0618
+
+        await MakeMigration().RunAsync();
+
+        Assert.That(savedComposition, Is.Not.Null);
+        Assert.That(MoveExclusionGroupIntoTab_1_3.GetShapeMismatch(savedComposition!), Is.Null);
+    }
+
+    [Test]
     public void ShouldSkipSettingsDoctype_True_ReturnsTrue()
     {
         var configuration = BuildConfiguration(skipSettingsDoctype: true);
