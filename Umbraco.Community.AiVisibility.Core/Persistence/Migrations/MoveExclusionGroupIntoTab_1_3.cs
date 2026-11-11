@@ -21,8 +21,10 @@ namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 /// </para>
 /// <para>
 /// The composition is only touched while it still has the exact shape the
-/// package created: one group <c>llmsTxt</c> holding the single property
-/// <c>excludeFromLlmExports</c>, and no compositions of its own. Anything else
+/// package created: one root-level group (alias <c>llmsTxt</c>, or named
+/// "LLM exports" because a backoffice save rebuilds group aliases from names)
+/// holding the single property <c>excludeFromLlmExports</c>, and no
+/// compositions of its own. Anything else
 /// means the adopter (or uSync) owns it, so the step logs and skips. Honours
 /// <c>AiVisibility:Migrations:SkipSettingsDoctype</c>.
 /// </para>
@@ -40,6 +42,7 @@ public sealed class MoveExclusionGroupIntoTab_1_3 : AsyncMigrationBase
     internal const string TabName = "AI Visibility";
     internal const int TabSortOrder = 100;
     internal const string GroupLocalAlias = "llmsTxt";
+    internal const string GroupName = "LLM exports";
     internal const string NestedGroupAlias = TabAlias + "/" + GroupLocalAlias;
 
     private readonly IContentTypeService _contentTypeService;
@@ -162,9 +165,9 @@ public sealed class MoveExclusionGroupIntoTab_1_3 : AsyncMigrationBase
         }
 
         var group = groups[0];
-        if (!string.Equals(group.Alias, GroupLocalAlias, StringComparison.OrdinalIgnoreCase))
+        if (!IsPackageGroup(group))
         {
-            return $"unexpected property group alias '{group.Alias}'";
+            return $"unexpected property group '{group.Name}' (alias '{group.Alias}')";
         }
 
         if (group.Type != PropertyGroupType.Group)
@@ -226,8 +229,7 @@ public sealed class MoveExclusionGroupIntoTab_1_3 : AsyncMigrationBase
     /// </summary>
     internal static bool MoveGroupIntoTab(IContentTypeComposition composition)
     {
-        var group = composition.PropertyGroups
-            .Single(g => string.Equals(g.Alias, GroupLocalAlias, StringComparison.OrdinalIgnoreCase));
+        var group = composition.PropertyGroups.Single(IsPackageGroup);
 
         if (!composition.AddPropertyGroup(TabAlias, TabName))
         {
@@ -242,6 +244,16 @@ public sealed class MoveExclusionGroupIntoTab_1_3 : AsyncMigrationBase
         group.Alias = NestedGroupAlias;
         return true;
     }
+
+    /// <summary>
+    /// The package's root-level group: alias <c>llmsTxt</c> as created, or the
+    /// alias the backoffice rebuilds from the name "LLM exports" on any save of
+    /// the composition (for example <c>lLMExports</c>).
+    /// </summary>
+    private static bool IsPackageGroup(PropertyGroup group)
+        => group.GetParentAlias() is null
+            && (string.Equals(group.Alias, GroupLocalAlias, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(group.Name, GroupName, StringComparison.OrdinalIgnoreCase));
 
     private static bool IsAlreadyNested(PropertyGroup[] groups)
     {

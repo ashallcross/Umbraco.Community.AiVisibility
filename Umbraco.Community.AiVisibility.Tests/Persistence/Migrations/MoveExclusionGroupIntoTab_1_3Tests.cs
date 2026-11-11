@@ -67,6 +67,38 @@ public class MoveExclusionGroupIntoTab_1_3Tests
     }
 
     [Test]
+    public async Task MigrateAsync_ResavedInBackoffice_NestsGroupWithCanonicalAlias()
+    {
+        // Any backoffice save rebuilds group aliases from names: "LLM exports" → "lLMExports".
+        var composition = BuildPackageShapedComposition();
+        var group = composition.PropertyGroups["llmsTxt"]!;
+        group.Alias = "lLMExports";
+        _contentTypeService.Get(CreateAiVisibilitySettingsDoctype.CompositionAlias).Returns(composition);
+
+        await MakeMigration().RunAsync();
+
+        _contentTypeService.Received(1).Save(composition, Arg.Any<int>());
+        Assert.That(composition.PropertyGroups["aiVisibility"]!.Type, Is.EqualTo(PropertyGroupType.Tab));
+        Assert.That(composition.PropertyGroups["aiVisibility/llmsTxt"], Is.SameAs(group));
+        Assert.That(composition.PropertyGroups.Contains("lLMExports"), Is.False);
+    }
+
+    [Test]
+    public async Task MigrateAsync_ResavedGroupNestedUnderOtherTab_DoesNotSave()
+    {
+        // Named "LLM exports" but already moved by the adopter into their own tab.
+        var composition = BuildPackageShapedComposition();
+        composition.PropertyGroups["llmsTxt"]!.Alias = "content/lLMExports";
+        _contentTypeService.Get(CreateAiVisibilitySettingsDoctype.CompositionAlias).Returns(composition);
+
+        await MakeMigration().RunAsync();
+
+        _contentTypeService.DidNotReceive().Save(Arg.Any<IContentType>(), Arg.Any<int>());
+        Assert.That(composition.PropertyGroups.Contains("content/lLMExports"), Is.True);
+        Assert.That(MoveExclusionGroupIntoTab_1_3.GetShapeMismatch(composition), Does.Contain("unexpected property group 'LLM exports' (alias 'content/lLMExports')"));
+    }
+
+    [Test]
     public async Task MigrateAsync_SkipFlagTrue_DoesNotTouchContentTypes()
     {
         _configuration = BuildConfiguration(skipSettingsDoctype: true);
@@ -111,7 +143,9 @@ public class MoveExclusionGroupIntoTab_1_3Tests
                 composition.PropertyGroups["llmsTxt"]!.Type = PropertyGroupType.Tab;
                 break;
             case "group-renamed":
-                composition.PropertyGroups["llmsTxt"]!.Alias = "aiExports";
+                // A genuine rename: the backoffice rebuilds the alias from the new name.
+                composition.PropertyGroups["llmsTxt"]!.Name = "AI exports";
+                composition.PropertyGroups["llmsTxt"]!.Alias = "aIExports";
                 break;
             case "property-renamed":
                 composition.PropertyTypes.Single().Alias = "hideFromAi";
@@ -165,7 +199,7 @@ public class MoveExclusionGroupIntoTab_1_3Tests
         var composition = BuildPackageShapedComposition();
         composition.PropertyGroups["llmsTxt"]!.UpdateParentAlias("content");
         var mismatch = MoveExclusionGroupIntoTab_1_3.GetShapeMismatch(composition);
-        Assert.That(mismatch, Does.Contain("unexpected property group alias"));
+        Assert.That(mismatch, Does.Contain("unexpected property group"));
         Assert.That(mismatch, Does.Not.Contain("already nested"));
         _contentTypeService.Get(CreateAiVisibilitySettingsDoctype.CompositionAlias).Returns(composition);
 
