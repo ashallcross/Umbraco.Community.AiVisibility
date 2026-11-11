@@ -62,21 +62,21 @@ The bot list, the SHA-pin, and the fallback file all live in the shared `Core` p
 | Path | Behaviour |
 |---|---|
 | **Online + SHA matches** | Embed fetched content; emit info-level message naming the SHA. |
-| **Online + SHA mismatch** | Build hard-fails. **Deliberate** — forces maintainer review of the upstream change before the new bytes are embedded. |
-| **Offline / fetch failed** | Fall back to the committed snapshot; emit a warning. Build is offline-safe. |
+| **Online + SHA mismatch** | Embed the committed, reviewed snapshot; emit a warning that a newer upstream list is available. Unreviewed upstream bytes are never embedded, and a change upstream never breaks the build. |
+| **Offline / fetch failed / unreadable download** | Embed the committed snapshot; emit a warning. Build is offline-safe. |
 
 The fallback file is byte-identical to the upstream snapshot at the moment the SHA was pinned — so online and offline builds produce identical embedded bytes when the upstream content matches the pin.
 
 ### Refreshing the pinned SHA
 
-When upstream `ai.robots.txt` changes, an online build hard-fails with a SHA-mismatch error (that is the point — new bot-list bytes never ship without a review). To adopt the new upstream list:
+When upstream `ai.robots.txt` changes, an online build warns that a newer list is available and keeps embedding the committed snapshot — new bot-list bytes never ship without a review, and the build keeps working until you choose to refresh. To adopt the new upstream list:
 
 1. Review the upstream change (diff the new `robots.txt` against the committed `Core/Robots/AiBotList.fallback.txt`) so you know which bots were added or removed.
 2. Update the committed fallback file to the new upstream content.
-3. Update **both** `ExpectedAiBotListSha256` and `ExpectedAiBotListFallbackSha256` in `Umbraco.Community.AiVisibility.Core/…Core.csproj` to the new SHA-256 (the build error prints the `got …` value; that is the new SHA).
-4. Rebuild — the SHA now matches and the fresh list embeds.
+3. Update **both** `ExpectedAiBotListSha256` and `ExpectedAiBotListFallbackSha256` in `Umbraco.Community.AiVisibility.Core/…Core.csproj` to the new SHA-256 (the build warning prints the `upstream …` value; that is the new SHA).
+4. Rebuild — the SHA now matches, the warning disappears, and the fresh list embeds.
 
-There is no automated/scheduled refresh — releases are manual, so the maintainer refreshes the list deliberately as part of (or ahead of) a release. To build against the last-pinned list without touching the SHA — e.g. an offline or reproducibility build — force the fallback path with `-p:AiBotListSourceUrl=` pointing at an unreachable host (the build then emits the offline warning and embeds the committed snapshot).
+There is no automated/scheduled refresh — releases are manual, so the maintainer refreshes the list deliberately as part of (or ahead of) a release. Every build that does not match the pin already embeds the committed snapshot, so no override is needed for day-to-day work. To skip the network call entirely (e.g. an offline or reproducibility build), point `-p:AiBotListSourceUrl=` at an unreachable host.
 
 ## Custom auditors
 

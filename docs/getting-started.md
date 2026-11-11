@@ -539,7 +539,7 @@ From v0.8, the Backoffice **Settings → Health Check → LLMs** group surfaces 
 | `AiVisibility:RobotsAuditor:DevFetchPort` | `null` | **Dev-only escape hatch.** Overrides the scheme default port for the audit fetch (e.g. `44314` for a TestSite on Kestrel). **DO NOT set in production** — production deploys serve `/robots.txt` on 443/80. Live in `appsettings.Development.json` only. |
 | `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev-only escape hatch.** Forces seconds-precision refresh cycles instead of `RefreshIntervalHours`. **DO NOT set in production** — would hammer adopter origins. Live in `appsettings.Development.json` only. |
 
-The AI-bot list is **synced from upstream at build time** with SHA pinning — the build hard-fails on a SHA mismatch (deliberate; protects against silent feed tampering). Offline / disconnected builds fall back to the committed snapshot at `Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt` with a warning.
+The AI-bot list is **synced from upstream at build time** with SHA pinning — only a list matching the reviewed pin is embedded (protects against silent feed tampering). If upstream has changed, or the build is offline, the committed snapshot at `Umbraco.Community.AiVisibility.Core/Robots/AiBotList.fallback.txt` is embedded instead, with a warning.
 
 Adopters can replace the auditor entirely by registering a Singleton `IRobotsAuditor` of their own (Singleton lifetime is required — see [`docs/robots-audit.md` § Custom auditors](robots-audit.md#custom-auditors)).
 
