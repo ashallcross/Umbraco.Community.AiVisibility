@@ -367,6 +367,20 @@ To let editors exclude individual pages, attach the **AI Visibility Exclusion (c
 - The page is omitted from `/llms.txt` and `/llms-full.txt`
 - HTML responses for that page are unchanged (the toggle only affects the LLM exports — the public site keeps serving normally)
 
+#### Reusing your own "hide page" property
+
+If your doctypes already have a boolean toggle for hiding pages (for example `hidePage`), list its alias in `appsettings.json` and the package treats it like `excludeFromLlmExports`:
+
+```json
+{
+  "AiVisibility": {
+    "ExclusionPropertyAliases": [ "hidePage" ]
+  }
+}
+```
+
+The configured aliases **add to** `excludeFromLlmExports`, which keeps working. Only a boolean `true` value excludes the page — a text property holding `"1"` or `"true"` does not. If the property varies by culture, each culture's value applies to that culture's requests. The list lives in `appsettings.json` only; the backoffice dashboard doesn't edit it.
+
 #### Where the checkbox appears in the editor
 
 In the v17 package the composition's **LLM exports** group sits inside an **AI Visibility** tab, so on a doctype with its own tabs (for example "Content" and "SEO") the "Exclude from LLM exports" checkbox appears under **AI Visibility** instead of an automatic "Generic" tab. (The frozen v13 package keeps the group at the root of the composition.)
@@ -471,6 +485,7 @@ From v0.6, every route the package ships works zero-config — no `AiVisibility:
 | `AiVisibility:LlmsFullScope:IncludedDocTypeAliases` | `[]` | same |
 | `AiVisibility:LlmsFullScope:ExcludedDocTypeAliases` | `["errorPage", "redirectPage"]` | same |
 | `AiVisibility:ExcludedDoctypeAliases` (top-level) | `[]` | same |
+| `AiVisibility:ExclusionPropertyAliases` | `[]` | same |
 | `AiVisibility:Hreflang:Enabled` | `false` | same |
 | `AiVisibility:SettingsResolverCachePolicySeconds` | `300` | same |
 | `AiVisibility:Migrations:SkipSettingsDoctype` | `false` | same |
@@ -490,7 +505,7 @@ Layer 4 also covers the explicit-empty-string case: an editor clearing the `site
 
 ## Backoffice Settings dashboard
 
-From v0.5, the package ships a Backoffice dashboard under **Settings → AI Visibility** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `AI Visibility Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of pages with `excludeFromLlmExports` toggled on.
+From v0.5, the package ships a Backoffice dashboard under **Settings → AI Visibility** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `AI Visibility Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of the pages kept out of LLM exports (pages with `excludeFromLlmExports` or a configured `ExclusionPropertyAliases` property toggled on, pages of an excluded doctype, and pages protected by Public Access).
 
 The dashboard surfaces exactly the same overlay rules `ISettingsResolver` enforces (Settings node value > appsettings value > in-code default). On first save, if no `AI Visibility Settings` content node exists yet, the dashboard creates one at the root automatically — adopters using uSync to own the doctype lifecycle don't need to pre-create the node before opening the dashboard.
 

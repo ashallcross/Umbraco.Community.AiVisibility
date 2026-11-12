@@ -38,11 +38,10 @@ namespace Umbraco.Community.AiVisibility.LlmsTxt;
 /// </summary>
 public sealed class LlmsFullTxtController : Controller
 {
-    internal const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
-
     private readonly ILlmsFullBuilder _builder;
     private readonly IHostnameRootResolver _hostnameResolver;
     private readonly ISettingsResolver _settingsResolver;
+    private readonly IExclusionEvaluator _exclusion;
     private readonly IUmbracoContextFactory _umbracoContextFactory;
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly AppCaches _appCaches;
@@ -54,6 +53,7 @@ public sealed class LlmsFullTxtController : Controller
         ILlmsFullBuilder builder,
         IHostnameRootResolver hostnameResolver,
         ISettingsResolver settingsResolver,
+        IExclusionEvaluator exclusion,
         IUmbracoContextFactory umbracoContextFactory,
         IDocumentNavigationQueryService navigation,
         AppCaches appCaches,
@@ -64,6 +64,7 @@ public sealed class LlmsFullTxtController : Controller
         _builder = builder;
         _hostnameResolver = hostnameResolver;
         _settingsResolver = settingsResolver;
+        _exclusion = exclusion;
         _umbracoContextFactory = umbracoContextFactory;
         _navigation = navigation;
         _appCaches = appCaches;
@@ -131,9 +132,7 @@ public sealed class LlmsFullTxtController : Controller
             pages = CollectAndFilterPages(
                 scopeRoot,
                 ctxRef.UmbracoContext.Content,
-                settingsSnapshot.LlmsFullScope,
-                resolvedSettings,
-                resolution.Culture);
+                settingsSnapshot.LlmsFullScope);
         }
 
         var culture = resolution.Culture;
@@ -159,11 +158,35 @@ public sealed class LlmsFullTxtController : Controller
         // must not poison parked callers).
         var hostForBuild = AiVisibilityCacheKeys.NormaliseHost(host);
         var rootForBuild = scopeRoot;
-        var pagesForBuild = pages;
+        var collectedPages = pages;
         var resolvedForBuild = resolvedSettings;
 
         ManifestCacheEntry Build()
         {
+            // Per-page exclusion runs through IExclusionEvaluator inside the
+            // cache factory so a replaced evaluator governs the manifest and
+            // cache hits pay nothing. A throwing evaluator surfaces through the
+            // GetCacheItem try/catch below (logged Error + 500), same as the
+            // .md route. The /llms-full.txt-only LlmsFullScope include/exclude
+            // narrowing already ran in CollectAndFilterPages.
+            IReadOnlyList<IPublishedContent> pagesForBuild;
+            using (_umbracoContextFactory.EnsureUmbracoContext())
+            {
+                var included = new List<IPublishedContent>(collectedPages.Count);
+                foreach (var page in collectedPages)
+                {
+                    if (!_exclusion
+                            .IsExcludedAsync(page, culture, host, CancellationToken.None)
+                            .ConfigureAwait(false)
+                            .GetAwaiter()
+                            .GetResult())
+                    {
+                        included.Add(page);
+                    }
+                }
+                pagesForBuild = included;
+            }
+
             var ctx = new LlmsFullBuilderContext(
                 Hostname: hostForBuild,
                 Culture: culture,
@@ -204,11 +227,11 @@ public sealed class LlmsFullTxtController : Controller
         {
             _logger.LogError(
                 ex,
-                "/llms-full.txt — builder threw for {Host} {Culture}",
+                "/llms-full.txt — manifest build threw for {Host} {Culture}",
                 hostForBuild,
                 culture);
             return Problem(
-                title: "/llms-full.txt — builder failed",
+                title: "/llms-full.txt — manifest build failed",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
 
@@ -340,18 +363,14 @@ public sealed class LlmsFullTxtController : Controller
     /// Walk the published content under <paramref name="scopeRoot"/> in tree-order
     /// (root first, then descendants per
     /// <see cref="IDocumentNavigationQueryService.TryGetDescendantsKeys"/>) and
-    /// apply the cumulative filters:
-    /// <list type="bullet">
-    ///   <item><see cref="LlmsFullScopeSettings.IncludedDocTypeAliases"/> /
-    ///   <see cref="LlmsFullScopeSettings.ExcludedDocTypeAliases"/> (Story 2.2 —
-    ///   <c>/llms-full.txt</c>-only narrowing).</item>
-    ///   <item><see cref="ResolvedLlmsSettings.ExcludedDoctypeAliases"/>
-    ///   (Story 3.1 — top-level all-routes exclusion, union of appsettings + Settings doctype).</item>
-    ///   <item><c>excludeFromLlmExports</c> per-page composition property
-    ///   (Story 3.1).</item>
-    /// </list>
+    /// apply the <c>/llms-full.txt</c>-only
+    /// <see cref="LlmsFullScopeSettings.IncludedDocTypeAliases"/> /
+    /// <see cref="LlmsFullScopeSettings.ExcludedDocTypeAliases"/> narrowing.
+    /// Per-page exclusion (property flags, public access, the all-routes
+    /// doctype list) is decided by <see cref="IExclusionEvaluator"/> inside the
+    /// cache factory; the two filters cumulate as logical AND-NOT.
     /// <para>
-    /// All three filters cumulate as logical AND-NOT. Pre-collecting in the
+    /// Pre-collecting in the
     /// controller keeps <see cref="DefaultLlmsFullBuilder"/> pure-function over
     /// its inputs (the <c>Builders/</c> folder boundary forbids HTTP / context
     /// dependencies).
@@ -360,9 +379,7 @@ public sealed class LlmsFullTxtController : Controller
     private IReadOnlyList<IPublishedContent> CollectAndFilterPages(
         IPublishedContent scopeRoot,
         IPublishedContentCache? snapshot,
-        LlmsFullScopeSettings scope,
-        ResolvedLlmsSettings resolved,
-        string? culture)
+        LlmsFullScopeSettings scope)
     {
         var includeSet = (scope.IncludedDocTypeAliases ?? Array.Empty<string>())
             .Where(a => !string.IsNullOrWhiteSpace(a))
@@ -370,8 +387,6 @@ public sealed class LlmsFullTxtController : Controller
         var excludeSet = (scope.ExcludedDocTypeAliases ?? Array.Empty<string>())
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var resolvedExcludeSet = resolved.ExcludedDoctypeAliases as HashSet<string>
-            ?? new HashSet<string>(resolved.ExcludedDoctypeAliases, StringComparer.OrdinalIgnoreCase);
 
         bool IsIncluded(IPublishedContent p)
         {
@@ -381,19 +396,8 @@ public sealed class LlmsFullTxtController : Controller
             {
                 return false;
             }
-            // Story 3.1 top-level exclusion (all routes).
-            if (resolvedExcludeSet.Contains(alias))
-            {
-                return false;
-            }
             // Story 2.2 positive filter (when configured).
             if (includeSet.Count > 0 && !includeSet.Contains(alias))
-            {
-                return false;
-            }
-            // Story 3.1 per-page composition property — last because it requires
-            // a property read; other filters are O(1) hash lookups.
-            if (TryReadExcludeBool(p, culture))
             {
                 return false;
             }
@@ -427,27 +431,6 @@ public sealed class LlmsFullTxtController : Controller
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Story 3.1 — read <c>excludeFromLlmExports</c> via the property layer.
-    /// Mirrors the shape <see cref="MarkdownController.TryReadExcludeBool"/>
-    /// uses (and for the same trap-avoiding reasons documented there).
-    /// </summary>
-    private static bool TryReadExcludeBool(IPublishedContent page, string? culture)
-    {
-        // The excludeFromLlmExports property lives on the invariant
-        // llmsTxtSettingsComposition. Pass culture: null — see Story 3.1
-        // manual gate Step 4 finding (HasValue/GetValue with a non-null culture
-        // returns false on invariant properties even when the bool is set).
-        _ = culture;
-        var prop = page.GetProperty(ExcludeFromLlmExportsAlias);
-        if (prop is null || !prop.HasValue(culture: null))
-        {
-            return false;
-        }
-        var value = prop.GetValue(culture: null);
-        return value is bool b && b;
     }
 
     /// <summary>

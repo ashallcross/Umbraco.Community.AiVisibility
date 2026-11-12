@@ -3,7 +3,7 @@ const i = [
     type: "dashboard",
     alias: "AiVisibility.Dashboard.Settings",
     name: "AI Visibility Settings Dashboard",
-    element: () => import("./aiv-settings-dashboard.element-D9uA2o4l.js"),
+    element: () => import("./aiv-settings-dashboard.element-3pynSPeN.js"),
     weight: 100,
     meta: {
       label: "AI Visibility",

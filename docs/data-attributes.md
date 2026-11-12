@@ -49,7 +49,7 @@ The `href` is computed by a single rule: trailing-slash URLs (`/blog/`) get `/in
 
 - Non-content responses (404 / 5xx, static assets, Backoffice URLs, surface controllers, MVC routes that don't resolve to `IPublishedContent`).
 - `.md` and `/index.html.md` self-requests (the response IS the Markdown body).
-- Pages excluded via the per-page `excludeFromLlmExports` toggle OR pages whose doctype alias is in the resolved `AiVisibility:ExcludedDoctypeAliases` list. The exclusion list is configurable in `appsettings.json` (see [Getting Started § Settings doctype + Backoffice](getting-started.md) for the resolution overlay) — top-level scope applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
+- Pages excluded via the per-page `excludeFromLlmExports` toggle (or a boolean property listed in `AiVisibility:ExclusionPropertyAliases`, see [Configuration](configuration.md)) OR pages whose doctype alias is in the resolved `AiVisibility:ExcludedDoctypeAliases` list. The exclusion list is configurable in `appsettings.json` (see [Getting Started § Settings doctype + Backoffice](getting-started.md) for the resolution overlay) — top-level scope applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
 - Pages flagged via Umbraco Public Access (member-restricted access). The default `IExclusionEvaluator` consults `IPublicAccessService.IsProtected(content.Path)`; the suppression applies to the `Link` header, the `.md` route, `/llms.txt`, and `/llms-full.txt`.
 - When `AiVisibility:DiscoverabilityHeader:Enabled` is set to `false` (kill switch — see below).
 
@@ -142,7 +142,7 @@ CSS-class-only (no inline styles) — strict CSP `style-src 'self'` adopters are
 Both helpers render **nothing** in any of the following conditions:
 
 - The request isn't an Umbraco-routed page (no `UmbracoRouteValues` feature on `HttpContext`).
-- The active page is excluded (per-page `excludeFromLlmExports` bool, `ContentType.Alias` in the exclusion list, or page flagged via Umbraco Public Access — all three are checked by the default `IExclusionEvaluator`).
+- The active page is excluded (per-page `excludeFromLlmExports` bool or a configured `AiVisibility:ExclusionPropertyAliases` property, `ContentType.Alias` in the exclusion list, or page flagged via Umbraco Public Access — all are checked by the default `IExclusionEvaluator`).
 - `IPublishedUrlProvider.GetUrl(...)` returns null/empty/`#` or throws.
 
 These match the HTTP `Link` header's gating exactly — adopters who toggle a page's exclusion don't need to flush downstream caches: the next render sees the new state.
@@ -151,7 +151,9 @@ These match the HTTP `Link` header's gating exactly — adopters who toggle a pa
 
 ## Customising the exclusion contract
 
-`IExclusionEvaluator` is the seam the `Link` header middleware, the `.md` controller, the Accept-negotiation middleware, and both TagHelpers consume to decide "should this page emit Markdown discoverability?". The default `DefaultExclusionEvaluator` (public sealed) implements the per-page-bool-then-doctype-list rule described above.
+`IExclusionEvaluator` is the seam every per-page exclusion decision goes through: the `Link` header middleware, the `.md` controller, the Accept-negotiation middleware, both TagHelpers, the `/llms.txt` and `/llms-full.txt` manifests, and the **Settings → AI Visibility** dashboard's excluded-pages list. Replacing or decorating it changes all of them. The default `DefaultExclusionEvaluator` (public sealed) implements the rule described above: per-page bools (`excludeFromLlmExports` plus any `AiVisibility:ExclusionPropertyAliases`), then Umbraco Public Access, then the doctype list. If the settings resolver throws, it falls back to the `appsettings.json` `ExcludedDoctypeAliases` list.
+
+The manifests call the evaluator once per page only when they rebuild (cache miss); cached manifests don't re-evaluate, so an exclusion change shows up after the next content publish or when the manifest cache expires. An evaluator that throws while a manifest is building makes that request return `500` (logged at `Error`), the same as the `.md` route. The dashboard's excluded-pages list calls the evaluator with the backoffice request's host and `culture: null`, so a page excluded in only one culture by a culture-variant `ExclusionPropertyAliases` property may not appear in that list (it is still excluded for that culture's requests).
 
 To layer extra rules without re-implementing the default — for example, suppressing on staging-only paths, or routing exclusion through your own settings store — wrap-and-delegate via the standard ASP.NET Core DI Decorator pattern:
 

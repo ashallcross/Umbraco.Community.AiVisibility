@@ -45,7 +45,12 @@ public class SettingsApiControllerCompositionTests
             new ObjectCacheAppCache(),
             Substitute.For<IRequestCache>(),
             new IsolatedCaches(_ => new ObjectCacheAppCache())));
+        services.AddSingleton(_ => Substitute.For<IPublicAccessService>());
         services.AddLogging();
+
+        // Exclusion evaluator — Scoped, mirrors RoutingComposer's TryAddScoped.
+        // The controller routes excluded-pages through it.
+        services.AddScoped<IExclusionEvaluator, DefaultExclusionEvaluator>();
 
         // The controller is the unit under validation — Transient (ASP.NET
         // Core's default for controllers).

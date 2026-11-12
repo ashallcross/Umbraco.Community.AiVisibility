@@ -181,6 +181,29 @@ public sealed class AiVisibilitySettings
     public IReadOnlyList<string> ExcludedDoctypeAliases { get; init; } = Array.Empty<string>();
 
     /// <summary>
+    /// Additional per-page property aliases that keep a page out of LLM
+    /// exports when their value is boolean <c>true</c> — e.g. an existing
+    /// site-wide <c>hidePage</c> toggle. Honoured by
+    /// <see cref="DefaultExclusionEvaluator"/> on every surface (<c>.md</c>
+    /// route, <c>Link</c> header, <c>Accept</c> negotiation, TagHelpers,
+    /// <c>/llms.txt</c>, <c>/llms-full.txt</c>, Settings dashboard
+    /// excluded-pages list).
+    /// <para>
+    /// <b>Adds to</b> the package's own <c>excludeFromLlmExports</c> property,
+    /// which is always honoured. Only a boolean <c>true</c> value excludes —
+    /// text values such as <c>"1"</c> or <c>"true"</c> do not. A property that
+    /// varies by culture is read for the request culture; an invariant
+    /// property is read invariantly. Entries are trimmed; blank entries are
+    /// ignored; a page without the property is not excluded.
+    /// </para>
+    /// <para>
+    /// appsettings-only (no Settings-node overlay). Default
+    /// <see cref="Array.Empty{T}"/>: only <c>excludeFromLlmExports</c> is read.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> ExclusionPropertyAliases { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// Story 3.1 — TTL (in seconds) for the resolver cache at
     /// <c>llms:settings:{host}:{culture}</c>. Default <c>300s</c> matches the
     /// manifest cache TTLs (<see cref="LlmsTxtBuilderSettings.CachePolicySeconds"/>

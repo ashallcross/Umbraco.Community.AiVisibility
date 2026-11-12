@@ -1,18 +1,18 @@
-import { LitElement as w, html as l, nothing as _, css as E, property as P, state as d, customElement as O } from "@umbraco-cms/backoffice/external/lit";
+import { LitElement as E, html as l, nothing as _, css as w, property as P, state as d, customElement as O } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin as U } from "@umbraco-cms/backoffice/element-api";
 import { UMB_AUTH_CONTEXT as z } from "@umbraco-cms/backoffice/auth";
 import { UMB_CURRENT_USER_CONTEXT as I } from "@umbraco-cms/backoffice/current-user";
 import { firstValueFrom as L, filter as M } from "@umbraco-cms/backoffice/external/rxjs";
 import { a as R, A as F } from "./authenticated-fetch-Dotc30dn.js";
-var q = Object.defineProperty, V = Object.getOwnPropertyDescriptor, v = (e) => {
+var V = Object.defineProperty, q = Object.getOwnPropertyDescriptor, y = (e) => {
   throw TypeError(e);
 }, c = (e, t, i, s) => {
-  for (var r = s > 1 ? void 0 : s ? V(t, i) : t, o = e.length - 1, m; o >= 0; o--)
+  for (var r = s > 1 ? void 0 : s ? q(t, i) : t, o = e.length - 1, m; o >= 0; o--)
     (m = e[o]) && (r = (s ? m(t, i, r) : m(r)) || r);
-  return s && r && q(t, i, r), r;
-}, B = (e, t, i) => t.has(e) || v("Cannot " + i), H = (e, t, i) => t.has(e) ? v("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, i), n = (e, t, i) => (B(e, t, "access private method"), i), a, h, g, p, y, b, x, S, k, T, C, A, D;
+  return s && r && V(t, i, r), r;
+}, B = (e, t, i) => t.has(e) || y("Cannot " + i), H = (e, t, i) => t.has(e) ? y("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, i), n = (e, t, i) => (B(e, t, "access private method"), i), a, h, g, p, b, v, x, S, k, T, C, A, D;
 const $ = "/umbraco/management/api/v1/aivisibility/settings/", G = "/umbraco/management/api/v1/aivisibility/settings/doctypes", X = "/umbraco/management/api/v1/aivisibility/settings/excluded-pages", j = 3e3, N = "aivisibility.onboarding.dismissed.v1.", W = 2e3, Y = "AI Visibility is now active and producing default output. Customise your site name and summary below, or accept the defaults — /llms.txt and /llms-full.txt are already available at your site's root.";
-let u = class extends U(w) {
+let u = class extends U(E) {
   constructor() {
     super(...arguments), H(this, a), this._state = { kind: "loading" }, this._saveState = { kind: "idle" }, this._excludedPages = { kind: "loading" }, this._formState = {
       siteName: "",
@@ -71,7 +71,7 @@ let u = class extends U(w) {
           <uui-input
             id="siteName"
             .value=${this._formState.siteName}
-            @input=${(o) => n(this, a, b).call(this, o)}
+            @input=${(o) => n(this, a, v).call(this, o)}
             placeholder="Override the H1 / site name on /llms.txt"
           ></uui-input>
         </div>
@@ -116,7 +116,7 @@ let u = class extends U(w) {
             color="positive"
             ?disabled=${!r}
             @click=${() => {
-      n(this, a, y).call(this);
+      n(this, a, b).call(this);
     }}
           >
             ${this._saveState.kind === "saving" ? l`<uui-loader></uui-loader>&nbsp;Saving…` : "Save"}
@@ -127,9 +127,12 @@ let u = class extends U(w) {
 
       <uui-box headline="Excluded pages">
         <p class="muted">
-          Pages whose <code>excludeFromLlmExports</code> property is enabled
-          via the <code>llmsTxtSettingsComposition</code> composition. Toggle
-          per-page exclusions in the standard Umbraco content tree.
+          Published pages kept out of LLM exports: pages with
+          <code>excludeFromLlmExports</code> or a configured exclusion
+          property (<code>AiVisibility:ExclusionPropertyAliases</code>)
+          enabled, pages of an excluded doctype, and pages protected by
+          Public Access. Toggle per-page exclusions in the standard Umbraco
+          content tree.
         </p>
         ${n(this, a, D).call(this)}
       </uui-box>
@@ -212,7 +215,7 @@ p = async function() {
     this._excludedPages = { kind: "ready", page: e.data };
   }
 };
-y = async function() {
+b = async function() {
   if (!this._canSave())
     return;
   this._saveToastTimer && (clearTimeout(this._saveToastTimer), this._saveToastTimer = null), this._saveState = { kind: "saving" };
@@ -243,7 +246,7 @@ y = async function() {
     this._saveState = { kind: "idle" }, this._saveToastTimer = null;
   }, j), n(this, a, p).call(this);
 };
-b = function(e) {
+v = function(e) {
   const t = e.target;
   this._formState = { ...this._formState, siteName: t?.value ?? "" };
 };
@@ -341,7 +344,7 @@ D = function() {
     `;
 };
 u.styles = [
-  E`
+  w`
       :host {
         display: block;
         padding: var(--uui-size-layout-1, 24px);

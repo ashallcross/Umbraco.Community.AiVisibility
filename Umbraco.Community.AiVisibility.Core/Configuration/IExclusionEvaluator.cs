@@ -5,19 +5,27 @@ namespace Umbraco.Community.AiVisibility.Configuration;
 /// <summary>
 /// Single source of truth for the per-page exclusion check across every
 /// LlmsTxt route surface: the <c>.md</c> controller, the Accept-header
-/// negotiation middleware, the discoverability header middleware, and the
-/// <c>&lt;llms-link /&gt;</c> / <c>&lt;llms-hint /&gt;</c> Razor TagHelpers.
+/// negotiation middleware, the discoverability header middleware, the
+/// <c>&lt;llms-link /&gt;</c> / <c>&lt;llms-hint /&gt;</c> Razor TagHelpers,
+/// the <c>/llms.txt</c> and <c>/llms-full.txt</c> manifests (evaluated per
+/// page on a manifest cache miss only), and the Settings dashboard's
+/// excluded-pages Management API (called with the backoffice request host and
+/// <c>culture: null</c>).
 /// <para>
 /// <b>Contract:</b> three exclusion sources consulted in order — (1) per-page
-/// <c>excludeFromLlmExports</c> bool (most explicit adopter signal,
-/// short-circuits first); (2) Umbraco public-access protection via
+/// <c>excludeFromLlmExports</c> bool, plus any property listed in
+/// <see cref="AiVisibilitySettings.ExclusionPropertyAliases"/> (boolean
+/// <c>true</c> only; most explicit adopter signal, short-circuits first);
+/// (2) Umbraco public-access protection via
 /// <c>IPublicAccessService.IsProtected(content.Path)</c> — member-protected
 /// pages are excluded so they never render their login-redirect HTML as
 /// Markdown content; (3) <see cref="ISettingsResolver"/> doctype-alias
-/// exclusion list (case-insensitive). Throws from either external dependency
-/// are caught + logged <c>Warning</c> + treated as not-excluded (fail-open) —
-/// same shape established by prior built-in evaluators for non-essential
-/// dependency glitches. <see cref="OperationCanceledException"/> re-throws.
+/// exclusion list (case-insensitive). A public-access throw is caught +
+/// logged <c>Warning</c> + treated as not-protected (fail-open); a resolver
+/// throw is logged <c>Warning</c> and the appsettings
+/// <see cref="AiVisibilitySettings.ExcludedDoctypeAliases"/> list is used
+/// instead (the same degraded path the manifests used).
+/// <see cref="OperationCanceledException"/> re-throws.
 /// </para>
 /// <para>
 /// <b>Lifetime: Scoped.</b> Depends on the request-scoped
