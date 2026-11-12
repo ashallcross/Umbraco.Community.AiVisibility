@@ -75,8 +75,8 @@
     AI-bot-list sync.
   -->
   <PropertyGroup>
-    <ExpectedAiBotListSha256>632427c17fe72dcb583fbdf9354a578738894da04b2ec76bd1c3ce49de46eef6</ExpectedAiBotListSha256>
-    <ExpectedAiBotListFallbackSha256>632427c17fe72dcb583fbdf9354a578738894da04b2ec76bd1c3ce49de46eef6</ExpectedAiBotListFallbackSha256>
+    <ExpectedAiBotListSha256>aad12fe2f342a2b323ea019366d6c69a8e31162110658eb127284f4b848d8541</ExpectedAiBotListSha256>
+    <ExpectedAiBotListFallbackSha256>aad12fe2f342a2b323ea019366d6c69a8e31162110658eb127284f4b848d8541</ExpectedAiBotListFallbackSha256>
     <AiBotListSourceUrl>https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt</AiBotListSourceUrl>
     <AiBotListFallback>$(MSBuildThisFileDirectory)Robots\AiBotList.fallback.txt</AiBotListFallback>
   </PropertyGroup>
