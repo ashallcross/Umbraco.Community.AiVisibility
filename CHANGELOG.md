@@ -2,6 +2,52 @@
 
 All notable changes to **Umbraco.Community.AiVisibility** are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (with a pre-1.0 caveat: v0.x minor versions may include breaking changes — call-outs below).
 
+## [v1.3.0] — 2026-11-12: Community fixes; v13 package end of support
+
+Minor release of the **v17 package only** (`Umbraco.Community.AiVisibility`). Four bug fixes and one new configuration key, all reported by adopters on Umbraco 17.7.x. Adopters who change no configuration see no change beyond the fixes. The public contracts — `/llms.txt`, `/llms-full.txt`, `*.md`, `Accept: text/markdown`, the `Link: rel="alternate"` header, `data-llms-*` attributes and `<link rel="alternate">` markup — are unchanged.
+
+Fixes #2 #3 #4 #6 #7.
+
+### v13 package: end of support
+
+**`Umbraco.Community.AiVisibility.V13` gets no further releases.** It stays at its last published 1.2.x version, does not receive the fixes below or any later change (including bot-list refreshes), and is **unsupported from December 2026**, when Umbraco 13 reaches end of support. Sites on Umbraco 13 keep working on 1.2.x; move to Umbraco 17+ and this package to pick up fixes. See [`docs/v13-support.md`](docs/v13-support.md).
+
+### Added
+
+- **Configurable exclusion property aliases** (#2). List extra boolean property aliases under `AiVisibility:ExclusionPropertyAliases` (for example `["hidePage"]`) to reuse an existing site-wide "hide page" toggle. A page is excluded when any listed property — or `excludeFromLlmExports`, which is always honoured — is boolean `true` (text values such as `"1"` do not count). Exclusion applies on every surface: `.md` returns 404, no `Link` header, no `Accept` negotiation, no TagHelper output, and the page is left out of `/llms.txt`, `/llms-full.txt` and the Settings dashboard's excluded-pages list. appsettings only — not editable in the backoffice. Nothing configured means behaviour identical to v1.2.1. See [`docs/configuration.md`](docs/configuration.md).
+
+### Fixed
+
+- **Empty Markdown headings** (#6). A heading whose text sits on its own line in the template HTML (`<h2>\n    About us\n</h2>`) now converts to `## About us` instead of an empty `##` followed by an indented code block. Fixed by upgrading ReverseMarkdown 5.3.0 → 6.3.0; the HTML → Markdown converter options were moved to their 6.x equivalents with the same behaviour (the link URI-scheme allow-list is unchanged). Other small output differences you may see: `&amp;` in text now renders as `&`, and some blank-line and non-breaking-space spacing differs.
+- **`SkipSettingsDoctype` no longer drops the request-log table** (#4). `AiVisibility:Migrations:SkipSettingsDoctype: true` used to remove the whole package migration plan, so the `aiVisibilityRequestLog` table behind the AI Traffic dashboard was never created. The flag now skips only the settings doctype and the exclusion composition; the table is always created.
+- **"Exclude from LLM exports" now sits in an "AI Visibility" tab** (#7). On document types that use tabs, the checkbox no longer lands in an automatic "Generic" tab — the composition's "LLM exports" group is now inside its own **AI Visibility** tab. Applies to new installs, and to existing installs whose composition is unedited (see migration notes).
+- **No more backoffice console output** (#3). The leftover template entry point that logged to the browser console on every backoffice load has been removed.
+- **Member-protected pages and custom `IExclusionEvaluator`s now govern `/llms.txt` and `/llms-full.txt`.** Both manifests now make every per-page exclusion decision through `IExclusionEvaluator`, like the other surfaces. Pages behind Umbraco Public Access, which were already excluded from the `.md` route, are now also left out of both manifests, and a custom evaluator you register now excludes pages from the manifests too.
+
+### Changed
+
+- **Dependencies:** ReverseMarkdown 5.3.0 → **6.3.0**, which requires AngleSharp **1.5.2** (up from 1.4.0). Both flow to your site as package dependencies. If you have a custom `IMarkdownContentExtractor` or `IContentRegionSelector` that uses ReverseMarkdown or AngleSharp directly, it now compiles against these versions — ReverseMarkdown 6 marks several 5.x `Config` options obsolete.
+- **AI-crawler list refreshed** from upstream [`ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt): 43 tokens added (including `Claude-Agent`, `Codex`, `KimiBot`, `MistralAI-Training` and `xAI-Grok`), none removed. The new tokens show as "Unclassified" in the robots audit and are not counted as AI traffic in the request log until a later release classifies them.
+- **Build:** when the upstream AI-crawler list has changed since the reviewed snapshot, an online build now **warns** and embeds the committed snapshot instead of failing. Only relevant if you build the package from source.
+
+### Documentation
+
+- [`docs/v13-support.md`](docs/v13-support.md), the README and the v13 Marketplace listing state the v13 end of support.
+- [`docs/getting-started.md`](docs/getting-started.md) has a new "Upgrading to v1.3" section, plus updated uSync coexistence and per-page exclusion sections.
+- [`docs/dependency-status.md`](docs/dependency-status.md) lists the extraction dependencies and refreshes the transitive advisory list.
+- Source paths across the docs now point at the shared `Umbraco.Community.AiVisibility.Core` project; full headless support is now planned for v1.4.
+
+### Migration from v1.2.1
+
+Drop-in upgrade for v17 sites — no configuration change required. Things to know:
+
+- **Hard-refresh the backoffice once after upgrading** (Ctrl/Cmd + Shift + R). A browser that had the backoffice open on 1.2.1 may have cached the old bundle entry, which imports a file that no longer ships.
+- **If you run with `SkipSettingsDoctype: true`:** the package migration now runs on upgrade. It creates the `aiVisibilityRequestLog` table and records the settings-doctype step as skipped, so turning the flag off later will **not** create the doctype or composition — create or import them yourself (for example with uSync).
+- **Exclusion tab move (#7):** on the first boot after upgrading, the composition's "LLM exports" group moves into an "AI Visibility" tab, but only if the **AI Visibility Exclusion (composition)** is unedited (a customised composition is left alone and the reason is logged). Page values are kept, so excluded pages stay excluded. Document types with no tabs of their own then show their existing properties under a "Generic" tab next to "AI Visibility" — drag the group back to the root of the composition if you prefer. `SkipSettingsDoctype: true` skips the move.
+- **uSync users:** the tab move changes the composition's containers, so it shows as a uSync difference. Export and commit the moved composition from one environment and let the others import it, rather than letting an older export put the group back — or keep `SkipSettingsDoctype: true` and make the change in uSync yourself.
+- **Manifests:** check `/llms.txt` and `/llms-full.txt` after upgrading if you use Public Access or a custom `IExclusionEvaluator` — pages they exclude no longer appear there.
+- **Custom extractors** using ReverseMarkdown or AngleSharp: rebuild against ReverseMarkdown 6.3.0 / AngleSharp 1.5.2 (see Changed).
+
 ## [v1.2.1] — 2026-08-18: Internals-visibility grant (no runtime change)
 
 Patch release — a **build-time visibility grant only**. No runtime behaviour changes, no new public API, no config keys added or removed, no schema or migration changes. Both packages are drop-in upgrades from v1.2.0.
