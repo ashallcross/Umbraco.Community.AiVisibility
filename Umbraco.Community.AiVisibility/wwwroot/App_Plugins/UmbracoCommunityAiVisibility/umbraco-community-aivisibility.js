@@ -1,16 +1,9 @@
 const i = [
   {
-    name: "Umbraco Community AI Visibility Entrypoint",
-    alias: "Umbraco.Community.AiVisibility.Entrypoint",
-    type: "backofficeEntryPoint",
-    js: () => import("./entrypoint-BSlTz4-p.js")
-  }
-], t = [
-  {
     type: "dashboard",
     alias: "AiVisibility.Dashboard.Settings",
     name: "AI Visibility Settings Dashboard",
-    element: () => import("./aiv-settings-dashboard.element-D9uA2o4l.js"),
+    element: () => import("./aiv-settings-dashboard.element-3pynSPeN.js"),
     weight: 100,
     meta: {
       label: "AI Visibility",
@@ -23,7 +16,7 @@ const i = [
       }
     ]
   }
-], a = [
+], t = [
   {
     type: "dashboard",
     alias: "AiVisibility.Dashboard.AiTraffic",
@@ -41,11 +34,10 @@ const i = [
       }
     ]
   }
-], s = [
+], a = [
   ...i,
-  ...t,
-  ...a
+  ...t
 ];
 export {
-  s as manifests
+  a as manifests
 };

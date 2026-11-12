@@ -11,8 +11,10 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Cache;
+using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Models.PublishedContent;
 using Umbraco.Cms.Core.PublishedCache;
+using Umbraco.Cms.Core.Services;
 using Umbraco.Cms.Core.Services.Navigation;
 using Umbraco.Cms.Core.Web;
 
@@ -35,6 +37,8 @@ public class LlmsTxtControllerTests
     private AiVisibilitySettings _currentSettings = null!;
     private IUmbracoContext _umbracoContext = null!;
     private IPublishedContentCache _publishedSnapshot = null!;
+    private IPublicAccessService _publicAccess = null!;
+    private IExclusionEvaluator? _exclusionOverride;
 
     [SetUp]
     public void Setup()
@@ -52,6 +56,9 @@ public class LlmsTxtControllerTests
                 new Dictionary<Guid, IReadOnlyList<HreflangVariant>>()));
         _umbracoContextFactory = Substitute.For<IUmbracoContextFactory>();
         _navigation = Substitute.For<IDocumentNavigationQueryService>();
+        _publicAccess = Substitute.For<IPublicAccessService>();
+        _publicAccess.IsProtected(Arg.Any<string>()).Returns(Attempt<PublicAccessEntry?>.Fail());
+        _exclusionOverride = null;
         _appCaches = new AppCaches(
             new ObjectCacheAppCache(),
             Substitute.For<IRequestCache>(),
@@ -103,6 +110,11 @@ public class LlmsTxtControllerTests
             _resolver,
             _hreflangResolver,
             _settingsResolver,
+            _exclusionOverride ?? new DefaultExclusionEvaluator(
+                _settingsResolver,
+                _publicAccess,
+                _settings,
+                NullLogger<DefaultExclusionEvaluator>.Instance),
             _umbracoContextFactory,
             _navigation,
             _appCaches,
@@ -623,11 +635,16 @@ public class LlmsTxtControllerTests
             "single-flight: only one builder invocation per key per instance under concurrent miss");
     }
 
-    private static IPublishedContent StubContent(string name, string contentTypeAlias = "homePage", bool excludeFromLlmExports = false)
+    private static IPublishedContent StubContent(
+        string name,
+        string contentTypeAlias = "homePage",
+        bool excludeFromLlmExports = false,
+        string? path = null)
     {
         var c = Substitute.For<IPublishedContent>();
         c.Name.Returns(name);
         c.Key.Returns(Guid.NewGuid());
+        c.Path.Returns(path ?? "-1," + name);
         var ct = Substitute.For<IPublishedContentType>();
         ct.Alias.Returns(contentTypeAlias);
         c.ContentType.Returns(ct);
@@ -957,5 +974,146 @@ public class LlmsTxtControllerTests
         await ctrl2.Render(CancellationToken.None);
 
         await _builder.Received(2).BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>());
+    }
+    // ────────────────────────────────────────────────────────────────────────
+    // Exclusion routed through IExclusionEvaluator
+    // ────────────────────────────────────────────────────────────────────────
+
+    private (IPublishedContent Root, IPublishedContent[] Children) SeedTree(params IPublishedContent[] children)
+    {
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext)
+            .Returns(HostnameRootResolution.Found(root, Culture));
+        var keys = children.Select(c => c.Key).ToArray();
+        _navigation.TryGetDescendantsKeys(root.Key, out Arg.Any<IEnumerable<Guid>>()!).Returns(call =>
+        {
+            call[1] = keys;
+            return true;
+        });
+        foreach (var child in children)
+        {
+            _publishedSnapshot.GetById(child.Key).Returns(child);
+        }
+        _builder.BuildAsync(Arg.Any<LlmsTxtBuilderContext>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+        return (root, children);
+    }
+
+    private string[] BuilderPageNames()
+    {
+        var calls = _builder.ReceivedCalls()
+            .Where(c => c.GetMethodInfo().Name == "BuildAsync")
+            .ToArray();
+        Assert.That(calls, Has.Length.EqualTo(1));
+        var ctx = (LlmsTxtBuilderContext)calls[0].GetArguments()[0]!;
+        return ctx.Pages.Select(p => p.Name).ToArray();
+    }
+
+    [Test]
+    public async Task Render_CustomExclusionEvaluator_ExcludesPageFromManifest()
+    {
+        var pageX = StubContent("Page-X", contentTypeAlias: "blogPost");
+        var pageY = StubContent("Page-Y", contentTypeAlias: "blogPost");
+        SeedTree(pageX, pageY);
+
+        var custom = Substitute.For<IExclusionEvaluator>();
+        custom.IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(ReferenceEquals(call[0], pageX)));
+        _exclusionOverride = custom;
+
+        await MakeController().Render(CancellationToken.None);
+
+        var names = BuilderPageNames();
+        Assert.Multiple(() =>
+        {
+            Assert.That(names, Has.No.Member("Page-X"), "custom evaluator governs /llms.txt");
+            Assert.That(names, Has.Member("Page-Y"));
+            Assert.That(names, Has.Member("Acme"));
+        });
+        await custom.Received().IsExcludedAsync(pageX, Culture, Host, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task Render_CacheHit_DoesNotCallExclusionEvaluator()
+    {
+        var page = StubContent("Page-A", contentTypeAlias: "blogPost");
+        SeedTree(page);
+
+        var custom = Substitute.For<IExclusionEvaluator>();
+        custom.IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        _exclusionOverride = custom;
+
+        await MakeController().Render(CancellationToken.None);
+        var callsAfterMiss = custom.ReceivedCalls().Count();
+        await MakeController().Render(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(callsAfterMiss, Is.EqualTo(2), "root + one descendant evaluated on the miss");
+            Assert.That(custom.ReceivedCalls().Count(), Is.EqualTo(callsAfterMiss),
+                "cache hit must not evaluate any page");
+        });
+    }
+
+    [Test]
+    public async Task Render_MemberProtectedPage_OmittedFromManifest()
+    {
+        var protectedPage = StubContent("Members", contentTypeAlias: "blogPost", path: "-1,1000,3000");
+        var openPage = StubContent("Open", contentTypeAlias: "blogPost", path: "-1,1000,3001");
+        SeedTree(protectedPage, openPage);
+        _publicAccess.IsProtected("-1,1000,3000").Returns(Attempt<PublicAccessEntry?>.Succeed());
+
+        await MakeController().Render(CancellationToken.None);
+
+        var names = BuilderPageNames();
+        Assert.Multiple(() =>
+        {
+            Assert.That(names, Has.No.Member("Members"));
+            Assert.That(names, Has.Member("Open"));
+        });
+    }
+
+    [Test]
+    public async Task Render_ConfiguredExclusionPropertyAlias_OmitsPage()
+    {
+        _currentSettings = new AiVisibilitySettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
+            ExclusionPropertyAliases = new[] { "hidePage" },
+        };
+        var hidden = StubContent("Hidden", contentTypeAlias: "blogPost");
+        var hideProp = Substitute.For<IPublishedProperty>();
+        hideProp.HasValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+        hideProp.GetValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+        hidden.GetProperty("hidePage").Returns(hideProp);
+        var visible = StubContent("Visible", contentTypeAlias: "blogPost");
+        SeedTree(hidden, visible);
+
+        await MakeController().Render(CancellationToken.None);
+
+        var names = BuilderPageNames();
+        Assert.Multiple(() =>
+        {
+            Assert.That(names, Has.No.Member("Hidden"));
+            Assert.That(names, Has.Member("Visible"));
+        });
+    }
+
+    [Test]
+    public async Task Render_ExclusionEvaluatorThrows_Returns500()
+    {
+        var root = StubContent("Acme");
+        _resolver.Resolve(Host, _umbracoContext)
+            .Returns(HostnameRootResolution.Found(root, Culture));
+        var custom = Substitute.For<IExclusionEvaluator>();
+        custom.IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<bool>>(_ => throw new InvalidOperationException("evaluator boom"));
+        _exclusionOverride = custom;
+
+        var result = await MakeController().Render(CancellationToken.None);
+
+        Assert.That(result, Is.InstanceOf<ObjectResult>());
+        Assert.That(((ObjectResult)result).StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
     }
 }

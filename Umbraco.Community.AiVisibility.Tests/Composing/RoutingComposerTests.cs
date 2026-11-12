@@ -369,6 +369,51 @@ public class RoutingComposerTests
     /// + evaluator constructors do not capture a Scoped dep into a Singleton.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Pins that DI picks the <see cref="DefaultExclusionEvaluator"/>
+    /// constructor taking <see cref="IOptionsMonitor{TOptions}"/>, so configured
+    /// <see cref="AiVisibilitySettings.ExclusionPropertyAliases"/> are honoured
+    /// in production (the 3-arg constructor ignores them).
+    /// </summary>
+    [Test]
+    public async Task Compose_ExclusionEvaluator_ResolvedFromDi_HonoursConfiguredPropertyAliases()
+    {
+        var services = new ServiceCollection();
+        services.TryAddScoped<IExclusionEvaluator, DefaultExclusionEvaluator>();
+        services.AddSingleton<IOptionsMonitor<AiVisibilitySettings>>(_ =>
+        {
+            var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+            monitor.CurrentValue.Returns(new AiVisibilitySettings
+            {
+                ExclusionPropertyAliases = new[] { "hidePage" },
+            });
+            return monitor;
+        });
+        services.AddScoped<ISettingsResolver>(_ => Substitute.For<ISettingsResolver>());
+        services.AddSingleton<IPublicAccessService>(_ => Substitute.For<IPublicAccessService>());
+        services.AddLogging();
+
+        using var sp = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
+        using var scope = sp.CreateScope();
+        var evaluator = scope.ServiceProvider.GetRequiredService<IExclusionEvaluator>();
+
+        var page = Substitute.For<IPublishedContent>();
+        var hidePage = Substitute.For<IPublishedProperty>();
+        hidePage.HasValue(culture: null, segment: null).Returns(true);
+        hidePage.GetValue(culture: null, segment: null).Returns(true);
+        page.GetProperty("hidePage").Returns(hidePage);
+        page.GetProperty("excludeFromLlmExports").Returns((IPublishedProperty?)null);
+
+        var excluded = await evaluator.IsExcludedAsync(page, "en-gb", "example.com", CancellationToken.None);
+
+        Assert.That(excluded, Is.True,
+            "DI must use the IOptionsMonitor constructor so configured exclusion property aliases apply");
+    }
+
     [Test]
     public void Compose_StartupValidation_DiscoverabilityHeaderMiddleware_NoCaptiveDependency()
     {

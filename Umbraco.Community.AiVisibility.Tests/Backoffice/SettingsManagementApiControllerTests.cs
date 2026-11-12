@@ -455,7 +455,7 @@ public class SettingsManagementApiControllerTests
     // ────────────────────────────────────────────────────────────────────────
 
     [Test]
-    public void GetExcludedPages_FiltersByExcludeFlag_AndPaginates()
+    public async Task GetExcludedPages_FiltersByExcludeFlag_AndPaginates()
     {
         var fixture = new ControllerFixture();
         var excludedHome = BuildPublishedPage(HomeNodeKey, "Home", "homePage", excludeFromLlmExports: true);
@@ -463,7 +463,7 @@ public class SettingsManagementApiControllerTests
         fixture.WithRoots(excludedHome, notExcludedAbout);
         fixture.PublishedUrlProvider.GetUrl(excludedHome, Arg.Any<UrlMode>(), Arg.Any<string?>(), Arg.Any<Uri?>()).Returns("/home");
 
-        var result = fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
+        var result = await fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
 
         var page = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
         Assert.That(page, Is.Not.Null);
@@ -477,7 +477,7 @@ public class SettingsManagementApiControllerTests
     }
 
     [Test]
-    public void GetExcludedPages_LegacyStringValue_TreatedAsNotExcluded()
+    public async Task GetExcludedPages_LegacyStringValue_TreatedAsNotExcluded()
     {
         // Story 3.1 Failure & Edge Cases — string-typed legacy data falls
         // through as not-excluded (the flag is properly bool in v17 schema,
@@ -494,7 +494,7 @@ public class SettingsManagementApiControllerTests
         page.GetProperty("excludeFromLlmExports").Returns(prop);
         fixture.WithRoots(page);
 
-        var result = fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
+        var result = await fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
 
         var pageVm = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
         Assert.That(pageVm!.Total, Is.EqualTo(0),
@@ -502,43 +502,43 @@ public class SettingsManagementApiControllerTests
     }
 
     [Test]
-    public void GetExcludedPages_TakeClampedTo200()
+    public async Task GetExcludedPages_TakeClampedTo200()
     {
         var fixture = new ControllerFixture();
         fixture.WithRoots(/* none */);
 
-        var result = fixture.Controller.GetExcludedPages(skip: 0, take: 9999, CancellationToken.None);
+        var result = await fixture.Controller.GetExcludedPages(skip: 0, take: 9999, CancellationToken.None);
 
         var page = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
         Assert.That(page!.Take, Is.EqualTo(200), "take clamped to upper bound 200");
     }
 
     [Test]
-    public void GetExcludedPages_TakeClampedToOne()
+    public async Task GetExcludedPages_TakeClampedToOne()
     {
         var fixture = new ControllerFixture();
         fixture.WithRoots(/* none */);
 
-        var result = fixture.Controller.GetExcludedPages(skip: 0, take: 0, CancellationToken.None);
+        var result = await fixture.Controller.GetExcludedPages(skip: 0, take: 0, CancellationToken.None);
 
         var page = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
         Assert.That(page!.Take, Is.EqualTo(1), "take clamped to lower bound 1");
     }
 
     [Test]
-    public void GetExcludedPages_NegativeSkip_ClampedToZero()
+    public async Task GetExcludedPages_NegativeSkip_ClampedToZero()
     {
         var fixture = new ControllerFixture();
         fixture.WithRoots(/* none */);
 
-        var result = fixture.Controller.GetExcludedPages(skip: -5, take: 50, CancellationToken.None);
+        var result = await fixture.Controller.GetExcludedPages(skip: -5, take: 50, CancellationToken.None);
 
         var page = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
         Assert.That(page!.Skip, Is.EqualTo(0), "negative skip clamped to 0");
     }
 
     [Test]
-    public void GetExcludedPages_NoUmbracoContext_ReturnsEmpty()
+    public async Task GetExcludedPages_NoUmbracoContext_ReturnsEmpty()
     {
         var fixture = new ControllerFixture();
         fixture.UmbracoContextAccessor
@@ -549,7 +549,7 @@ public class SettingsManagementApiControllerTests
                 return false;
             });
 
-        var result = fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
+        var result = await fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
 
         var page = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
         Assert.That(page!.Total, Is.EqualTo(0));
@@ -557,7 +557,7 @@ public class SettingsManagementApiControllerTests
     }
 
     [Test]
-    public void GetExcludedPages_NoNavigationRootKeys_ReturnsEmpty()
+    public async Task GetExcludedPages_NoNavigationRootKeys_ReturnsEmpty()
     {
         var fixture = new ControllerFixture();
         fixture.Navigation
@@ -568,10 +568,52 @@ public class SettingsManagementApiControllerTests
                 return false;
             });
 
-        var result = fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
+        var result = await fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
 
         var page = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
         Assert.That(page!.Total, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task GetExcludedPages_UsesExclusionEvaluator_ConfiguredAliasProtectedAndDoctype()
+    {
+        var fixture = new ControllerFixture
+        {
+            Settings = new AiVisibilitySettings { ExclusionPropertyAliases = new[] { "hidePage" } },
+        };
+        var hidden = BuildPublishedPage(Guid.NewGuid(), "Hidden", "contentPage", excludeFromLlmExports: false);
+        var hideProp = Substitute.For<IPublishedProperty>();
+        hideProp.HasValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+        hideProp.GetValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
+        hidden.GetProperty("hidePage").Returns(hideProp);
+        var protectedPage = BuildPublishedPage(Guid.NewGuid(), "Members", "contentPage", excludeFromLlmExports: false);
+        protectedPage.Path.Returns("-1,4000");
+        var redirect = BuildPublishedPage(Guid.NewGuid(), "Redirect", "redirectPage", excludeFromLlmExports: false);
+        var open = BuildPublishedPage(Guid.NewGuid(), "Open", "contentPage", excludeFromLlmExports: false);
+        fixture.PublicAccess.IsProtected("-1,4000").Returns(Umbraco.Cms.Core.Attempt<PublicAccessEntry?>.Succeed());
+        fixture.WithResolverReturning(new ResolvedLlmsSettings(
+            SiteName: null,
+            SiteSummary: null,
+            ExcludedDoctypeAliases: new HashSet<string>(new[] { "redirectPage" }, StringComparer.OrdinalIgnoreCase),
+            BaseSettings: fixture.Settings));
+        fixture.WithRoots(hidden, protectedPage, redirect, open);
+
+        var result = await fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
+
+        var page = ((OkObjectResult)result).Value as LlmsExcludedPagesPageViewModel;
+        Assert.That(page!.Items.Select(i => i.Name), Is.EquivalentTo(new[] { "Hidden", "Members", "Redirect" }));
+    }
+
+    [Test]
+    public async Task GetExcludedPages_CallsEvaluatorWithBackofficeHostAndNullCulture()
+    {
+        var fixture = new ControllerFixture();
+        var home = BuildPublishedPage(HomeNodeKey, "Home", "homePage", excludeFromLlmExports: false);
+        fixture.WithRoots(home);
+
+        await fixture.Controller.GetExcludedPages(skip: 0, take: 100, CancellationToken.None);
+
+        await fixture.Resolver.Received().ResolveAsync("example.test", null, Arg.Any<CancellationToken>());
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -705,6 +747,7 @@ public class SettingsManagementApiControllerTests
         if (excludeFromLlmExports)
         {
             var prop = Substitute.For<IPublishedProperty>();
+            prop.HasValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
             prop.GetValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(true);
             page.GetProperty("excludeFromLlmExports").Returns(prop);
         }
@@ -745,8 +788,12 @@ public class SettingsManagementApiControllerTests
         public IPublishedUrlProvider PublishedUrlProvider { get; } = Substitute.For<IPublishedUrlProvider>();
         public IPublishedContentCache PublishedCache { get; } = Substitute.For<IPublishedContentCache>();
         public IUmbracoContext UmbracoContext { get; } = Substitute.For<IUmbracoContext>();
+        public IPublicAccessService PublicAccess { get; } = Substitute.For<IPublicAccessService>();
+        public AiVisibilitySettings Settings { get; set; } = new();
 
         public SettingsManagementApiController Controller { get; }
+
+        public IExclusionEvaluator Exclusion { get; }
 
         public ControllerFixture()
         {
@@ -771,9 +818,31 @@ public class SettingsManagementApiControllerTests
                     return true;
                 });
             ContentTypeService.GetAll().Returns(Array.Empty<IContentType>());
+            PublicAccess.IsProtected(Arg.Any<string>())
+                .Returns(Umbraco.Cms.Core.Attempt<PublicAccessEntry?>.Fail());
+            // Default resolver answer: no doctype exclusions. Tests override
+            // via WithResolverReturning (last Returns wins).
+            Resolver
+                .ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult(new ResolvedLlmsSettings(
+                    SiteName: null,
+                    SiteSummary: null,
+                    ExcludedDoctypeAliases: new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                    BaseSettings: Settings)));
+            var options = Substitute.For<Microsoft.Extensions.Options.IOptionsMonitor<AiVisibilitySettings>>();
+            options.CurrentValue.Returns(_ => Settings);
+
+            // A real DefaultExclusionEvaluator over the stubs keeps the
+            // excluded-pages tests meaningful end-to-end.
+            Exclusion = new DefaultExclusionEvaluator(
+                Resolver,
+                PublicAccess,
+                options,
+                NullLogger<DefaultExclusionEvaluator>.Instance);
 
             Controller = new SettingsManagementApiController(
                 Resolver,
+                Exclusion,
                 ContentService,
                 ContentTypeService,
                 UmbracoContextAccessor,

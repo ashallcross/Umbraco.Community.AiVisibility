@@ -37,5 +37,4 @@ services.TryAddTransient<IMarkdownContentExtractor, DefaultMarkdownContentExtrac
 
 ## A blockquote
 
->
 > Render through Umbraco's normal pipeline, never walk properties.

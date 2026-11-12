@@ -1,6 +1,8 @@
 # Configuration reference
 
-Every key under the `AiVisibility:` section of `appsettings.json`. The package's strongly-typed binding lives at `Umbraco.Community.AiVisibility/Configuration/AiVisibilitySettings.cs` — read that for xmldoc detail beyond the summary tables below.
+Every key under the `AiVisibility:` section of `appsettings.json`. The package's strongly-typed binding lives at `Umbraco.Community.AiVisibility.Core/Configuration/AiVisibilitySettings.cs` — read that for xmldoc detail beyond the summary tables below.
+
+The v13 package is frozen at 1.2.x, so `ExclusionPropertyAliases` and the 1.3.0 `Migrations:SkipSettingsDoctype` behaviour apply to the v17 package only — see [`v13-support.md`](v13-support.md).
 
 Zero-config defaults produce useful output on a typical Umbraco site immediately. Every key is optional.
 
@@ -97,6 +99,7 @@ ASP.NET Core's `__` (double-underscore) configuration-section separator means:
 | `AiVisibility:CachePolicySeconds` | `int` | `60` | TTL for per-page Markdown extraction results. `0` disables caching (re-extract every request). |
 | `AiVisibility:MaxLlmsFullSizeKb` | `int` | `5120` (5 MB) | Hard byte cap for `/llms-full.txt`. Pages emitted in `LlmsFullBuilder.Order` until the next page would push past the cap; truncation footer documents how many of the total emitted. `0` or negative → unlimited (with a `Warning` log). |
 | `AiVisibility:ExcludedDoctypeAliases` | `string[]` | `[]` | Doctype aliases (case-insensitive) entirely omitted from `/llms.txt`, `/llms-full.txt`, and the per-page `.md` route (404). UNION'd with the editable Settings-doctype list. |
+| `AiVisibility:ExclusionPropertyAliases` | `string[]` | `[]` | Extra per-page property aliases that exclude a page when the property's value is boolean `true` — e.g. `["hidePage"]` to reuse an existing site-wide toggle. Adds to `excludeFromLlmExports`, which is always honoured. Applies on every surface (`.md` 404, `Link` header, `Accept` negotiation, TagHelpers, `/llms.txt`, `/llms-full.txt`, the dashboard's excluded-pages list). Only boolean `true` excludes (text such as `"1"` or `"true"` does not); a culture-variant property is read for the request culture. Entries are trimmed; blank entries are ignored. appsettings only — not editable in the backoffice. |
 | `AiVisibility:SettingsResolverCachePolicySeconds` | `int` | `300` | TTL for the resolver overlay cache (`aiv:settings:{culture}`). `0` disables. |
 | `AiVisibility:RobotsAuditOnStartup` | `bool` | `true` | When `true`, the robots audit fires once on host startup. The Backoffice Health Check view + `RobotsAuditRefreshJob` continue regardless. |
 | `AiVisibility:MainContentSelectors` | `string[]` | `[]` | Adopter CSS selectors consulted after the built-in `data-llms-content` → `<main>` → `<article>` chain, before the SmartReader fallback. |
@@ -158,7 +161,7 @@ The strategy choice is read live from `IOptionsMonitor<AiVisibilitySettings>` at
 
 | Key | Type | Default | What it controls |
 |---|---|---|---|
-| `Migrations:SkipSettingsDoctype` | `bool` | `false` | When `true`, `SettingsComposer` does NOT register `AiVisibilityPackageMigrationPlan` (uSync coexistence — see `docs/getting-started.md` § "uSync coexistence"). |
+| `Migrations:SkipSettingsDoctype` | `bool` | `false` | When `true`, the package migration skips creating the settings doctype and per-page exclusion composition only; the `aiVisibilityRequestLog` table (AI Traffic) is still created. Flipping it back to `false` after that migration has run does not create the doctype retroactively (uSync coexistence — see `docs/getting-started.md` § "uSync coexistence"). |
 
 ## `AiVisibility:RobotsAuditor` — robots audit + bot-list refresh
 
@@ -204,9 +207,17 @@ The package's migration plan creates an `aiVisibilitySettings` doctype + a singl
 - `SiteName`, `SiteSummary` — Settings-node values override the appsettings values when non-null.
 - `ExcludedDoctypeAliases` — Settings-node list is **unioned** with the appsettings list (adopters' appsettings entries are never lost to an editor edit).
 
-Per-page exclusion uses the `excludeFromLlmExports` boolean property on the `llmsTxtSettingsComposition` composition (added to the doctype tree by the same migration plan).
+Per-page exclusion uses the `excludeFromLlmExports` boolean property on the `llmsTxtSettingsComposition` composition (added to the doctype tree by the same migration plan), plus any boolean properties listed in `AiVisibility:ExclusionPropertyAliases` (appsettings only — no Settings-node overlay):
 
-See `docs/getting-started.md` § "Per-page exclusion" for the per-page surface; `docs/multi-site.md` for the per-host story; `docs/extension-points.md` for the `ISettingsResolver` adopter contract (replace the resolver entirely for per-tenant overrides).
+```json
+{
+  "AiVisibility": {
+    "ExclusionPropertyAliases": [ "hidePage" ]
+  }
+}
+```
+
+See `docs/getting-started.md` § Per-page "Exclude from LLM exports" toggle for the per-page surface; `docs/multi-site.md` for the per-host story; `docs/extension-points.md` for the `ISettingsResolver` adopter contract (replace the resolver entirely for per-tenant overrides).
 
 ## Validation
 

@@ -33,10 +33,18 @@ namespace Umbraco.Community.AiVisibility.Persistence.Migrations;
 /// </para>
 /// <para>
 /// Adopters who own the doctype via uSync set
-/// <c>AiVisibility:Migrations:SkipSettingsDoctype: true</c>;
-/// <see cref="Composing.SettingsComposer"/> calls
-/// <c>PackageMigrationPlans().Remove&lt;AiVisibilityPackageMigrationPlan&gt;()</c>
-/// when the flag is set so this plan never enters the migration pipeline.
+/// <c>AiVisibility:Migrations:SkipSettingsDoctype: true</c>; the plan still
+/// runs, but <see cref="CreateAiVisibilitySettingsDoctype"/> returns early and
+/// skips only the doctype/composition creation. The request-log table steps
+/// run regardless. Once that step has been recorded as executed, flipping the
+/// flag back to <c>false</c> does not create the doctype retroactively.
+/// </para>
+/// <para>
+/// <see cref="MoveExclusionGroupIntoTab_1_3"/> nests the composition's
+/// "LLM exports" group inside an "AI Visibility" tab, on fresh and upgraded
+/// installs, when the composition still has the package-created shape. The
+/// same flag skips that move too; the step is still recorded as executed, so
+/// flipping the flag back to <c>false</c> later does not move the group.
 /// </para>
 /// </remarks>
 public sealed class AiVisibilityPackageMigrationPlan : PackageMigrationPlan
@@ -61,5 +69,7 @@ public sealed class AiVisibilityPackageMigrationPlan : PackageMigrationPlan
             // aiVisibilityRequestLog IF NOT EXISTS. On fresh installs both
             // sub-operations are no-ops (step 1 already created the
             // new-named table via the entity's [TableName] binding).
-            .To<RenameRequestLogTable_2_0>("4F3B2A8C-1D5E-4F7A-9B6C-8E0D2F4A6B1C");
+            .To<RenameRequestLogTable_2_0>("4F3B2A8C-1D5E-4F7A-9B6C-8E0D2F4A6B1C")
+            // Nest the exclusion composition's group inside an "AI Visibility" tab.
+            .To<MoveExclusionGroupIntoTab_1_3>("7C2E9A41-5B3D-4E8F-A6C1-0D4B8F2E7A93");
 }

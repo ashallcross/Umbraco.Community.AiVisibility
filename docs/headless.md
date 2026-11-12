@@ -1,6 +1,6 @@
 # Headless Umbraco — what works today, what's coming
 
-A common question from adopters running Umbraco in headless mode (Delivery API + an external frontend on Vercel / Netlify / Cloudflare Pages / etc.) is whether this package works against their setup. The honest answer is **partially today, fully in a future release**. This page covers exactly what's supported, what isn't, and where the boundary sits — so you can make an informed call before installing.
+A common question from adopters running Umbraco in headless mode (Delivery API + an external frontend on Vercel / Netlify / Cloudflare Pages / etc.) is whether this package works against their setup. The honest answer is **partially today, fully in a future release (planned for v1.4)**. This page covers exactly what's supported, what isn't, and where the boundary sits — so you can make an informed call before installing.
 
 ## TL;DR
 
@@ -10,7 +10,7 @@ A common question from adopters running Umbraco in headless mode (Delivery API +
 | Umbraco with hijacked `RenderController` + custom ViewModels | ✅ Full (via the dual-strategy renderer — see [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content)) | ✅ Full | ✅ Full | ✅ Full |
 | Fully headless (Delivery API + Vercel/Next/Astro frontend) | ❌ Not in current release | ⚠️ Partial — URLs only | ❌ — crawlers hit the frontend, not Umbraco | ✅ Full |
 
-If you're running a fully-headless setup, the package's Markdown surface is not useful to you yet. **Full headless support is on the roadmap as the first post-v1 feature** — see "What's coming" below.
+If you're running a fully-headless setup, the package's Markdown surface is not useful to you yet. **Full headless support is planned for v1.4** — see "What's coming" below.
 
 ## Why the rendering surfaces don't work in headless
 
@@ -57,7 +57,7 @@ Everything downstream — the `*.md` route, `/llms.txt` + `/llms-full.txt` build
 
 ## Workarounds for v1
 
-If you're determined to ship the package against a headless setup before v1.1 lands, two paths work today:
+If you're determined to ship the package against a headless setup before the Headless strategy lands, two paths work today:
 
 ### 1. Override `IMarkdownContentExtractor`
 
@@ -103,7 +103,7 @@ Then ship the v1 surfaces that work for you, and switch on the full Markdown ren
 
 ## When will the Headless strategy ship?
 
-No fixed date — it's on the roadmap, prioritised against other post-v1 work based on actual adopter demand. If headless Umbraco is your setup and you'd benefit from this strategy landing sooner, [file an issue](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues) saying so. Demand signal moves the priority.
+It's planned for v1.4, with no fixed date — the timing is prioritised against other work based on actual adopter demand. If headless Umbraco is your setup and you'd benefit from this strategy landing sooner, [file an issue](https://github.com/ashallcross/Umbraco.Community.AiVisibility/issues) saying so. Demand signal moves the priority.
 
 ## Related reading
 

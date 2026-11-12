@@ -332,8 +332,8 @@ export class AiVisibilitySettingsDashboardElement
       this._saveToastTimer = null;
     }, SAVE_TOAST_TIMEOUT_MS);
 
-    // Refresh the read-only excluded-pages list — its content depends on the
-    // doctype-alias filter the editor may have just changed.
+    // Refresh the read-only excluded-pages list — the exclusion evaluator
+    // includes the doctype-alias filter the editor may have just changed.
     void this.#fetchExcludedPages();
   }
 
@@ -562,9 +562,12 @@ export class AiVisibilitySettingsDashboardElement
 
       <uui-box headline="Excluded pages">
         <p class="muted">
-          Pages whose <code>excludeFromLlmExports</code> property is enabled
-          via the <code>llmsTxtSettingsComposition</code> composition. Toggle
-          per-page exclusions in the standard Umbraco content tree.
+          Published pages kept out of LLM exports: pages with
+          <code>excludeFromLlmExports</code> or a configured exclusion
+          property (<code>AiVisibility:ExclusionPropertyAliases</code>)
+          enabled, pages of an excluded doctype, and pages protected by
+          Public Access. Toggle per-page exclusions in the standard Umbraco
+          content tree.
         </p>
         ${this.#renderExcludedPages()}
       </uui-box>

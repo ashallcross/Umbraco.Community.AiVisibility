@@ -39,73 +39,26 @@ public class SettingsComposerTests
         });
     }
 
-    [Test]
-    public void Compose_DoesNotAccessPackageMigrationPlans_WhenSkipFlagFalse()
+    [TestCase(true)]
+    [TestCase(false)]
+    public void Compose_DoesNotAccessPackageMigrationPlans_RegardlessOfSkipFlag(bool skipDoctype)
     {
-        // When SkipSettingsDoctype is false (the default), the composer must
-        // NOT call PackageMigrationPlans() at all — the framework's
-        // auto-discovery path registers the plan; we leave it alone.
+        // The composer must NOT call PackageMigrationPlans() whatever the
+        // SkipSettingsDoctype value: the framework's auto-discovery registers
+        // the plan, and the flag is honoured inside the doctype migration step
+        // so the request-log table steps still run. Removing the plan here
+        // would leave AI Traffic without its table.
         // NSubstitute on IUmbracoBuilder records all calls; assert the
-        // collection-builder accessor was never invoked.
-        var (composer, builder, _) = BuildComposer(skipDoctype: false);
+        // collection-builder accessor was never invoked
+        // (PackageMigrationPlans() is sugar over WithCollectionBuilder<…>).
+        var (composer, builder, _) = BuildComposer(skipDoctype);
 
         composer.Compose(builder);
 
-        // Inspect ALL recorded calls for any WithCollectionBuilder invocation
-        // (PackageMigrationPlans() is sugar over WithCollectionBuilder<…>).
         var collectionBuilderCalls = builder.ReceivedCalls()
             .Count(c => c.GetMethodInfo().Name == "WithCollectionBuilder");
         Assert.That(collectionBuilderCalls, Is.EqualTo(0),
-            "with skipDoctype=false, the composer must not touch the PackageMigrationPlans collection builder");
-    }
-
-    [Test]
-    public void Compose_AccessesPackageMigrationPlans_WhenSkipFlagTrue()
-    {
-        // When SkipSettingsDoctype is true (uSync coexistence path), the composer
-        // MUST call PackageMigrationPlans().Remove<AiVisibilityPackageMigrationPlan>().
-        // Verifying the exact Remove<T> call requires a real
-        // PackageMigrationPlanCollectionBuilder (which requires a real
-        // IUmbracoBuilder in the test). This test covers the OBSERVABLE-via-NSubstitute
-        // half: the composer accesses the collection-builder accessor.
-        // The end-to-end behaviour is pinned by Story 3.1 manual gate Step 7
-        // (uSync coexistence flag — the integration test boots successfully
-        // with the flag set, proving the migration plan was successfully removed
-        // before unattended-upgrade ran).
-        var (composer, builder, _) = BuildComposer(skipDoctype: true);
-
-        // NSubstitute's stubbed IUmbracoBuilder cannot construct a real
-        // PackageMigrationPlanCollectionBuilder, so the composer's call into
-        // `builder.PackageMigrationPlans().Remove<T>()` may NRE on the chained
-        // call. Catch the SPECIFIC exception(s) that derive from null returns
-        // — never a bare `catch`, which would mask any real bug introduced
-        // into the composer body and leave only the call-count assertion to
-        // catch regressions.
-        Assert.That(
-            () =>
-            {
-                try
-                {
-                    composer.Compose(builder);
-                }
-                catch (NullReferenceException)
-                {
-                    // Expected: WithCollectionBuilder<T>() returns null on the
-                    // substitute, and the chained .Remove<T>() NREs.
-                }
-                catch (InvalidOperationException)
-                {
-                    // Some NSubstitute versions throw IOE on uncovered method
-                    // shapes (extension methods, generics).
-                }
-            },
-            Throws.Nothing,
-            "Compose must not throw any unexpected exception type — only the documented null-chain NRE/IOE from the NSubstitute stub");
-
-        var collectionBuilderCalls = builder.ReceivedCalls()
-            .Count(c => c.GetMethodInfo().Name == "WithCollectionBuilder");
-        Assert.That(collectionBuilderCalls, Is.GreaterThan(0),
-            "with skipDoctype=true, the composer must access the PackageMigrationPlans collection builder to call Remove<T>()");
+            $"with skipDoctype={skipDoctype}, the composer must not touch the PackageMigrationPlans collection builder");
     }
 
     [Test]

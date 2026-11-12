@@ -10,9 +10,9 @@ This document covers everything shipping in v1 — the per-page Markdown route +
 - **Umbraco CMS v17.3.2+** — floats forward via Central Package Management.
 - **Database** — anything Umbraco supports (SQL Server, Azure SQL, MySQL, PostgreSQL). SQLite is supported in development; production-realistic distributed-job verification needs a real database (see [`architecture.md`](architecture.md) § Production deployment notes for the verification log-line pattern).
 - **Node.js ≥ 24.11.1** — only needed if you're rebuilding the bundled JS yourself. The Vite output ships pre-built inside the NuGet package, so adopters do NOT need Node to run the package.
-- **Traditional Umbraco install with Razor templates** — required for the Markdown rendering surfaces (`.md` route, `/llms-full.txt`). Sites running Umbraco fully-headless (Delivery API + external frontend on Vercel / Netlify / etc.) get the `/llms.txt` index, robots audit, and Settings dashboard but the Markdown rendering surfaces don't work — full headless support is planned for a future release. See [`headless.md`](headless.md) for the supported-surfaces matrix + workarounds.
+- **Traditional Umbraco install with Razor templates** — required for the Markdown rendering surfaces (`.md` route, `/llms-full.txt`). Sites running Umbraco fully-headless (Delivery API + external frontend on Vercel / Netlify / etc.) get the `/llms.txt` index, robots audit, and Settings dashboard but the Markdown rendering surfaces don't work — full headless support is planned for v1.4. See [`headless.md`](headless.md) for the supported-surfaces matrix + workarounds.
 
-> **On Umbraco 13 / .NET 8?** This guide targets the v17 package. The lite SKU `Umbraco.Community.AiVisibility.V13` ships the same content surfaces (everything in this guide except the Backoffice dashboards + Management API) — configure via `appsettings.json` instead of the editor UI. See [`v13-support.md`](v13-support.md) for what differs.
+> **On Umbraco 13 / .NET 8?** This guide targets the v17 package. The lite SKU `Umbraco.Community.AiVisibility.V13` ships the content surfaces (everything in this guide except the Backoffice dashboards + Management API) as they were at 1.2.x — configure via `appsettings.json` instead of the editor UI. It is **frozen at 1.2.x**: it does not get the v1.3.0 changes described here or any later release, and it is unsupported from December 2026 (Umbraco 13 end of support). See [`v13-support.md`](v13-support.md) for what differs.
 
 > **Upgrading from a v0.x pre-release install?** See [`configuration.md`](configuration.md) § "Migrating from a pre-v1 install" for the config + envvar rename mapping. The package warns at boot but does NOT honour the legacy `LlmsTxt:` prefix at runtime — you'll fall back to defaults silently otherwise.
 
@@ -319,7 +319,7 @@ The Loopback strategy treats HTTP 3xx responses as render failures. When the pac
 
 #### Member-protected content
 
-From v1.1, pages flagged via Umbraco's Public Access feature (member-restricted access) are **excluded** from the `.md` route, `/llms.txt`, and `/llms-full.txt` regardless of the active `RenderStrategy:Mode`. This is a v1.0.x bug fix — previously the renderer would surface the login-redirect HTML as Markdown content. The exclusion is independent of strategy choice; pinning `Razor` or `Loopback` does not change this behaviour.
+Pages flagged via Umbraco's Public Access feature (member-restricted access) are **excluded** from the `.md` route (since v1.1) and from `/llms.txt` and `/llms-full.txt` (since v1.3), regardless of the active `RenderStrategy:Mode`. The `.md` exclusion was a v1.0.x bug fix — previously the renderer would surface the login-redirect HTML as Markdown content; before v1.3 the manifests still listed member-protected pages. The exclusion is independent of strategy choice; pinning `Razor` or `Loopback` does not change this behaviour.
 
 #### Headless installs
 
@@ -367,6 +367,33 @@ To let editors exclude individual pages, attach the **AI Visibility Exclusion (c
 - The page is omitted from `/llms.txt` and `/llms-full.txt`
 - HTML responses for that page are unchanged (the toggle only affects the LLM exports — the public site keeps serving normally)
 
+#### Reusing your own "hide page" property
+
+If your doctypes already have a boolean toggle for hiding pages (for example `hidePage`), list its alias in `appsettings.json` and the package treats it like `excludeFromLlmExports`:
+
+```json
+{
+  "AiVisibility": {
+    "ExclusionPropertyAliases": [ "hidePage" ]
+  }
+}
+```
+
+The configured aliases **add to** `excludeFromLlmExports`, which keeps working. Only a boolean `true` value excludes the page — a text property holding `"1"` or `"true"` does not. If the property varies by culture, each culture's value applies to that culture's requests. The list lives in `appsettings.json` only; the backoffice dashboard doesn't edit it.
+
+#### Where the checkbox appears in the editor
+
+In the v17 package the composition's **LLM exports** group sits inside an **AI Visibility** tab, so on a doctype with its own tabs (for example "Content" and "SEO") the "Exclude from LLM exports" checkbox appears under **AI Visibility** instead of an automatic "Generic" tab. (The frozen v13 package keeps the group at the root of the composition.)
+
+On a doctype that has **no tabs of its own**, adding the composition gives it its first tab, so Umbraco shows that doctype's own groups under a "Generic" tab next to **AI Visibility**. If you'd rather keep the checkbox at the root, open the **AI Visibility Exclusion (composition)** doctype and drag the **LLM exports** group out of the **AI Visibility** tab back to the root (then delete the empty tab). The package won't move it again once you've changed it.
+
+Existing installs are moved into the tab automatically on the first boot after upgrading, but only when:
+
+- the composition is unedited — just the **LLM exports** group holding the single `excludeFromLlmExports` property. Opening and re-saving it in the backoffice without other changes still counts as unedited (the backoffice rebuilds the group's alias from its name, and the move recognises either). A composition you've customised (group renamed in the backoffice, extra properties or groups, already in a tab) is left alone and the reason is logged at Information level.
+- no other doctype already has a container aliased `aiVisibility` that is a group rather than a tab, or a container aliased `aiVisibility/llmsTxt` that is a tab rather than a group. If one does, the move is skipped with a Warning naming the doctype; move the group by hand or rename that container.
+
+The property and every page's saved value are kept, so pages already excluded stay excluded. `SkipSettingsDoctype: true` (see [uSync coexistence](#usync-coexistence)) also skips this move, and turning the flag off later does not move the group. uSync users: the move changes the composition's containers, so it shows up as a uSync difference. Export and commit the moved composition from one environment so the other environments import it, rather than letting an older export put the group back; or keep `SkipSettingsDoctype: true` and make the move in uSync yourself.
+
 Cache invalidation is automatic: toggling the bool fires a `RefreshNode` notification that clears the per-page Markdown cache, both manifest caches, and the resolver settings cache for every bound hostname in a single invocation.
 
 ### Configuration overlay precedence
@@ -406,9 +433,11 @@ If your site uses [uSync](https://github.com/KevinJump/uSync) or `uSync.Complete
 }
 ```
 
-This stops the package from registering `AiVisibilityPackageMigrationPlan` with Umbraco's migration pipeline. uSync then serialises the doctype on first install and owns the lifecycle. The resolver still works — it just falls back fully to appsettings when no `AI Visibility Settings` content node exists.
+This skips only the creation of the `AI Visibility Settings` doctype and the `llmsTxtSettingsComposition` per-page exclusion composition (and the later move of the composition's group into the "AI Visibility" tab). The rest of the package migration still runs — in particular the `aiVisibilityRequestLog` table that backs the AI Traffic dashboard is always created. uSync then imports the doctype and composition from the environment that owns them and manages their lifecycle. The resolver still works — it just falls back fully to appsettings when no `AI Visibility Settings` content node exists.
 
 **Caveat:** flipping this flag from `false` to `true` AFTER the migration has already run does NOT remove the doctype from the host DB (Umbraco's plan-state record persists the executed state). To relocate schema ownership to uSync, delete the doctype manually first.
+
+The reverse also holds: flipping the flag from `true` to `false` AFTER the package migration has run with it on does NOT create the doctype or composition retroactively — the skipped step is recorded as executed. Create or import (uSync) them yourself in that case.
 
 ### Resolver behaviour at request time
 
@@ -416,7 +445,7 @@ The resolver caches its overlay record at `aiv:settings:{culture}` (host-omitted
 
 ### Public extension point
 
-`ISettingsResolver` is the fourth public extension point in the package (after `IMarkdownContentExtractor`, `ILlmsTxtBuilder`, `ILlmsFullBuilder`). Override discipline matches the others:
+`ISettingsResolver` is a public extension point. Override discipline matches the others:
 
 ```csharp
 // Override BEFORE our composer runs (any composer with no [ComposeAfter])
@@ -434,7 +463,7 @@ public sealed class MyComposer : IComposer
 
 ## Zero-config defaults
 
-From v0.6, every route the package ships works zero-config — no `AiVisibility:` section in `appsettings.json`, no Settings doctype edits required. The in-code defaults in [`AiVisibilitySettings`](../Umbraco.Community.AiVisibility/Configuration/AiVisibilitySettings.cs) produce useful output on a typical Umbraco site as soon as `dotnet add package Umbraco.Community.AiVisibility` finishes. The package never ships an `appsettings.json` snippet — adopters who want to override the defaults add a `AiVisibility:` section to their host's own `appsettings.json` (or its environment-specific overlay).
+From v0.6, every route the package ships works zero-config — no `AiVisibility:` section in `appsettings.json`, no Settings doctype edits required. The in-code defaults in [`AiVisibilitySettings`](../Umbraco.Community.AiVisibility.Core/Configuration/AiVisibilitySettings.cs) produce useful output on a typical Umbraco site as soon as `dotnet add package Umbraco.Community.AiVisibility` finishes. The package never ships an `appsettings.json` snippet — adopters who want to override the defaults add a `AiVisibility:` section to their host's own `appsettings.json` (or its environment-specific overlay).
 
 | Route | Zero-config behaviour |
 |---|---|
@@ -446,7 +475,7 @@ From v0.6, every route the package ships works zero-config — no `AiVisibility:
 
 | Setting | Default | Source |
 |---|---|---|
-| `AiVisibility:MaxLlmsFullSizeKb` | `5120` | [`AiVisibilitySettings.cs`](../Umbraco.Community.AiVisibility/Configuration/AiVisibilitySettings.cs) |
+| `AiVisibility:MaxLlmsFullSizeKb` | `5120` | [`AiVisibilitySettings.cs`](../Umbraco.Community.AiVisibility.Core/Configuration/AiVisibilitySettings.cs) |
 | `AiVisibility:CachePolicySeconds` (per-page) | `60` | same |
 | `AiVisibility:LlmsTxtBuilder:CachePolicySeconds` | `300` | same |
 | `AiVisibility:LlmsTxtBuilder:PageSummaryPropertyAlias` | `"metaDescription"` | same |
@@ -456,6 +485,7 @@ From v0.6, every route the package ships works zero-config — no `AiVisibility:
 | `AiVisibility:LlmsFullScope:IncludedDocTypeAliases` | `[]` | same |
 | `AiVisibility:LlmsFullScope:ExcludedDocTypeAliases` | `["errorPage", "redirectPage"]` | same |
 | `AiVisibility:ExcludedDoctypeAliases` (top-level) | `[]` | same |
+| `AiVisibility:ExclusionPropertyAliases` | `[]` | same |
 | `AiVisibility:Hreflang:Enabled` | `false` | same |
 | `AiVisibility:SettingsResolverCachePolicySeconds` | `300` | same |
 | `AiVisibility:Migrations:SkipSettingsDoctype` | `false` | same |
@@ -475,7 +505,7 @@ Layer 4 also covers the explicit-empty-string case: an editor clearing the `site
 
 ## Backoffice Settings dashboard
 
-From v0.5, the package ships a Backoffice dashboard under **Settings → AI Visibility** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `AI Visibility Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of pages with `excludeFromLlmExports` toggled on.
+From v0.5, the package ships a Backoffice dashboard under **Settings → AI Visibility** that gives editors a form-based view of the same settings the standard Umbraco content tree exposes on the `AI Visibility Settings` node — `siteName`, `siteSummary`, the doctype-alias exclusion list, and a read-only list of the pages kept out of LLM exports (pages with `excludeFromLlmExports` or a configured `ExclusionPropertyAliases` property toggled on, pages of an excluded doctype, and pages protected by Public Access).
 
 The dashboard surfaces exactly the same overlay rules `ISettingsResolver` enforces (Settings node value > appsettings value > in-code default). On first save, if no `AI Visibility Settings` content node exists yet, the dashboard creates one at the root automatically — adopters using uSync to own the doctype lifecycle don't need to pre-create the node before opening the dashboard.
 
@@ -537,9 +567,21 @@ From v0.8, the Backoffice **Settings → Health Check → LLMs** group surfaces 
 | `AiVisibility:RobotsAuditor:DevFetchPort` | `null` | **Dev-only escape hatch.** Overrides the scheme default port for the audit fetch (e.g. `44314` for a TestSite on Kestrel). **DO NOT set in production** — production deploys serve `/robots.txt` on 443/80. Live in `appsettings.Development.json` only. |
 | `AiVisibility:RobotsAuditor:RefreshIntervalSecondsOverride` | `null` | **Dev-only escape hatch.** Forces seconds-precision refresh cycles instead of `RefreshIntervalHours`. **DO NOT set in production** — would hammer adopter origins. Live in `appsettings.Development.json` only. |
 
-The AI-bot list is **synced from upstream at build time** with SHA pinning — the build hard-fails on a SHA mismatch (deliberate; protects against silent feed tampering). Offline / disconnected builds fall back to the committed snapshot at `Umbraco.Community.AiVisibility/Robots/AiBotList.fallback.txt` with a warning.
+The AI-bot list is **synced from upstream at build time** with SHA pinning — only a list matching the reviewed pin is embedded (protects against silent feed tampering). If upstream has changed, or the build is offline, the committed snapshot at `Umbraco.Community.AiVisibility.Core/Robots/AiBotList.fallback.txt` is embedded instead, with a warning.
 
 Adopters can replace the auditor entirely by registering a Singleton `IRobotsAuditor` of their own (Singleton lifetime is required — see [`docs/robots-audit.md` § Custom auditors](robots-audit.md#custom-auditors)).
+
+## Upgrading to v1.3
+
+v1.3.0 is a drop-in upgrade for the v17 package — no configuration change is required, and adopters who change no configuration see no change beyond the fixes. Five things to know:
+
+- **`SkipSettingsDoctype` now skips only the settings doctype.** If you run with `AiVisibility:Migrations:SkipSettingsDoctype: true`, the package migration now runs on upgrade: it creates the `aiVisibilityRequestLog` table that backs the AI Traffic dashboard (previously never created with the flag on) and records the doctype step as skipped. Turning the flag off later will not create the doctype or composition — create or import them yourself. See [uSync coexistence](#usync-coexistence).
+- **The exclusion checkbox moves into an "AI Visibility" tab** on the first boot after upgrading, but only if the **AI Visibility Exclusion (composition)** is unedited. Doctypes with no tabs of their own then show their existing properties under a "Generic" tab. uSync users see the moved composition as a difference — export and commit it from one environment. `SkipSettingsDoctype: true` skips the move. See [Where the checkbox appears in the editor](#where-the-checkbox-appears-in-the-editor).
+- **Member-protected pages and custom `IExclusionEvaluator`s now govern `/llms.txt` and `/llms-full.txt`.** Pages behind Umbraco Public Access, and pages a custom evaluator excludes, no longer appear in either manifest (they were already excluded from the `.md` route). The manifests now call your evaluator when they rebuild, so a custom evaluator that throws makes `/llms.txt` or `/llms-full.txt` return `500` on that rebuild (before 1.3 the manifests never called it).
+- **ReverseMarkdown 6.3.0 and AngleSharp 1.5.2.** Custom extractors that use ReverseMarkdown or AngleSharp now compile against these versions (see [`dependency-status.md`](dependency-status.md)). The upgrade fixes empty headings; other small Markdown output differences you may see: `&amp;` in text now renders as `&`, and some blank-line and non-breaking-space spacing differs.
+- **Hard-refresh the backoffice once after upgrading.** A browser that had the backoffice open on 1.2.1 may have cached the old bundle entry, which imports a file that no longer ships; one hard refresh (Ctrl/Cmd + Shift + R) loads the new bundle.
+
+The full list of changes is in [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Upgrading from v0.7 to v0.8
 
@@ -624,7 +666,7 @@ v0.10 is non-breaking. The new dashboard manifest is additive — the existing "
 
 On the roadmap:
 
-- Full headless rendering (Delivery API + external frontend) — see [`headless.md`](headless.md) for what works today and the current workaround.
+- Full headless rendering (Delivery API + external frontend), planned for v1.4 — see [`headless.md`](headless.md) for what works today and the current workaround.
 - `/llms-full.txt` pagination + cross-instance cache pre-warm for very large sites.
 
 ## Anti-patterns the package will NOT ship

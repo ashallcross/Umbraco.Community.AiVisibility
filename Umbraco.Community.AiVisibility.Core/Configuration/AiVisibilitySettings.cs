@@ -181,6 +181,29 @@ public sealed class AiVisibilitySettings
     public IReadOnlyList<string> ExcludedDoctypeAliases { get; init; } = Array.Empty<string>();
 
     /// <summary>
+    /// Additional per-page property aliases that keep a page out of LLM
+    /// exports when their value is boolean <c>true</c> — e.g. an existing
+    /// site-wide <c>hidePage</c> toggle. Honoured by
+    /// <see cref="DefaultExclusionEvaluator"/> on every surface (<c>.md</c>
+    /// route, <c>Link</c> header, <c>Accept</c> negotiation, TagHelpers,
+    /// <c>/llms.txt</c>, <c>/llms-full.txt</c>, Settings dashboard
+    /// excluded-pages list).
+    /// <para>
+    /// <b>Adds to</b> the package's own <c>excludeFromLlmExports</c> property,
+    /// which is always honoured. Only a boolean <c>true</c> value excludes —
+    /// text values such as <c>"1"</c> or <c>"true"</c> do not. A property that
+    /// varies by culture is read for the request culture; an invariant
+    /// property is read invariantly. Entries are trimmed; blank entries are
+    /// ignored; a page without the property is not excluded.
+    /// </para>
+    /// <para>
+    /// appsettings-only (no Settings-node overlay). Default
+    /// <see cref="Array.Empty{T}"/>: only <c>excludeFromLlmExports</c> is read.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> ExclusionPropertyAliases { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// Story 3.1 — TTL (in seconds) for the resolver cache at
     /// <c>llms:settings:{host}:{culture}</c>. Default <c>300s</c> matches the
     /// manifest cache TTLs (<see cref="LlmsTxtBuilderSettings.CachePolicySeconds"/>
@@ -203,9 +226,8 @@ public sealed class AiVisibilitySettings
     public int SettingsResolverCachePolicySeconds { get; init; } = 300;
 
     /// <summary>
-    /// Story 3.1 — migration-plan registration controls. Currently only carries
-    /// <see cref="MigrationsSettings.SkipSettingsDoctype"/> for uSync
-    /// coexistence (architecture.md line 1092 + epics.md AC1).
+    /// Package migration controls; currently only
+    /// <see cref="MigrationsSettings.SkipSettingsDoctype"/> (uSync coexistence).
     /// </summary>
     public MigrationsSettings Migrations { get; init; } = new();
 
@@ -604,22 +626,21 @@ public sealed class ContentSignalSettings
 }
 
 /// <summary>
-/// Story 3.1 — controls for the package's schema migrations. Currently only
-/// <see cref="SkipSettingsDoctype"/> ships; future migrations (e.g. Epic 5's
-/// request-log table) may add their own opt-out flags here.
+/// Controls for the package's schema migrations. Currently only
+/// <see cref="SkipSettingsDoctype"/> ships.
 /// </summary>
 public sealed class MigrationsSettings
 {
     /// <summary>
-    /// When <c>true</c>, <c>SettingsComposer</c> does NOT register
-    /// <c>AiVisibilityPackageMigrationPlan</c> with the Umbraco package-migration
-    /// pipeline — the Settings doctype + per-page-exclusion composition are
-    /// NOT created on first boot. Default <c>false</c>.
+    /// When <c>true</c>, the package migration skips creating the Settings
+    /// doctype + per-page-exclusion composition only. The rest of the package
+    /// migration plan (including the <c>aiVisibilityRequestLog</c> table that
+    /// backs AI Traffic) still runs. Default <c>false</c>.
     /// <para>
     /// <b>Use case:</b> adopters using <a href="https://github.com/KevinJump/uSync">uSync</a>
     /// or <c>uSync.Complete</c> to own the schema lifecycle. uSync serialises
     /// the doctype on first install; setting this flag to <c>true</c> prevents
-    /// our package-migration plan from racing uSync's import or duplicating
+    /// our doctype migration step from racing uSync's import or duplicating
     /// the doctype. Documented in <c>docs/getting-started.md</c> § "uSync
     /// coexistence".
     /// </para>
@@ -629,6 +650,12 @@ public sealed class MigrationsSettings
     /// (Umbraco's package-migration plan-state record persists the executed
     /// state). Adopters relocating schema ownership to uSync must delete the
     /// doctype manually first.
+    /// </para>
+    /// <para>
+    /// <b>Caveat:</b> flipping this from <c>true</c> to <c>false</c> AFTER the
+    /// skipped step has run does NOT create the doctype retroactively — the
+    /// step is recorded as executed. Create or import (uSync) the doctype and
+    /// composition yourself in that case.
     /// </para>
     /// </summary>
     public bool SkipSettingsDoctype { get; init; }

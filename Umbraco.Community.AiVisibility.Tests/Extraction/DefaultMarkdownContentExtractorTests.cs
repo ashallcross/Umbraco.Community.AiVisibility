@@ -1,5 +1,6 @@
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -184,6 +185,67 @@ public class DefaultMarkdownContentExtractorTests
 
         Assert.That(result.Status, Is.EqualTo(MarkdownExtractionStatus.Error));
         Assert.That(result.Error, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_HeadingTextWrappedInNewlinesAndIndent_EmitsAtxHeading()
+    {
+        // GitHub #6: indented heading text in a template used to produce an empty
+        // "##" followed by an indented code block.
+        var html = "<html><body><main>\n    <h2 class=\"textBlock__title\">\n        About us\n    </h2>\n    <p>We build things.</p>\n</main></body></html>";
+
+        var result = await ExtractAsync(html);
+
+        Assert.That(result.Status, Is.EqualTo(MarkdownExtractionStatus.Found));
+        var md = result.Markdown!;
+        Assert.That(md, Does.Contain("## About us"));
+        Assert.That(md, Does.Not.Match(@"(?m)^#{1,6}\s*$"), "no empty heading");
+        Assert.That(md, Does.Not.Match(@"(?m)^( {4}|\t)\S"), "no indented code block");
+        Assert.That(md, Does.Contain("We build things."));
+    }
+
+    [Test]
+    public async Task ExtractFromHtmlAsync_NoRegion_SmartReaderFallbackProducesMarkdown()
+    {
+        // No <main>, <article> or [data-llms-content]: the SmartReader fallback must
+        // extract the readable body (pins SmartReader against the AngleSharp version in use).
+        var logger = new RecordingLogger<DefaultMarkdownContentExtractor>();
+        var extractor = new DefaultMarkdownContentExtractor(
+            pageRenderer: null!,
+            regionSelector: new DefaultContentRegionSelector(NullLogger<DefaultContentRegionSelector>.Instance),
+            converter: new MarkdownConverter(),
+            publishedUrlProvider: null!,
+            httpContextAccessor: null!,
+            settings: new StubOptionsSnapshot<AiVisibilitySettings>(
+                new AiVisibilitySettings { MainContentSelectors = Array.Empty<string>() }),
+            logger: logger);
+
+        const string Paragraph =
+            "The harbour town grew slowly over two centuries, shaped by fishing fleets, "
+            + "merchants and the families who settled along the steep streets above the quay. "
+            + "Each generation added houses, chapels and workshops, and the old stone walls "
+            + "still show where the market once stood before the railway arrived.";
+        var html = "<html><head><title>Harbour history</title></head><body>"
+            + "<div class=\"story\"><h2>Harbour history</h2>"
+            + string.Concat(Enumerable.Repeat("<p>" + Paragraph + "</p>", 6))
+            + "</div></body></html>";
+        var sourceUri = new Uri("https://example.test/history");
+        var meta = new ContentMetadata(
+            Title: "Harbour history",
+            AbsoluteUrl: sourceUri.ToString(),
+            UpdatedUtc: new DateTime(2026, 4, 29, 0, 0, 0, DateTimeKind.Utc),
+            ContentKey: Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            Culture: "en-GB");
+
+        var result = await extractor.ExtractFromHtmlAsync(html, sourceUri, meta, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Status, Is.EqualTo(MarkdownExtractionStatus.Found));
+            Assert.That(result.Markdown, Does.Contain("The harbour town grew slowly"));
+            Assert.That(logger.Messages, Has.Some.Contains("SmartReader fallback fired"));
+            Assert.That(logger.Messages, Has.None.Contains("SmartReader fallback threw"));
+        });
     }
 
     [Test]
@@ -604,6 +666,23 @@ public class DefaultMarkdownContentExtractorTests
             Culture: "en-GB");
 
         return await _extractor.ExtractFromHtmlAsync(html, sourceUri, meta, CancellationToken.None);
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 
     private sealed class StubOptionsSnapshot<T> : IOptionsSnapshot<T> where T : class

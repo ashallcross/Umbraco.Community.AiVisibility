@@ -38,12 +38,11 @@ namespace Umbraco.Community.AiVisibility.LlmsTxt;
 /// </summary>
 public sealed class LlmsTxtController : Controller
 {
-    internal const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
-
     private readonly ILlmsTxtBuilder _builder;
     private readonly IHostnameRootResolver _hostnameResolver;
     private readonly IHreflangVariantsResolver _hreflangResolver;
     private readonly ISettingsResolver _settingsResolver;
+    private readonly IExclusionEvaluator _exclusion;
     private readonly IUmbracoContextFactory _umbracoContextFactory;
     private readonly IDocumentNavigationQueryService _navigation;
     private readonly AppCaches _appCaches;
@@ -56,6 +55,7 @@ public sealed class LlmsTxtController : Controller
         IHostnameRootResolver hostnameResolver,
         IHreflangVariantsResolver hreflangResolver,
         ISettingsResolver settingsResolver,
+        IExclusionEvaluator exclusion,
         IUmbracoContextFactory umbracoContextFactory,
         IDocumentNavigationQueryService navigation,
         AppCaches appCaches,
@@ -67,6 +67,7 @@ public sealed class LlmsTxtController : Controller
         _hostnameResolver = hostnameResolver;
         _hreflangResolver = hreflangResolver;
         _settingsResolver = settingsResolver;
+        _exclusion = exclusion;
         _umbracoContextFactory = umbracoContextFactory;
         _navigation = navigation;
         _appCaches = appCaches;
@@ -131,12 +132,6 @@ public sealed class LlmsTxtController : Controller
                 statusCode: StatusCodes.Status404NotFound);
         }
 
-        // Story 3.1 — filter pages by the resolved exclusion list (doctype
-        // alias OR per-page excludeFromLlmExports composition property).
-        // Filtering in the controller before the cache factory keeps the
-        // builder a pure transform (Builders/ folder boundary).
-        var pages = FilterExcludedPages(allPages, resolvedSettings, resolution.Culture);
-
         var cacheKey = AiVisibilityCacheKeys.LlmsTxt(host, resolution.Culture);
 
         // Story 6.0a (Codex finding #3) — CachePolicySeconds policy mirrors
@@ -166,11 +161,35 @@ public sealed class LlmsTxtController : Controller
         var root = resolution.Root;
         var culture = resolution.Culture;
         var hostForBuild = AiVisibilityCacheKeys.NormaliseHost(host);
-        var pagesForBuild = pages;
+        var collectedPages = allPages;
         var resolvedForBuild = resolvedSettings;
 
         ManifestCacheEntry Build()
         {
+            // Per-page exclusion runs through IExclusionEvaluator inside the
+            // cache factory so a replaced evaluator governs the manifest and
+            // cache hits pay nothing. A throwing evaluator surfaces through the
+            // GetCacheItem try/catch below (logged Error + 500), same as the
+            // .md route. Filtering here (not in the builder) keeps the builder
+            // a pure transform (Builders/ folder boundary).
+            IReadOnlyList<IPublishedContent> pagesForBuild;
+            using (_umbracoContextFactory.EnsureUmbracoContext())
+            {
+                var included = new List<IPublishedContent>(collectedPages.Count);
+                foreach (var page in collectedPages)
+                {
+                    if (!_exclusion
+                            .IsExcludedAsync(page, culture, host, CancellationToken.None)
+                            .ConfigureAwait(false)
+                            .GetAwaiter()
+                            .GetResult())
+                    {
+                        included.Add(page);
+                    }
+                }
+                pagesForBuild = included;
+            }
+
             // Code-review P1 (2026-04-30) — hreflang resolution moved
             // INSIDE the cache factory. Previously ran on every request
             // (including cache hits), defeating AC2 single-flight intent
@@ -252,11 +271,11 @@ public sealed class LlmsTxtController : Controller
         {
             _logger.LogError(
                 ex,
-                "/llms.txt — builder threw for {Host} {Culture}",
+                "/llms.txt — manifest build threw for {Host} {Culture}",
                 hostForBuild,
                 culture);
             return Problem(
-                title: "/llms.txt — builder failed",
+                title: "/llms.txt — manifest build failed",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
 
@@ -353,62 +372,6 @@ public sealed class LlmsTxtController : Controller
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Story 3.1 — drop pages whose <c>ContentType.Alias</c> is in the resolved
-    /// exclusion list OR whose <c>excludeFromLlmExports</c> composition property
-    /// is <c>true</c>. Filtering happens in the controller (before the cache
-    /// factory) so the builder stays a pure transform over its input list.
-    /// </summary>
-    private static IReadOnlyList<IPublishedContent> FilterExcludedPages(
-        IReadOnlyList<IPublishedContent> pages,
-        ResolvedLlmsSettings resolved,
-        string? culture)
-    {
-        if (pages.Count == 0)
-        {
-            return pages;
-        }
-
-        var excluded = resolved.ExcludedDoctypeAliases;
-        if (excluded.Count == 0)
-        {
-            // No alias-based exclusions — only per-page bool can drop pages.
-            // Fast-path: filter only on the bool when no aliases configured.
-            return pages
-                .Where(p => !TryReadExcludeBool(p, culture))
-                .ToList();
-        }
-
-        var aliasSet = excluded as HashSet<string>
-            ?? new HashSet<string>(excluded, StringComparer.OrdinalIgnoreCase);
-
-        return pages
-            .Where(p => !aliasSet.Contains(p.ContentType.Alias)
-                        && !TryReadExcludeBool(p, culture))
-            .ToList();
-    }
-
-    /// <summary>
-    /// Read <c>excludeFromLlmExports</c> via the property layer, mirroring the
-    /// shape <see cref="MarkdownController.TryReadExcludeBool"/> uses (and for
-    /// the same trap-avoiding reasons documented there).
-    /// </summary>
-    private static bool TryReadExcludeBool(IPublishedContent page, string? culture)
-    {
-        // The excludeFromLlmExports property lives on the invariant
-        // llmsTxtSettingsComposition. Pass culture: null — see Story 3.1
-        // manual gate Step 4 finding (HasValue/GetValue with a non-null culture
-        // returns false on invariant properties even when the bool is set).
-        _ = culture;
-        var prop = page.GetProperty(ExcludeFromLlmExportsAlias);
-        if (prop is null || !prop.HasValue(culture: null))
-        {
-            return false;
-        }
-        var value = prop.GetValue(culture: null);
-        return value is bool b && b;
     }
 
     /// <summary>

@@ -75,8 +75,8 @@
     AI-bot-list sync.
   -->
   <PropertyGroup>
-    <ExpectedAiBotListSha256>632427c17fe72dcb583fbdf9354a578738894da04b2ec76bd1c3ce49de46eef6</ExpectedAiBotListSha256>
-    <ExpectedAiBotListFallbackSha256>632427c17fe72dcb583fbdf9354a578738894da04b2ec76bd1c3ce49de46eef6</ExpectedAiBotListFallbackSha256>
+    <ExpectedAiBotListSha256>aad12fe2f342a2b323ea019366d6c69a8e31162110658eb127284f4b848d8541</ExpectedAiBotListSha256>
+    <ExpectedAiBotListFallbackSha256>aad12fe2f342a2b323ea019366d6c69a8e31162110658eb127284f4b848d8541</ExpectedAiBotListFallbackSha256>
     <AiBotListSourceUrl>https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.txt</AiBotListSourceUrl>
     <AiBotListFallback>$(MSBuildThisFileDirectory)Robots\AiBotList.fallback.txt</AiBotListFallback>
   </PropertyGroup>
@@ -133,26 +133,33 @@
       <_FetchedAiBotListShaLower>$(_FetchedAiBotListSha.ToLowerInvariant())</_FetchedAiBotListShaLower>
     </PropertyGroup>
 
-    <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == ''"
-           Text="AiVisibility: AI bot list fetch produced an unreadable or zero-byte file at $(_AiBotListFetched). Network or proxy may be returning truncated content; investigate before bumping the pinned SHA." />
-
-    <Error Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' != '' AND '$(_FetchedAiBotListShaLower)' != '$(_ExpectedAiBotListShaLower)'"
-           Text="AiVisibility: AI bot list SHA mismatch — expected $(_ExpectedAiBotListShaLower), got $(_FetchedAiBotListShaLower). Refresh the pinned SHA per docs/robots-audit.md § Build-time AI-bot-list sync after reviewing the upstream change." />
+    <!-- Only bytes whose SHA matches the reviewed pin are ever embedded. Any
+         other outcome (fetch failed, unreadable download, or upstream changed
+         since the last review) embeds the committed, SHA-verified fallback and
+         warns: a changed upstream list never breaks the build, it just tells
+         the maintainer a newer list is available to review. -->
+    <PropertyGroup>
+      <_UseFetchedAiBotList Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'">true</_UseFetchedAiBotList>
+    </PropertyGroup>
 
     <Copy SourceFiles="@(_FetchedAiBotList)"
           DestinationFiles="$(_AiBotListEmbed)"
           SkipUnchangedFiles="false"
-          Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
+          Condition="'$(_UseFetchedAiBotList)' == 'true'" />
     <Message Importance="High"
              Text="AiVisibility: AI bot list synced from upstream (SHA $(_FetchedAiBotListShaLower))."
-             Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == '$(_ExpectedAiBotListShaLower)'" />
+             Condition="'$(_UseFetchedAiBotList)' == 'true'" />
 
     <Copy SourceFiles="$(AiBotListFallback)"
           DestinationFiles="$(_AiBotListEmbed)"
           SkipUnchangedFiles="false"
-          Condition="'@(_FetchedAiBotList)' == ''" />
+          Condition="'$(_UseFetchedAiBotList)' != 'true'" />
     <Warning Text="AiVisibility: Falling back to AiBotList.fallback.txt — upstream fetch failed (network unreachable, timeout, or HTTP non-2xx). Build is offline-safe."
              Condition="'@(_FetchedAiBotList)' == ''" />
+    <Warning Text="AiVisibility: AI bot list fetch produced an unreadable or zero-byte file at $(_AiBotListFetched); embedding the reviewed AiBotList.fallback.txt instead."
+             Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' == ''" />
+    <Warning Text="AiVisibility: A newer upstream AI bot list is available (pinned $(_ExpectedAiBotListShaLower), upstream $(_FetchedAiBotListShaLower)). Embedding the reviewed AiBotList.fallback.txt. To adopt the new list, review and refresh it per docs/robots-audit.md § Refreshing the pinned SHA."
+             Condition="'@(_FetchedAiBotList)' != '' AND '$(_FetchedAiBotListShaLower)' != '' AND '$(_FetchedAiBotListShaLower)' != '$(_ExpectedAiBotListShaLower)'" />
 
     <ItemGroup>
       <EmbeddedResource Include="$(_AiBotListEmbed)"

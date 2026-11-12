@@ -105,7 +105,6 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     internal const string SiteNameAlias = "siteName";
     internal const string SiteSummaryAlias = "siteSummary";
     internal const string ExcludedAliasesAlias = "excludedDoctypeAliases";
-    internal const string ExcludeFromLlmExportsAlias = "excludeFromLlmExports";
     internal const string DefaultSettingsNodeName = "AI Visibility Settings";
 
     /// <summary>
@@ -117,6 +116,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     private static readonly char[] AliasSeparatorChars = { '\n', '\r', ',', ';' };
 
     private readonly ISettingsResolver _resolver;
+    private readonly IExclusionEvaluator _exclusion;
     private readonly IContentService _contentService;
     private readonly IContentTypeService _contentTypeService;
     private readonly IUmbracoContextAccessor _umbracoContextAccessor;
@@ -126,6 +126,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
 
     public SettingsManagementApiController(
         ISettingsResolver resolver,
+        IExclusionEvaluator exclusion,
         IContentService contentService,
         IContentTypeService contentTypeService,
         IUmbracoContextAccessor umbracoContextAccessor,
@@ -134,6 +135,7 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
         ILogger<SettingsManagementApiController> logger)
     {
         _resolver = resolver;
+        _exclusion = exclusion;
         _contentService = contentService;
         _contentTypeService = contentTypeService;
         _umbracoContextAccessor = umbracoContextAccessor;
@@ -265,15 +267,16 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     }
 
     /// <summary>
-    /// Returns the (paginated) list of published pages whose
-    /// <c>excludeFromLlmExports</c> composition property is <c>true</c>.
-    /// Walking all descendants is O(n); the controller clamps <c>take</c> to
-    /// <c>[1, 200]</c>. Cross-instance caching deferred to v1.1+
-    /// (<c>deferred-work.md</c> D-3.2-1).
+    /// Returns the (paginated) list of published pages that
+    /// <see cref="IExclusionEvaluator"/> excludes from LLM exports
+    /// (<c>excludeFromLlmExports</c> or a configured exclusion property, public
+    /// access, excluded doctype). The evaluator is called with the backoffice
+    /// request host and <c>culture: null</c>. Walking all descendants is O(n);
+    /// the controller clamps <c>take</c> to <c>[1, 200]</c>.
     /// </summary>
     [HttpGet("excluded-pages")]
     [ProducesResponseType<LlmsExcludedPagesPageViewModel>(StatusCodes.Status200OK)]
-    public IActionResult GetExcludedPages(
+    public async Task<IActionResult> GetExcludedPages(
         [FromQuery] int skip = 0,
         [FromQuery] int take = 100,
         CancellationToken cancellationToken = default)
@@ -303,11 +306,13 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
 
         var content = ctx.Content;
         var matches = new List<IPublishedContent>();
+        var host = HttpContext?.Request.Host.HasValue == true ? HttpContext.Request.Host.Host : null;
 
         foreach (var rootKey in rootKeys)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            CollectExcludedDescendants(rootKey, content, matches, cancellationToken);
+            await CollectExcludedDescendantsAsync(rootKey, content, host, matches, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         // Project to (page, url) tuples once — IPublishedUrlProvider.GetUrl
@@ -355,8 +360,9 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
     /// Joins the page's culture keys in deterministic OrdinalIgnoreCase order.
     /// Invariant pages return <c>null</c>; multi-culture variants render as
     /// <c>"en-GB, fr-FR"</c> so the dashboard row reflects ALL cultures the
-    /// page is published under (the <c>excludeFromLlmExports</c> flag is
-    /// invariant, so the entry applies across cultures regardless).
+    /// page is published under. Exclusion is evaluated with <c>culture: null</c>,
+    /// so a page excluded in only one culture by a culture-variant configured
+    /// property may not be listed.
     /// </summary>
     private static string? FormatCultureSet(IReadOnlyDictionary<string, PublishedCultureInfo>? cultures)
     {
@@ -560,14 +566,15 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
         return null;
     }
 
-    private void CollectExcludedDescendants(
+    private async Task CollectExcludedDescendantsAsync(
         Guid rootKey,
         IPublishedContentCache content,
+        string? host,
         List<IPublishedContent> matches,
         CancellationToken cancellationToken)
     {
         var root = content.GetById(rootKey);
-        if (root is not null && PageIsExcluded(root))
+        if (root is not null && await PageIsExcludedAsync(root, host, cancellationToken).ConfigureAwait(false))
         {
             matches.Add(root);
         }
@@ -581,24 +588,15 @@ public sealed class SettingsManagementApiController : ManagementApiControllerBas
         {
             cancellationToken.ThrowIfCancellationRequested();
             var node = content.GetById(descendantKey);
-            if (node is not null && PageIsExcluded(node))
+            if (node is not null && await PageIsExcludedAsync(node, host, cancellationToken).ConfigureAwait(false))
             {
                 matches.Add(node);
             }
         }
     }
 
-    private static bool PageIsExcluded(IPublishedContent page)
-    {
-        var prop = page.GetProperty(ExcludeFromLlmExportsAlias);
-        if (prop is null)
-        {
-            return false;
-        }
-
-        var value = prop.GetValue();
-        return value is bool b && b;
-    }
+    private Task<bool> PageIsExcludedAsync(IPublishedContent page, string? host, CancellationToken cancellationToken)
+        => _exclusion.IsExcludedAsync(page, culture: null, host, cancellationToken);
 
     private static UpdateRequestValidation ValidateUpdateRequest(LlmsSettingsUpdateRequest? request)
     {

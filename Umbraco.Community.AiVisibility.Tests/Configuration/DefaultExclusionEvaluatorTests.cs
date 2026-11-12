@@ -1,5 +1,6 @@
 using Umbraco.Community.AiVisibility.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Umbraco.Cms.Core;
@@ -223,5 +224,188 @@ public class DefaultLlmsExclusionEvaluatorTests
         Assert.Pass(
             "IPublicAccessService.IsProtected(string) overload resolved at "
             + "compile-time; runtime body unreachable.");
+    }
+    // ────────────────────────────────────────────────────────────────────────
+    // Configured ExclusionPropertyAliases + resolver-throw appsettings fallback
+    // ────────────────────────────────────────────────────────────────────────
+
+    private static DefaultExclusionEvaluator BuildEvaluatorWithSettings(
+        AiVisibilitySettings settings,
+        ISettingsResolver? resolver = null)
+    {
+        if (resolver is null)
+        {
+            resolver = Substitute.For<ISettingsResolver>();
+            resolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(ResolvedWith());
+        }
+
+        var publicAccess = Substitute.For<IPublicAccessService>();
+        publicAccess.IsProtected(Arg.Any<string>()).Returns(Attempt<PublicAccessEntry?>.Fail());
+        var options = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
+        options.CurrentValue.Returns(settings);
+
+        return new DefaultExclusionEvaluator(
+            resolver,
+            publicAccess,
+            options,
+            NullLogger<DefaultExclusionEvaluator>.Instance);
+    }
+
+    private static IPublishedProperty InvariantProperty(object? value)
+    {
+        var prop = Substitute.For<IPublishedProperty>();
+        prop.HasValue(culture: null, segment: null).Returns(value is not null);
+        prop.GetValue(culture: null, segment: null).Returns(value);
+        return prop;
+    }
+
+    private static AiVisibilitySettings WithAliases(params string[] aliases)
+        => new() { ExclusionPropertyAliases = aliases };
+
+    [Test]
+    public async Task IsExcludedAsync_ConfiguredAliasTrue_ReturnsTrue()
+    {
+        var content = StubPage("articlePage");
+        var hideProp = InvariantProperty(true);
+        content.GetProperty("hidePage").Returns(hideProp);
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("hidePage"));
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.True);
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_ConfiguredAliasFalse_ReturnsFalse()
+    {
+        var content = StubPage("articlePage");
+        var hideProp = InvariantProperty(false);
+        content.GetProperty("hidePage").Returns(hideProp);
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("hidePage"));
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.False);
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_AliasesConfigured_ExcludeFromLlmExportsStillHonoured()
+    {
+        var content = StubPage("articlePage", excludeFromLlmExports: true);
+        content.GetProperty("hidePage").Returns((IPublishedProperty?)null);
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("hidePage"));
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.True);
+    }
+
+    [TestCase("1")]
+    [TestCase("true")]
+    [TestCase(1)]
+    public async Task IsExcludedAsync_ConfiguredAliasNonBoolValue_ReturnsFalse(object value)
+    {
+        var content = StubPage("articlePage");
+        var hideProp = InvariantProperty(value);
+        content.GetProperty("hidePage").Returns(hideProp);
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("hidePage"));
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.False);
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_ConfiguredAliasMissingOnPage_ReturnsFalse()
+    {
+        var content = StubPage("articlePage");
+        content.GetProperty("hidePage").Returns((IPublishedProperty?)null);
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("hidePage"));
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.False);
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_BlankAliases_IgnoredWithoutThrowing()
+    {
+        var content = StubPage("articlePage");
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("", " "));
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.False);
+        content.DidNotReceive().GetProperty("");
+        content.DidNotReceive().GetProperty(" ");
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_ConfiguredAliasWithWhitespace_IsTrimmed()
+    {
+        var content = StubPage("articlePage");
+        var hideProp = InvariantProperty(true);
+        content.GetProperty("hidePage").Returns(hideProp);
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("  hidePage  "));
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.True);
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_CultureVariantConfiguredAlias_ReadForRequestCulture()
+    {
+        var content = StubPage("articlePage");
+        var propertyType = Substitute.For<IPublishedPropertyType>();
+        propertyType.Variations.Returns(ContentVariation.Culture);
+        var prop = Substitute.For<IPublishedProperty>();
+        prop.PropertyType.Returns(propertyType);
+        prop.HasValue(Arg.Any<string?>(), Arg.Any<string?>()).Returns(false);
+        prop.HasValue("da", Arg.Any<string?>()).Returns(true);
+        prop.GetValue("da", Arg.Any<string?>()).Returns(true);
+        prop.HasValue("en-gb", Arg.Any<string?>()).Returns(true);
+        prop.GetValue("en-gb", Arg.Any<string?>()).Returns(false);
+        content.GetProperty("hidePage").Returns(prop);
+
+        var evaluator = BuildEvaluatorWithSettings(WithAliases("hidePage"));
+
+        Assert.Multiple(async () =>
+        {
+            Assert.That(await evaluator.IsExcludedAsync(content, "da", "example.com", CancellationToken.None), Is.True,
+                "culture-variant flag set for da excludes the da request");
+            Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.False,
+                "culture-variant flag unset for en-gb does not exclude the en-gb request");
+        });
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_ThreeArgConstructor_IgnoresConfiguredAliases()
+    {
+        var content = StubPage("articlePage");
+        var hideProp = InvariantProperty(true);
+        content.GetProperty("hidePage").Returns(hideProp);
+        var resolver = Substitute.For<ISettingsResolver>();
+        resolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(ResolvedWith());
+
+        var evaluator = BuildEvaluator(resolver);
+
+        Assert.That(await evaluator.IsExcludedAsync(content, "en-gb", "example.com", CancellationToken.None), Is.False);
+    }
+
+    [Test]
+    public async Task IsExcludedAsync_ResolverThrows_FallsBackToAppsettingsExcludedDoctypeAliases()
+    {
+        var excludedContent = StubPage("redirectPage");
+        var openContent = StubPage("articlePage");
+        var resolver = Substitute.For<ISettingsResolver>();
+        resolver.ResolveAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("resolver glitch"));
+
+        var evaluator = BuildEvaluatorWithSettings(
+            new AiVisibilitySettings { ExcludedDoctypeAliases = new[] { " REDIRECTPAGE ", "" } },
+            resolver);
+
+        Assert.Multiple(async () =>
+        {
+            Assert.That(await evaluator.IsExcludedAsync(excludedContent, "en-gb", "example.com", CancellationToken.None), Is.True,
+                "appsettings ExcludedDoctypeAliases applies when the resolver throws");
+            Assert.That(await evaluator.IsExcludedAsync(openContent, "en-gb", "example.com", CancellationToken.None), Is.False);
+        });
     }
 }
