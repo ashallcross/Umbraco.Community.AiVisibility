@@ -2,6 +2,8 @@
 
 Every key under the `AiVisibility:` section of `appsettings.json`. The package's strongly-typed binding lives at `Umbraco.Community.AiVisibility.Core/Configuration/AiVisibilitySettings.cs` — read that for xmldoc detail beyond the summary tables below.
 
+The v13 package is frozen at 1.2.x, so `ExclusionPropertyAliases` and the 1.3.0 `Migrations:SkipSettingsDoctype` behaviour apply to the v17 package only — see [`v13-support.md`](v13-support.md).
+
 Zero-config defaults produce useful output on a typical Umbraco site immediately. Every key is optional.
 
 > **Note on resolution layers.** Most string + boolean keys are also editable via the **Settings → AI Visibility** Backoffice dashboard, which writes to a global `aiVisibilitySettings` content node. The `ISettingsResolver` overlays that node's values on top of `appsettings.json`; editor saves take effect within sub-second broadcast latency. Per-doctype overrides + per-page exclusions live ONLY on the dashboard / per-page property.

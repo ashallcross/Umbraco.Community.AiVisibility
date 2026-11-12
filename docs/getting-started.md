@@ -445,7 +445,7 @@ The resolver caches its overlay record at `aiv:settings:{culture}` (host-omitted
 
 ### Public extension point
 
-`ISettingsResolver` is the fourth public extension point in the package (after `IMarkdownContentExtractor`, `ILlmsTxtBuilder`, `ILlmsFullBuilder`). Override discipline matches the others:
+`ISettingsResolver` is a public extension point. Override discipline matches the others:
 
 ```csharp
 // Override BEFORE our composer runs (any composer with no [ComposeAfter])
@@ -573,11 +573,12 @@ Adopters can replace the auditor entirely by registering a Singleton `IRobotsAud
 
 ## Upgrading to v1.3
 
-v1.3.0 is a drop-in upgrade for the v17 package — no configuration change is required, and adopters who change no configuration see no change beyond the fixes. Four things to know:
+v1.3.0 is a drop-in upgrade for the v17 package — no configuration change is required, and adopters who change no configuration see no change beyond the fixes. Five things to know:
 
-- **`SkipSettingsDoctype` now skips only the settings doctype.** If you run with `AiVisibility:Migrations:SkipSettingsDoctype: true`, the package migration now runs on upgrade: it creates the `aiVisibilityRequestLog` table that backs the AI Traffic dashboard (previously never created with the flag on) and records the doctype step as skipped. Turning the flag off later will not create the doctype — create or import it yourself. See [uSync coexistence](#usync-coexistence).
+- **`SkipSettingsDoctype` now skips only the settings doctype.** If you run with `AiVisibility:Migrations:SkipSettingsDoctype: true`, the package migration now runs on upgrade: it creates the `aiVisibilityRequestLog` table that backs the AI Traffic dashboard (previously never created with the flag on) and records the doctype step as skipped. Turning the flag off later will not create the doctype or composition — create or import them yourself. See [uSync coexistence](#usync-coexistence).
 - **The exclusion checkbox moves into an "AI Visibility" tab** on the first boot after upgrading, but only if the **AI Visibility Exclusion (composition)** is unedited. Doctypes with no tabs of their own then show their existing properties under a "Generic" tab. uSync users see the moved composition as a difference — export and commit it from one environment. `SkipSettingsDoctype: true` skips the move. See [Where the checkbox appears in the editor](#where-the-checkbox-appears-in-the-editor).
-- **Member-protected pages and custom `IExclusionEvaluator`s now govern `/llms.txt` and `/llms-full.txt`.** Pages behind Umbraco Public Access, and pages a custom evaluator excludes, no longer appear in either manifest (they were already excluded from the `.md` route). Custom extractors that use ReverseMarkdown or AngleSharp now compile against ReverseMarkdown 6.3.0 and AngleSharp 1.5.2 (see [`dependency-status.md`](dependency-status.md)).
+- **Member-protected pages and custom `IExclusionEvaluator`s now govern `/llms.txt` and `/llms-full.txt`.** Pages behind Umbraco Public Access, and pages a custom evaluator excludes, no longer appear in either manifest (they were already excluded from the `.md` route). The manifests now call your evaluator when they rebuild, so a custom evaluator that throws makes `/llms.txt` or `/llms-full.txt` return `500` on that rebuild (before 1.3 the manifests never called it).
+- **ReverseMarkdown 6.3.0 and AngleSharp 1.5.2.** Custom extractors that use ReverseMarkdown or AngleSharp now compile against these versions (see [`dependency-status.md`](dependency-status.md)). The upgrade fixes empty headings; other small Markdown output differences you may see: `&amp;` in text now renders as `&`, and some blank-line and non-breaking-space spacing differs.
 - **Hard-refresh the backoffice once after upgrading.** A browser that had the backoffice open on 1.2.1 may have cached the old bundle entry, which imports a file that no longer ships; one hard refresh (Ctrl/Cmd + Shift + R) loads the new bundle.
 
 The full list of changes is in [`CHANGELOG.md`](../CHANGELOG.md).

@@ -4,7 +4,7 @@ All notable changes to **Umbraco.Community.AiVisibility** are documented here. T
 
 ## [v1.3.0] — 2026-11-12: Community fixes; v13 package end of support
 
-Minor release of the **v17 package only** (`Umbraco.Community.AiVisibility`). Four bug fixes and one new configuration key, all reported by adopters on Umbraco 17.7.x. Adopters who change no configuration see no change beyond the fixes. The public contracts — `/llms.txt`, `/llms-full.txt`, `*.md`, `Accept: text/markdown`, the `Link: rel="alternate"` header, `data-llms-*` attributes and `<link rel="alternate">` markup — are unchanged.
+Minor release of the **v17 package only** (`Umbraco.Community.AiVisibility`). Four bug fixes and one new configuration key, all reported by adopters on Umbraco 17.7.x, plus a related exclusion fix for the manifests. Adopters who change no configuration see no change beyond the fixes. The public contracts — `/llms.txt`, `/llms-full.txt`, `*.md`, `Accept: text/markdown`, the `Link: rel="alternate"` header, `data-llms-*` attributes and `<link rel="alternate">` markup — are unchanged.
 
 Fixes #2 #3 #4 #6 #7.
 
@@ -27,7 +27,7 @@ Fixes #2 #3 #4 #6 #7.
 ### Changed
 
 - **Dependencies:** ReverseMarkdown 5.3.0 → **6.3.0**, which requires AngleSharp **1.5.2** (up from 1.4.0). Both flow to your site as package dependencies. If you have a custom `IMarkdownContentExtractor` or `IContentRegionSelector` that uses ReverseMarkdown or AngleSharp directly, it now compiles against these versions — ReverseMarkdown 6 marks several 5.x `Config` options obsolete.
-- **AI-crawler list refreshed** from upstream [`ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt): 43 tokens added (including `Claude-Agent`, `Codex`, `KimiBot`, `MistralAI-Training` and `xAI-Grok`), none removed. The new tokens show as "Unclassified" in the robots audit and are not counted as AI traffic in the request log until a later release classifies them.
+- **AI-crawler list refreshed** from upstream [`ai.robots.txt`](https://github.com/ai-robots-txt/ai.robots.txt): 43 tokens added (including `Claude-Agent`, `Codex`, `KimiBot`, `MistralAI-Training` and `xAI-Grok`), none removed. The new tokens show as "Unclassified" in the robots audit and are not counted as AI traffic on their own until a later release classifies them; a user agent that also contains an already-classified token (for example `Diffbot-User`, which contains `Diffbot`) is still counted under that token.
 - **Build:** when the upstream AI-crawler list has changed since the reviewed snapshot, an online build now **warns** and embeds the committed snapshot instead of failing. Only relevant if you build the package from source.
 
 ### Documentation
@@ -45,7 +45,7 @@ Drop-in upgrade for v17 sites — no configuration change required. Things to kn
 - **If you run with `SkipSettingsDoctype: true`:** the package migration now runs on upgrade. It creates the `aiVisibilityRequestLog` table and records the settings-doctype step as skipped, so turning the flag off later will **not** create the doctype or composition — create or import them yourself (for example with uSync).
 - **Exclusion tab move (#7):** on the first boot after upgrading, the composition's "LLM exports" group moves into an "AI Visibility" tab, but only if the **AI Visibility Exclusion (composition)** is unedited (a customised composition is left alone and the reason is logged). Page values are kept, so excluded pages stay excluded. Document types with no tabs of their own then show their existing properties under a "Generic" tab next to "AI Visibility" — drag the group back to the root of the composition if you prefer. `SkipSettingsDoctype: true` skips the move.
 - **uSync users:** the tab move changes the composition's containers, so it shows as a uSync difference. Export and commit the moved composition from one environment and let the others import it, rather than letting an older export put the group back — or keep `SkipSettingsDoctype: true` and make the change in uSync yourself.
-- **Manifests:** check `/llms.txt` and `/llms-full.txt` after upgrading if you use Public Access or a custom `IExclusionEvaluator` — pages they exclude no longer appear there.
+- **Manifests:** check `/llms.txt` and `/llms-full.txt` after upgrading if you use Public Access or a custom `IExclusionEvaluator` — pages they exclude no longer appear there. The manifests now call your evaluator when they rebuild, so a custom evaluator that throws makes `/llms.txt` or `/llms-full.txt` return `500` on that rebuild (before 1.3 the manifests never called it).
 - **Custom extractors** using ReverseMarkdown or AngleSharp: rebuild against ReverseMarkdown 6.3.0 / AngleSharp 1.5.2 (see Changed).
 
 ## [v1.2.1] — 2026-08-18: Internals-visibility grant (no runtime change)

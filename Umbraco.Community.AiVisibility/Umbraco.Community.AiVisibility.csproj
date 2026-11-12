@@ -16,7 +16,7 @@
     <PackageTags>umbraco-marketplace;umbraco;ai;ai-search;ai-visibility;llms-txt;markdown;geo;chatgpt;claude;perplexity</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>v1.3.0 — fixes empty Markdown headings, the missing request-log table under SkipSettingsDoctype, the exclusion checkbox's editor tab and backoffice console output; adds configurable exclusion property aliases; member-protected pages now also leave /llms.txt and /llms-full.txt; refreshed AI-crawler list. Hard-refresh the backoffice once after upgrading. The v13 package is frozen at 1.2.x and gets no further releases. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.3.0 — fixes empty Markdown headings, the missing request-log table under SkipSettingsDoctype, the exclusion checkbox's editor tab and backoffice console output; adds configurable exclusion property aliases; member-protected pages and custom IExclusionEvaluators now also govern /llms.txt and /llms-full.txt; ReverseMarkdown 6.3.0 / AngleSharp 1.5.2 dependency bump; refreshed AI-crawler list. Hard-refresh the backoffice once after upgrading. The v13 package is frozen at 1.2.x and gets no further releases. See https://github.com/ashallcross/Umbraco.Community.AiVisibility/blob/main/CHANGELOG.md for the full changelog.</PackageReleaseNotes>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ashallcross/Umbraco.Community.AiVisibility.git</RepositoryUrl>

@@ -30,7 +30,7 @@ Each AI-bot token in the curated list maps to one of:
 | **Search-retrieval** | `OAI-SearchBot`, `PerplexityBot`, `Claude-SearchBot` | "Don't include me in AI-mediated search answers." (Usually a different intent than training.) |
 | **User-triggered** | `ChatGPT-User`, `Claude-User`, `Perplexity-User`, `MistralAI-User` | "Block users who ask their LLM to fetch my page." (Usually unintentional.) |
 | **Opt-out** | `Google-Extended` | "Allow regular search; opt out of AI-only training." |
-| **Unclassified** | (any token not yet in the curated map) | Surfaced verbatim and not counted as AI traffic — patch the curated map in `Umbraco.Community.AiVisibility.Core/Robots/AiBotList.cs` to fix. Tokens added to the upstream list since the curated map was last updated land here until a later release classifies them. |
+| **Unclassified** | (any token not yet in the curated map) | Surfaced verbatim and not counted as AI traffic on its own (a user agent that also contains an already-classified token — e.g. `Diffbot-User`, which contains `Diffbot` — is still counted under that token) — patch the curated map in `Umbraco.Community.AiVisibility.Core/Robots/AiBotList.cs` to fix. Tokens added to the upstream list since the curated map was last updated land here until a later release classifies them. |
 
 ## Deprecated tokens
 
