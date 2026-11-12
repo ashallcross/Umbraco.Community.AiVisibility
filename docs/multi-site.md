@@ -29,7 +29,7 @@ Robots audit:         aiv:robots:{host}
 Settings overlay:     aiv:settings:{culture}             (host-omitted — see below)
 ```
 
-Hostname normalisation rules (see `Umbraco.Community.AiVisibility/Caching/AiVisibilityCacheKeys.cs:NormaliseHost`):
+Hostname normalisation rules (see `Umbraco.Community.AiVisibility.Core/Caching/AiVisibilityCacheKeys.cs:NormaliseHost`):
 
 | Input | Cache-key host segment |
 |---|---|

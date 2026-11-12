@@ -1,6 +1,6 @@
 # Configuration reference
 
-Every key under the `AiVisibility:` section of `appsettings.json`. The package's strongly-typed binding lives at `Umbraco.Community.AiVisibility/Configuration/AiVisibilitySettings.cs` — read that for xmldoc detail beyond the summary tables below.
+Every key under the `AiVisibility:` section of `appsettings.json`. The package's strongly-typed binding lives at `Umbraco.Community.AiVisibility.Core/Configuration/AiVisibilitySettings.cs` — read that for xmldoc detail beyond the summary tables below.
 
 Zero-config defaults produce useful output on a typical Umbraco site immediately. Every key is optional.
 
@@ -215,7 +215,7 @@ Per-page exclusion uses the `excludeFromLlmExports` boolean property on the `llm
 }
 ```
 
-See `docs/getting-started.md` § "Per-page exclusion" for the per-page surface; `docs/multi-site.md` for the per-host story; `docs/extension-points.md` for the `ISettingsResolver` adopter contract (replace the resolver entirely for per-tenant overrides).
+See `docs/getting-started.md` § Per-page "Exclude from LLM exports" toggle for the per-page surface; `docs/multi-site.md` for the per-host story; `docs/extension-points.md` for the `ISettingsResolver` adopter contract (replace the resolver entirely for per-tenant overrides).
 
 ## Validation
 

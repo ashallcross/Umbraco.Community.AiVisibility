@@ -30,7 +30,7 @@ Each AI-bot token in the curated list maps to one of:
 | **Search-retrieval** | `OAI-SearchBot`, `PerplexityBot`, `Claude-SearchBot` | "Don't include me in AI-mediated search answers." (Usually a different intent than training.) |
 | **User-triggered** | `ChatGPT-User`, `Claude-User`, `Perplexity-User`, `MistralAI-User` | "Block users who ask their LLM to fetch my page." (Usually unintentional.) |
 | **Opt-out** | `Google-Extended` | "Allow regular search; opt out of AI-only training." |
-| **Unclassified** | (any token not yet in the curated map) | Surfaced verbatim — patch the curated map in `Umbraco.Community.AiVisibility/Robots/AiBotList.cs` to fix. |
+| **Unclassified** | (any token not yet in the curated map) | Surfaced verbatim and not counted as AI traffic — patch the curated map in `Umbraco.Community.AiVisibility.Core/Robots/AiBotList.cs` to fix. Tokens added to the upstream list since the curated map was last updated land here until a later release classifies them. |
 
 ## Deprecated tokens
 
@@ -57,7 +57,7 @@ Pinned SHA:   <ExpectedAiBotListSha256> in Umbraco.Community.AiVisibility.Core/U
 Fallback:     Umbraco.Community.AiVisibility.Core/Robots/AiBotList.fallback.txt (committed)
 ```
 
-The bot list, the SHA-pin, and the fallback file all live in the shared `Core` project, since that is where `DefaultRobotsAuditor` reads the embedded resource from — both the v17 and v13 packages inherit it.
+The bot list, the SHA-pin, and the fallback file all live in the shared `Core` project, since that is where `DefaultRobotsAuditor` reads the embedded resource from. The v17 package ships each refreshed list. The v13 package is frozen at 1.2.x and keeps the list it shipped with — it won't get later list updates (see [`v13-support.md`](v13-support.md)).
 
 | Path | Behaviour |
 |---|---|

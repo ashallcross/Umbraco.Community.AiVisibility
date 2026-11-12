@@ -23,24 +23,26 @@ Intentionally **not** implemented: User-Agent sniffing, `<meta name="llms">` tag
 
 ## What's in the box
 
+The package is built from two projects that ship as one NuGet package. Shared, platform-agnostic code lives in **`Umbraco.Community.AiVisibility.Core`** (compiled into the package DLL, not a separate NuGet dependency): the database migrations, the AI-bot list and its build-time `SyncAiBotList` target, the `/llms.txt` + `/llms-full.txt` builders, the extraction engine, and the exclusion and settings contracts. The **`Umbraco.Community.AiVisibility`** project holds the v17-specific surfaces: controllers, middleware, TagHelpers, composers, the Health Check, and the Backoffice. In the table below, folders prefixed `Core/` are in the Core project.
+
 | Public surface | Source folder | Notes |
 |---|---|---|
-| `/{path}.md` route | `Routing/` + `Extraction/` | Per-page Markdown via Umbraco's Razor pipeline (or HTTP loopback for hijacked pages) + AngleSharp + ReverseMarkdown |
+| `/{path}.md` route | `Routing/` + `Extraction/` + `Core/Extraction/` | Per-page Markdown via Umbraco's Razor pipeline (or HTTP loopback for hijacked pages) + AngleSharp + ReverseMarkdown |
 | `Accept: text/markdown` content negotiation | `Routing/` | Standard `Accept`-header negotiation on canonical URLs |
-| `/llms.txt` | `LlmsTxt/` | Index manifest (RFC-style links + summaries) |
-| `/llms-full.txt` | `LlmsTxt/` | Concatenated full-Markdown export with a configurable size cap |
+| `/llms.txt` | `LlmsTxt/` (controller) + `Core/LlmsTxt/` (builder) | Index manifest (RFC-style links + summaries) |
+| `/llms-full.txt` | `LlmsTxt/` (controller) + `Core/LlmsTxt/` (builder) | Concatenated full-Markdown export with a configurable size cap |
 | `Link: rel="alternate"` discoverability header | `Routing/` | Auto-emitted on every opted-in HTML response; idempotent `Vary: Accept` |
-| `<llms-link />` / `<llms-hint />` Razor TagHelpers | `LlmsTxt/` (TagHelpers folder) | Optional in-Razor declaration of the alternate URL |
-| Robots audit Health Check | `Robots/` | `Settings → Health Checks → AI Visibility — Robots audit` |
+| `<llms-link />` / `<llms-hint />` Razor TagHelpers | `LlmsTxt/` | Optional in-Razor declaration of the alternate URL |
+| Robots audit Health Check | `Robots/` (Health Check) + `Core/Robots/` (auditor + bot list) | `Settings → Health Checks → AI Visibility — Robots audit` |
 | AI Traffic dashboard | `Backoffice/` (controller) + `Client/src/elements/` (Lit element) | `Settings → AI Traffic`; reads `aiVisibilityRequestLog` |
 | Settings dashboard | `Backoffice/` + `Client/src/elements/` | `Settings → AI Visibility`; site name + summary + per-doctype exclusion |
-| `aiVisibilityRequestLog` host-DB table | `Persistence/Migrations/` | Schema-from-annotations on `RequestLogEntry` |
-| Per-page caching | `Caching/` | Publish-driven invalidation; per-host cache key shape |
-| Build-time AI-bot list sync | `Robots/AiBotList.fallback.txt` + csproj `<Target Name="SyncAiBotList">` | SHA-pinned online fetch + offline fallback |
+| `aiVisibilityRequestLog` host-DB table + settings doctype | `Core/Persistence/Migrations/` | One `PackageMigrationPlan`: request-log table (schema-from-annotations on `RequestLogEntry`), settings doctype + exclusion composition (skipped when `AiVisibility:Migrations:SkipSettingsDoctype` is `true`; the table is still created), and the move of the composition's group into an "AI Visibility" tab |
+| Per-page caching | `Caching/` + `Core/Caching/` | Publish-driven invalidation; per-host cache key shape |
+| Build-time AI-bot list sync | `Core/Robots/AiBotList.fallback.txt` + Core csproj `<Target Name="SyncAiBotList">` | SHA-pinned online fetch + offline fallback |
 
 ## Extension points
 
-Six interfaces give adopters override paths without forking. Register your override with `services.TryAdd*<I, MyImpl>()` in a composer; the package uses `services.TryAdd*` for every default so adopter overrides are honoured without `Remove<>()` ceremony.
+Seven interfaces give adopters override paths without forking. Register your override with `services.TryAdd*<I, MyImpl>()` in a composer; the package uses `services.TryAdd*` for every default so adopter overrides are honoured without `Remove<>()` ceremony.
 
 - **`IMarkdownContentExtractor`** — *full extraction-pipeline replacement.* Swap this when you need a domain-specific Markdown shape, custom region selectors beyond the default `data-llms-content` → `<main>` → `<article>` → SmartReader fallback chain, or to integrate a different HTML-to-Markdown converter.
 - **`IContentRegionSelector`** — *region-only override.* Swap this when the default region-selection chain works but you want to point at a custom `[data-llms-content]` selector or a content-type-specific element. Cheaper than replacing `IMarkdownContentExtractor` wholesale.
@@ -48,18 +50,20 @@ Six interfaces give adopters override paths without forking. Register your overr
 - **`IRobotsAuditor`** — *audit-pipeline replacement.* Swap this when you want to fetch `/robots.txt` via a custom HTTP client (corporate proxy, mTLS, etc.), support a private bot list alongside the embedded curated list, or replace the audit logic entirely.
 - **`ISettingsResolver`** — *per-host or per-tenant settings override.* Swap this when running a multi-site install where each bound hostname needs different Settings dashboard content (the default `DefaultSettingsResolver` reads the single global `aiVisibilitySettings` content node).
 - **`IUserAgentClassifier`** — *UA classification replacement.* Swap this when you have internal bot tracking, custom enterprise UA conventions, or want to classify a token the embedded list doesn't know about.
+- **`IExclusionEvaluator`** — *per-page exclusion rules.* Every exclusion decision goes through it: the `.md` route, the `Link` header, `Accept` negotiation, the TagHelpers, `/llms.txt`, `/llms-full.txt`, and the Settings dashboard's excluded-pages list. The default checks the per-page `excludeFromLlmExports` bool plus any `AiVisibility:ExclusionPropertyAliases`, Umbraco Public Access, and the excluded-doctype list.
 
 See [`docs/extension-points.md`](extension-points.md) for the full per-interface contract, multi-instance behaviour, and the `IRequestLog` dual-write pattern.
 
 ## Lifetime + thread-safety constraints
 
-Adopter overrides MUST honour the documented lifetime for each extension point. The composer hard-validates these at composition time and throws on a mis-registration so problems surface at boot, not at request time.
+Adopter overrides MUST honour the documented lifetime for each extension point. For `IRobotsAuditor` and `IRequestLog` the composers hard-validate the lifetime at composition time and throw on a mis-registration, so problems surface at boot, not at request time.
 
 - **`IRobotsAuditor` — Singleton.** The auditor caches the embedded AI-bot list at construction; non-Singleton overrides multiply that cost per request and break the SHA-pinning guarantee.
 - **`IRequestLog` — Singleton (with bounded channel).** The default writer is a process-wide `Channel<RequestLogEntry>` drained by a hosted-service. Non-Singleton overrides break batched-write semantics and cause unbounded resource use under concurrent traffic.
 - **`ILlmsTxtBuilder` + `ILlmsFullBuilder` — Transient.** These are captive-dependency safe — each request builds its own builder. The cache layer is in front of the builder; the builder itself is stateless per-request.
 - **`IUserAgentClassifier` — Singleton.** Stateless lookup against the embedded bot list; Singleton matches the lookup table's lifetime.
-- **`ISettingsResolver` — Singleton with internal caching.** The default resolver caches per-host settings reads; adopter overrides should match this shape unless they're explicitly designed for per-request resolution (rare).
+- **`ISettingsResolver` — Scoped.** The default resolver is registered Scoped and caches its resolved settings in the Umbraco runtime cache, so per-request resolution stays cheap. Register adopter overrides Scoped too.
+- **`IExclusionEvaluator` — Scoped.** The default reads the request-scoped `ISettingsResolver`; a Singleton override would capture a Scoped dependency.
 
 See [`docs/configuration.md`](configuration.md) and the existing [`docs/extension-points.md`](extension-points.md) for the full per-extension-point lifetime contract.
 
@@ -69,7 +73,7 @@ This package assumes a **production-like deployment shape** by default:
 
 - **Load-balanced front-end nodes.** Multiple `Subscriber`-role instances behind a load balancer. The AI traffic log writer runs on every node (each instance drains its own bounded channel into the shared host DB); the robots audit refresh job + the log retention job both use Umbraco's `IDistributedBackgroundJob` for exactly-once execution across the cluster (only one node fires the job per cycle).
 - **Split Backoffice / Frontend (optional).** If you split Backoffice off as a separate web role, both sides need the package installed. Backoffice serves the dashboards + Management API endpoints; Frontend serves the `.md` / `/llms.txt` / `/llms-full.txt` routes + writes to `aiVisibilityRequestLog`.
-- **uSync coexistence.** The package's settings doctype (`aiVisibilitySettings`) is auto-created on first boot via a `PackageMigrationPlan`. Adopters running uSync should let the migration run once on the first deploy, then export the resulting doctype to uSync for subsequent restores. The migration is idempotent.
+- **uSync coexistence.** The package's settings doctype (`aiVisibilitySettings`) and per-page exclusion composition are auto-created on first boot via a `PackageMigrationPlan`. Adopters running uSync can either let the migration run once on the first deploy and export the resulting doctypes to uSync, or set `AiVisibility:Migrations:SkipSettingsDoctype: true` so the migration skips the doctype + composition steps (the `aiVisibilityRequestLog` table is still created) and uSync owns them. The migration is idempotent. See [`getting-started.md` § uSync coexistence](getting-started.md#usync-coexistence).
 - **No SQLite in production.** The `IDistributedBackgroundJob` lock semantics rely on real database lock primitives (SQL Server `sp_getapplock`, PostgreSQL advisory locks, etc.). SQLite's shared-lock approximation works in development but does not coordinate exactly-once execution across multiple host instances — verify your distributed-job shape against a real DB before going to production. The package emits two log lines that confirm correct behaviour across a multi-instance cluster: `Robots audit refresh job RUN — InstanceId={InstanceId} CycleStart={CycleStart}` and `AiVisibility log retention job RUN — InstanceId={InstanceId} CycleStart={CycleStart} RowsDeleted={RowsDeleted}`. The invariant is exactly **one** RUN entry per `CycleStart` across the cluster; two entries for the same `CycleStart` signals broken distributed-lock coordination and should be investigated before going live.
 
 ## Where to read more

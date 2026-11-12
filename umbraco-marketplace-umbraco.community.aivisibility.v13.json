@@ -1,7 +1,7 @@
 {
   "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
   "Title": "AI Visibility for Umbraco (v13 lite)",
-  "Description": "The Umbraco 13 / .NET 8 lite SKU: Markdown page rendering, llms.txt, and robots.txt audit for ChatGPT, Claude, Perplexity, Gemini, and Bing Copilot — configured via appsettings.json (no Backoffice dashboards).",
+  "Description": "The Umbraco 13 / .NET 8 lite SKU: Markdown page rendering, llms.txt, and robots.txt audit for ChatGPT, Claude, Perplexity, Gemini, and Bing Copilot — configured via appsettings.json (no Backoffice dashboards). Frozen at 1.2.x; no further releases; unsupported from December 2026.",
   "Category": "Artificial Intelligence",
   "AlternateCategory": "Search",
   "PackageType": "Package",

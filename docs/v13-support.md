@@ -1,5 +1,7 @@
 # Umbraco v13 support — the lite SKU
 
+> **End of support.** The v13 package (`Umbraco.Community.AiVisibility.V13`) is **frozen at 1.2.x**. It receives no further releases, fixes or bot-list updates, and it is **unsupported from December 2026**, when Umbraco 13 reaches end of support. All new work, including the v1.3.0 fixes, ships in the v17 package only. If you can, move to Umbraco 17+ and the flagship package.
+
 AI Visibility ships as **two packages** from one codebase:
 
 | Package | Umbraco | .NET | Backoffice UI |
@@ -7,7 +9,7 @@ AI Visibility ships as **two packages** from one codebase:
 | `Umbraco.Community.AiVisibility` | 17+ | 10 | Full — Settings + AI Traffic dashboards |
 | `Umbraco.Community.AiVisibility.V13` | 13 (LTS) | 8 | **None** — configure via `appsettings.json` |
 
-Both packages share the same content-extraction engine, so the Markdown output, `llms.txt` manifests, and robots-audit logic are identical. The v13 package is a deliberately **"lite" SKU**: it drops the Backoffice frontend (which is AngularJS on v13 and Bellissima/Lit on v17 — the two don't share code) and keeps everything that renders and serves content.
+The v13 package behaves as the 1.2.x release did: it shares the content-extraction engine as it stood at 1.2.x, so it does **not** include the v1.3.0 fixes and changes (heading conversion, request-log table creation under `SkipSettingsDoctype`, the "AI Visibility" tab for the exclusion property, configurable exclusion aliases, exclusion of member-protected pages from the manifests, the refreshed AI-crawler list). See the [CHANGELOG](../CHANGELOG.md) for what changed in the v17 package after 1.2.x. The v13 package is a deliberately **"lite" SKU**: it drops the Backoffice frontend (which is AngularJS on v13 and Bellissima/Lit on v17 — the two don't share code) and keeps everything that renders and serves content.
 
 ## Which package do I install?
 
@@ -57,13 +59,14 @@ This is safe because the write paths are idempotent under duplication:
 
 If you run v13 load-balanced and want to avoid the duplicate origin work, host the recurring jobs on a single scheduling-publisher node per your load-balancer configuration.
 
-## .NET 8 support window
+## Support window
 
-The v13 lite SKU is tied to the .NET 8 lifecycle. **.NET 8 reaches end-of-life on 2026-11-10.** Plan accordingly:
+The v13 lite SKU targets Umbraco 13 on .NET 8. It is **frozen at 1.2.x**:
 
-- The v13 SKU is **feature-frozen at .NET 8 EOL** — after that date it receives security/correctness patches only, not new features.
-- New feature work lands in the v17 package.
-- If you're starting a new project, prefer Umbraco 17+ and the flagship package. The v13 SKU exists to serve existing Umbraco 13 LTS sites that can't move majors yet.
+- **No further releases.** The last published 1.2.x version is the final v13 version — no security or correctness patches, no feature work, no bot-list refreshes.
+- **Unsupported from December 2026**, when Umbraco 13 reaches end of support.
+- All new work lands in the v17 package (`Umbraco.Community.AiVisibility`).
+- If you're starting a new project, use Umbraco 17+ and the flagship package. The v13 SKU exists only for existing Umbraco 13 LTS sites that can't move majors yet.
 
 ## Co-installation is unsupported
 
@@ -76,6 +79,6 @@ The repository builds with the **.NET 10 SDK**, which down-targets `net8.0` clea
 ## See also
 
 - [`README.md`](../README.md) — feature overview + install.
-- [`configuration.md`](configuration.md) — every `AiVisibility:` key (applies to both SKUs).
+- [`configuration.md`](configuration.md) — every `AiVisibility:` key (keys added in v1.3.0 or later apply to the v17 package only).
 - [`robots-audit.md`](robots-audit.md) — Health Check + bot-list refresh.
 - [`getting-started.md`](getting-started.md) — extraction-region contract + per-page exclusion.
