@@ -23,6 +23,10 @@ namespace Umbraco.Community.AiVisibility.Composing;
 /// <item><see cref="ContentCacheRefresherHandler"/> as
 /// <see cref="INotificationAsyncHandler{T}"/> for
 /// <see cref="ContentCacheRefresherNotification"/>.</item>
+/// <item><see cref="PublicAccessCacheRefresherHandler"/> as
+/// <see cref="INotificationAsyncHandler{T}"/> for
+/// <see cref="PublicAccessCacheRefresherNotification"/> — clears the manifest and
+/// settings caches when Public Access rules change (no publish is involved).</item>
 /// <item>Decorates <see cref="IMarkdownContentExtractor"/> with
 /// <see cref="CachingMarkdownExtractorDecorator"/> only when the current registration is
 /// our <see cref="DefaultMarkdownContentExtractor"/> — adopter overrides win.</item>
@@ -44,6 +48,10 @@ public sealed class CachingComposer : IComposer
         builder.AddNotificationAsyncHandler<
             ContentCacheRefresherNotification,
             ContentCacheRefresherHandler>();
+
+        builder.AddNotificationAsyncHandler<
+            PublicAccessCacheRefresherNotification,
+            PublicAccessCacheRefresherHandler>();
 
         if (IsAdopterOverride(builder.Services))
         {

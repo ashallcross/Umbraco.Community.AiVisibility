@@ -167,7 +167,11 @@ public class RobotsAuditRefreshJobTests
         var monitor = Substitute.For<IOptionsMonitor<AiVisibilitySettings>>();
         monitor.CurrentValue.Returns(settings);
 
-        var auditor = Substitute.For<IRobotsAuditor>();
+        // Substitute an abstract class rather than the interface: RefreshAsync
+        // is a default interface method, and Castle.Core 5.2.x (pulled in by
+        // the Umbraco 17.8 test harness via Moq 4.21) breaks NSubstitute's
+        // interception of default interface methods on interface proxies.
+        IRobotsAuditor auditor = Substitute.For<RobotsAuditorStub>();
 
         var domainService = Substitute.For<IDomainService>();
         var domains = (domainNames ?? Array.Empty<string>())
@@ -193,5 +197,18 @@ public class RobotsAuditRefreshJobTests
             NullLogger<RobotsAuditRefreshJob>.Instance);
 
         return (job, auditor, provider);
+    }
+
+    /// <summary>
+    /// Implements both members as abstract overrides so NSubstitute intercepts
+    /// <see cref="IRobotsAuditor.RefreshAsync"/> as an ordinary virtual call.
+    /// </summary>
+    public abstract class RobotsAuditorStub : IRobotsAuditor
+    {
+        public abstract Task<RobotsAuditResult> AuditAsync(
+            string hostname, string scheme, CancellationToken cancellationToken);
+
+        public abstract Task<RobotsAuditResult> RefreshAsync(
+            string hostname, string scheme, CancellationToken cancellationToken);
     }
 }

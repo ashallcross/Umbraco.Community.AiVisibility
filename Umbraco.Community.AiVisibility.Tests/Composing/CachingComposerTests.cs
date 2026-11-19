@@ -5,6 +5,10 @@ using Umbraco.Community.AiVisibility.Extraction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using Microsoft.Extensions.Configuration;
+using Umbraco.Cms.Core.DependencyInjection;
+using Umbraco.Cms.Core.Events;
+using Umbraco.Cms.Core.Notifications;
 using Umbraco.Cms.Core.Models.PublishedContent;
 
 namespace Umbraco.Community.AiVisibility.Tests.Composing;
@@ -12,6 +16,24 @@ namespace Umbraco.Community.AiVisibility.Tests.Composing;
 [TestFixture]
 public class CachingComposerTests
 {
+    [Test]
+    public void Compose_RegistersPublicAccessCacheRefresherHandler()
+    {
+        var services = new ServiceCollection();
+        var builder = Substitute.For<IUmbracoBuilder>();
+        builder.Services.Returns(services);
+        builder.Config.Returns(new ConfigurationBuilder().AddInMemoryCollection().Build());
+
+        new CachingComposer().Compose(builder);
+
+        Assert.That(
+            services.Any(d =>
+                d.ServiceType == typeof(INotificationAsyncHandler<PublicAccessCacheRefresherNotification>)
+                && d.ImplementationType == typeof(PublicAccessCacheRefresherHandler)),
+            Is.True,
+            "CachingComposer must register PublicAccessCacheRefresherHandler for PublicAccessCacheRefresherNotification");
+    }
+
     [Test]
     public void IsAdopterOverride_NoRegistration_ReturnsFalse()
     {

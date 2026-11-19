@@ -23,15 +23,20 @@
     <PackageVersion Include="Clean.Core" Version="4.2.2" />
     <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="13.15.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.28" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageVersion Include="Umbraco.Cms.Core" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.Web.Website" Version="17.3.2" />
+    <!-- v17 line raised 17.3.2 -> 17.8.2 (latest 17.x patch) to clear the
+         transitive NU1902/NU1903 advisories that came through the 17.3.2 graph
+         (System.Security.Cryptography.Xml/Pkcs, MailKit/MimeKit,
+         Microsoft.Build.Tasks.Core). Minimum stays Umbraco 17. -->
+    <PackageVersion Include="Umbraco.Cms.Core" Version="17.8.2" />
+    <PackageVersion Include="Umbraco.Cms.Infrastructure" Version="17.8.2" />
+    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="17.8.2" />
+    <PackageVersion Include="Umbraco.Cms.Web.Website" Version="17.8.2" />
     <!-- v17 TestSite host (net10) + v17 integration-test harness (net10) -->
-    <PackageVersion Include="Umbraco.Cms" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="17.3.2" />
+    <PackageVersion Include="Umbraco.Cms" Version="17.8.2" />
+    <PackageVersion Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="17.8.2" />
     <!-- TestSite theme (Cogworks Clean Starter): meta-package "Clean" drives the
          demo-content package migration and install hooks; "Clean.Core" is the
          components library it depends on. Pinned in lockstep — both required.
@@ -39,22 +44,27 @@
     <PackageVersion Include="Clean" Version="7.0.5" />
     <PackageVersion Include="Clean.Core" Version="7.0.5" />
     <!-- Umbraco integration-test harness; pinned to the runtime version to avoid silent test-vs-runtime drift -->
-    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="17.3.2" />
+    <PackageVersion Include="Umbraco.Cms.Tests.Integration" Version="17.8.2" />
     <!-- `WebApplicationFactory<Program>` against the TestSite.
          Used by the launch-smoke tests to bypass `UmbracoTestServerTestBase`'s
          content-seeding gap. -->
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.4" />
+    <!-- 10.0.12 is the minimum Umbraco.Cms.Tests.Integration 17.8.2 requires
+         (a lower pin is an NU1605 downgrade error). -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <!-- 18.10.1 is the minimum Umbraco.Cms.Tests.Integration 17.8.2 requires
+         (a lower pin is an NU1605 downgrade error). -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
   </ItemGroup>
   <ItemGroup>
     <!-- Umbraco APIs (v17 ship package only — Api.* does not exist for v13; only
          net10 projects reference these, so an unconditional row is safe). -->
-    <PackageVersion Include="Umbraco.Cms.Api.Common" Version="17.3.2" />
-    <PackageVersion Include="Umbraco.Cms.Api.Management" Version="17.3.2" />
+    <PackageVersion Include="Umbraco.Cms.Api.Common" Version="17.8.2" />
+    <PackageVersion Include="Umbraco.Cms.Api.Management" Version="17.8.2" />
     <!-- Globalization (TestSite) -->
     <PackageVersion Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
     <!-- Test infrastructure (TFM-agnostic) -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <!-- Microsoft.NET.Test.Sdk is TFM-conditional: see the net8.0 / net10.0 groups. -->
     <PackageVersion Include="NUnit" Version="4.3.2" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.7.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />

@@ -1116,4 +1116,135 @@ public class LlmsTxtControllerTests
         Assert.That(result, Is.InstanceOf<ObjectResult>());
         Assert.That(((ObjectResult)result).StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Hreflang variants excluded for their own culture
+    // ────────────────────────────────────────────────────────────────────────
+
+    private void EnableHreflang()
+    {
+        _currentSettings = new AiVisibilitySettings
+        {
+            LlmsTxtBuilder = new LlmsTxtBuilderSettings { CachePolicySeconds = 300 },
+            Hreflang = new HreflangSettings { Enabled = true },
+        };
+    }
+
+    [Test]
+    public async Task Render_HreflangVariantExcludedForItsCulture_DroppedFromBuilderInput()
+    {
+        // A culture-variant exclusion property can exclude a page for one
+        // culture only. Its sibling-culture `.md` link would 404, so the
+        // variant must not reach the builder; other cultures stay, and a page
+        // left with no variants drops out of the map.
+        EnableHreflang();
+        var pageA = StubContent("Page-A", contentTypeAlias: "blogPost");
+        var pageB = StubContent("Page-B", contentTypeAlias: "blogPost");
+        var (root, _) = SeedTree(pageA, pageB);
+
+        var variants = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>
+        {
+            [pageA.Key] = new[]
+            {
+                new HreflangVariant("fr-fr", "/fr/page-a.md"),
+                new HreflangVariant("de-de", "/de/page-a.md"),
+            },
+            [pageB.Key] = new[] { new HreflangVariant("fr-fr", "/fr/page-b.md") },
+            [root.Key] = new[] { new HreflangVariant("fr-fr", "/fr/index.html.md") },
+        };
+        _hreflangResolver.ResolveAsync(
+                Arg.Any<IReadOnlyList<IPublishedContent>>(),
+                Culture,
+                root.Key,
+                _umbracoContext,
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>>(variants));
+
+        var custom = Substitute.For<IExclusionEvaluator>();
+        custom.IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(
+                (ReferenceEquals(call[0], pageA) || ReferenceEquals(call[0], pageB))
+                && (string?)call[1] == "fr-fr"));
+        _exclusionOverride = custom;
+
+        LlmsTxtBuilderContext? observed = null;
+        _builder.BuildAsync(Arg.Do<LlmsTxtBuilderContext>(c => observed = c), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("# Acme\n> \n"));
+
+        await MakeController().Render(CancellationToken.None);
+
+        Assert.That(observed?.HreflangVariants, Is.Not.Null);
+        var map = observed!.HreflangVariants!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(map[pageA.Key].Select(v => v.Culture), Is.EqualTo(new[] { "de-de" }),
+                "fr-fr variant excluded for its culture is dropped; de-de stays");
+            Assert.That(map.ContainsKey(pageB.Key), Is.False,
+                "a page left with no variants is dropped from the map");
+            Assert.That(map[root.Key].Select(v => v.Culture), Is.EqualTo(new[] { "fr-fr" }),
+                "a variant not excluded for its culture stays");
+            Assert.That(observed.Pages.Select(p => p.Name), Has.Member("Page-B"),
+                "the page itself stays listed in the request culture");
+        });
+        await custom.Received().IsExcludedAsync(pageA, "fr-fr", Host, CancellationToken.None);
+        await custom.Received().IsExcludedAsync(pageA, "de-de", Host, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task Render_HreflangVariantEvaluatorThrows_Returns500()
+    {
+        // The variant check sits outside the resolver's graceful-degradation
+        // catch, so a throwing evaluator behaves like the page filter: 500.
+        EnableHreflang();
+        var page = StubContent("Page-A", contentTypeAlias: "blogPost");
+        var (root, _) = SeedTree(page);
+        var variants = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>
+        {
+            [page.Key] = new[] { new HreflangVariant("fr-fr", "/fr/page-a.md") },
+        };
+        _hreflangResolver.ResolveAsync(
+                Arg.Any<IReadOnlyList<IPublishedContent>>(),
+                Culture,
+                root.Key,
+                _umbracoContext,
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlyList<HreflangVariant>>>(variants));
+
+        var custom = Substitute.For<IExclusionEvaluator>();
+        custom.IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<bool>>(call => (string?)call[1] == "fr-fr"
+                ? throw new InvalidOperationException("variant evaluator boom")
+                : Task.FromResult(false));
+        _exclusionOverride = custom;
+
+        var result = await MakeController().Render(CancellationToken.None);
+
+        Assert.That(result, Is.InstanceOf<ObjectResult>());
+        Assert.That(((ObjectResult)result).StatusCode, Is.EqualTo(StatusCodes.Status500InternalServerError));
+    }
+
+    [Test]
+    public async Task Render_HreflangDisabled_ExclusionEvaluatorNotCalledForVariants()
+    {
+        // Default settings: Hreflang.Enabled = false.
+        var page = StubContent("Page-A", contentTypeAlias: "blogPost");
+        SeedTree(page);
+
+        var custom = Substitute.For<IExclusionEvaluator>();
+        custom.IsExcludedAsync(Arg.Any<IPublishedContent>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(false));
+        _exclusionOverride = custom;
+
+        await MakeController().Render(CancellationToken.None);
+
+        var cultures = custom.ReceivedCalls()
+            .Select(c => (string?)c.GetArguments()[1])
+            .ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(cultures, Has.Length.EqualTo(2), "root + one descendant, page filter only");
+            Assert.That(cultures, Is.All.EqualTo(Culture),
+                "with hreflang off the evaluator is only called for the request culture");
+        });
+    }
 }

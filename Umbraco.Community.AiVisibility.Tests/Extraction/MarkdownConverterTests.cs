@@ -170,4 +170,53 @@ public class MarkdownConverterTests
         var md = _converter.Convert("<ul><li>one<ul><li>two</li></ul></li></ul>");
         Assert.That(md, Does.Match(@"(?m)^- one\r?\n  - two$"));
     }
+
+    [Test]
+    public void Convert_LooseList_KeepsBlankLineBetweenItems()
+    {
+        // ReverseMarkdown 6.3.0 renders `<li><p>` (a loose list) with a blank
+        // line between items. Pinned so a dependency bump that changes list
+        // spacing surfaces here.
+        var md = _converter.Convert("<ul><li><p>a</p></li><li><p>b</p></li></ul>");
+        Assert.That(md, Does.Match(@"^- a\r?\n\r?\n- b$"));
+    }
+
+    [Test]
+    public void Convert_SharedInstanceAcrossThreads_MatchesFreshInstanceOutput()
+    {
+        // MarkdownConverter is registered as a Singleton, so one instance serves
+        // concurrent requests. Every result must equal what a fresh instance
+        // produces for the same input.
+        var inputs = new[]
+        {
+            "<figure><img src=\"https://x.test/a.png\" alt=\"Alt A\"><figcaption>Figure 1 <a href=\"https://y.test/\">link</a></figcaption></figure>",
+            "<table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>",
+            "<ul><li>one<ul><li>two<ul><li>three</li></ul></li></ul></li><li>four</li></ul>",
+            "<ul><li><p>a</p></li><li><p>b</p></li></ul>",
+            "<h2>Title</h2><p>Para with <strong>bold</strong> and <a href=\"https://x.test/\">a link</a>.</p>",
+        };
+        var expected = inputs.Select(html => new MarkdownConverter().Convert(html)).ToArray();
+
+        var shared = new MarkdownConverter();
+        const int callsPerInput = 400;
+        var total = inputs.Length * callsPerInput;
+        var mismatches = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+        Parallel.For(
+            0,
+            total,
+            new ParallelOptions { MaxDegreeOfParallelism = 8 },
+            i =>
+            {
+                var index = i % inputs.Length;
+                var actual = shared.Convert(inputs[index]);
+                if (actual != expected[index])
+                {
+                    mismatches.Add($"input {index}: {actual}");
+                }
+            });
+
+        Assert.That(mismatches, Is.Empty,
+            "concurrent Convert calls on one instance must match a fresh instance's output");
+    }
 }

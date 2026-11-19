@@ -226,6 +226,55 @@ public sealed class LlmsTxtController : Controller
                         culture);
                     hreflangVariants = null;
                 }
+
+                // Drop sibling-culture variants that are excluded for their own
+                // culture (a culture-variant exclusion property can exclude one
+                // culture only), so the manifest never advertises a `.md` link
+                // that 404s. Same evaluator, same request host and
+                // CancellationToken.None as the page filter above; a throwing
+                // evaluator surfaces through the GetCacheItem catch below
+                // (logged Error + 500), deliberately outside the resolver's
+                // graceful-degradation catch. Kept here rather than in the
+                // resolver: the evaluator is Scoped, the resolver a Singleton.
+                if (hreflangVariants is { Count: > 0 })
+                {
+                    var pagesByKey = new Dictionary<Guid, IPublishedContent>(pagesForBuild.Count);
+                    foreach (var page in pagesForBuild)
+                    {
+                        pagesByKey.TryAdd(page.Key, page);
+                    }
+
+                    var filtered = new Dictionary<Guid, IReadOnlyList<HreflangVariant>>(hreflangVariants.Count);
+                    foreach (var (pageKey, variants) in hreflangVariants)
+                    {
+                        if (!pagesByKey.TryGetValue(pageKey, out var page))
+                        {
+                            // Not a page in this manifest; the builder never
+                            // looks it up, so pass it through untouched.
+                            filtered[pageKey] = variants;
+                            continue;
+                        }
+
+                        var kept = new List<HreflangVariant>(variants.Count);
+                        foreach (var variant in variants)
+                        {
+                            if (!_exclusion
+                                    .IsExcludedAsync(page, variant.Culture, host, CancellationToken.None)
+                                    .ConfigureAwait(false)
+                                    .GetAwaiter()
+                                    .GetResult())
+                            {
+                                kept.Add(variant);
+                            }
+                        }
+
+                        if (kept.Count > 0)
+                        {
+                            filtered[pageKey] = kept;
+                        }
+                    }
+                    hreflangVariants = filtered;
+                }
             }
 
             var ctx = new LlmsTxtBuilderContext(

@@ -319,7 +319,7 @@ The Loopback strategy treats HTTP 3xx responses as render failures. When the pac
 
 #### Member-protected content
 
-Pages flagged via Umbraco's Public Access feature (member-restricted access) are **excluded** from the `.md` route (since v1.1) and from `/llms.txt` and `/llms-full.txt` (since v1.3), regardless of the active `RenderStrategy:Mode`. The `.md` exclusion was a v1.0.x bug fix — previously the renderer would surface the login-redirect HTML as Markdown content; before v1.3 the manifests still listed member-protected pages. The exclusion is independent of strategy choice; pinning `Razor` or `Loopback` does not change this behaviour.
+Pages flagged via Umbraco's Public Access feature (member-restricted access) are **excluded** from the `.md` route (since v1.1) and from `/llms.txt` and `/llms-full.txt` (since v1.3), regardless of the active `RenderStrategy:Mode`. The `.md` exclusion was a v1.0.x bug fix — previously the renderer would surface the login-redirect HTML as Markdown content; before v1.3 the manifests still listed member-protected pages. The exclusion is independent of strategy choice; pinning `Razor` or `Loopback` does not change this behaviour. Adding, changing or removing a Public Access rule clears the `/llms.txt` and `/llms-full.txt` caches, with no publish needed: the next request to that server reflects it, and on load-balanced setups the other servers pick it up within seconds as they process Umbraco's cache instructions. A browser, CDN or proxy may keep its own copy until the response's `Cache-Control: max-age` runs out.
 
 #### Headless installs
 
