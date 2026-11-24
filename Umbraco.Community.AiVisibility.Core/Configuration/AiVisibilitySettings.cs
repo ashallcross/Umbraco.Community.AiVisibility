@@ -506,6 +506,11 @@ public sealed class RenderStrategySettings
     /// boot clean.
     /// </summary>
     public string? LoopbackBaseUrl { get; init; }
+
+    /// <summary>
+    /// How the Loopback strategy reaches the site. Default <c>InMemory</c>.
+    /// </summary>
+    public LoopbackTransport LoopbackTransport { get; init; } = LoopbackTransport.InMemory;
 }
 
 /// <summary>
