@@ -256,7 +256,7 @@ From v1.1, the package ships a configurable render strategy that handles two dis
 
 The package extracts Markdown from the HTML your Razor templates produce. On a clean Umbraco install, the package's renderer invokes Razor in-process with `Model = IPublishedContent` — fast, no HTTP round-trip, no socket cost.
 
-On agency-built sites the same in-process Razor invocation fails. A controller hijack builds a custom view model from the `IPublishedContent` before calling `CurrentTemplate(viewModel)`; the template's `@inherits UmbracoViewPage<TCustomViewModel>` declaration does not accept `IPublishedContent`, and Razor's model-binder throws `ModelBindingException` at bind time. The fix is to issue an in-process HTTP loopback request to the canonical published URL — Kestrel routes the request through the full controller pipeline (including the hijack), the controller builds the view model correctly, and the rendered HTML lands in the response body for the package to parse.
+On agency-built sites the same in-process Razor invocation fails. A controller hijack builds a custom view model from the `IPublishedContent` before calling `CurrentTemplate(viewModel)`; the template's `@inherits UmbracoViewPage<TCustomViewModel>` declaration does not accept `IPublishedContent`, and Razor's model-binder throws `ModelBindingException` at bind time. The fix is to issue a loopback request for the canonical published URL — the site's own request pipeline routes it through the full controller pipeline (including the hijack), the controller builds the view model correctly, and the rendered HTML lands in the response body for the package to parse. By default the request never leaves the process (see [Loopback transport](#loopback-transport--in-memory-by-default) below).
 
 Type-introspecting the published content does not work — agency-built sites use bespoke ViewModels with no shared base class, so there's no way to decide which strategy to use without trying one and observing the failure.
 
@@ -282,15 +282,37 @@ Type-introspecting the published content does not work — agency-built sites us
 
 The full key reference lives in [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content). Mode is read live via `IOptionsMonitor` so flipping it in `appsettings.json` takes effect on the next render with no restart.
 
+#### Loopback transport — in memory by default
+
+By default (`RenderStrategy:LoopbackTransport: InMemory`) the loopback request runs through the site's own ASP.NET Core pipeline inside the process. No socket is opened, so TLS certificates, firewalls, App Service access restrictions, reverse proxies, Application Gateways and WAFs play no part. It works the same on Kestrel and on Azure App Service in-process (IIS) hosting, and needs no per-site configuration: the `Host` header comes from the page's published URL, so every domain of a multisite install is routed as a visitor's request would be.
+
+Each loopback request gets its own `HttpContext` and request scope and runs on a clean execution context, so the visitor's `IHttpContextAccessor.HttpContext` is left untouched. The scheme and path base come from the visitor's request (after forwarded headers), so HTTPS-redirect rules don't turn the render into a 3xx.
+
+To send a real HTTP request to the site instead — the only behaviour in v1.3.0 and earlier — set the transport to `Network`:
+
+```jsonc
+{
+  "AiVisibility": {
+    "RenderStrategy": {
+      "Mode": "Loopback",
+      "LoopbackTransport": "Network"
+    }
+  }
+}
+```
+
+`LoopbackTransport` is read at startup; restart the site after changing it.
+
 #### `LoopbackBaseUrl` — escape hatch
 
-When `Mode` is `Auto` or `Loopback`, the strategy auto-resolves the loopback transport target from Kestrel's bound addresses (`IServerAddressesFeature`). For containers, reverse-proxy topologies, multi-tenant hosting where Kestrel binds to a non-loopback interface, or sites where autodetection fails, set `RenderStrategy:LoopbackBaseUrl` explicitly:
+Only used with `LoopbackTransport: Network`; the default in-memory transport ignores it. With the network transport, the strategy auto-resolves the loopback transport target from Kestrel's bound addresses (`IServerAddressesFeature`). For containers, reverse-proxy topologies, multi-tenant hosting where Kestrel binds to a non-loopback interface, or sites where autodetection fails, set `RenderStrategy:LoopbackBaseUrl` explicitly:
 
 ```jsonc
 {
   "AiVisibility": {
     "RenderStrategy": {
       "Mode": "Auto",
+      "LoopbackTransport": "Network",
       "LoopbackBaseUrl": "http://127.0.0.1:8080"
     }
   }
