@@ -1,6 +1,7 @@
 using Umbraco.Community.AiVisibility.Configuration;
 using Umbraco.Community.AiVisibility.Extraction;
 using Umbraco.Community.AiVisibility.Routing;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -116,7 +117,17 @@ public sealed class RoutingComposer : IComposer
         // post-startup so re-walking on every render adds cost without value.
         // Lazy by contract — never throws at construction; environment-without-
         // a-binding adopters pinned to Mode=Razor boot clean.
-        builder.Services.TryAddSingleton<ILoopbackUrlResolver, LoopbackUrlResolver>();
+        // LoopbackTransport=InMemory dials nothing, so it gets a fixed target.
+        builder.Services.TryAddSingleton<LoopbackUrlResolver>();
+        builder.Services.TryAddSingleton<ILoopbackUrlResolver>(sp =>
+            UsesInMemoryTransport(sp)
+                ? InMemoryLoopbackUrlResolver.Instance
+                : sp.GetRequiredService<LoopbackUrlResolver>());
+
+        // LoopbackTransport=InMemory runs requests through the pipeline captured here.
+        builder.Services.TryAddSingleton<InMemoryPipelineHolder>();
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Transient<IStartupFilter, InMemoryPipelineStartupFilter>());
 
         // Story 7.2 — named HttpClient with primary handler whose
         // ServerCertificateCustomValidationCallback bypasses cert validation
@@ -126,12 +137,15 @@ public sealed class RoutingComposer : IComposer
         // Spike 0.A's documented ~6s cold-start JIT cost + headroom. Adopters
         // layering Polly / instrumentation extend via .AddHttpMessageHandler(...)
         // on this same client name.
+        // LoopbackTransport=InMemory (default) uses InMemoryLoopbackHandler instead.
         builder.Services.AddHttpClient(Constants.Http.LoopbackHttpClientName)
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-            {
-                AllowAutoRedirect = false,
-                ServerCertificateCustomValidationCallback = LoopbackCertificateValidator.Validate,
-            })
+            .ConfigurePrimaryHttpMessageHandler(sp => UsesInMemoryTransport(sp)
+                ? ActivatorUtilities.CreateInstance<InMemoryLoopbackHandler>(sp)
+                : new HttpClientHandler
+                {
+                    AllowAutoRedirect = false,
+                    ServerCertificateCustomValidationCallback = LoopbackCertificateValidator.Validate,
+                })
             .ConfigureHttpClient(client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
@@ -141,4 +155,8 @@ public sealed class RoutingComposer : IComposer
         builder.Services.TryAddTransient<IContentRegionSelector, DefaultContentRegionSelector>();
         builder.Services.TryAddTransient<IMarkdownContentExtractor, DefaultMarkdownContentExtractor>();
     }
+
+    private static bool UsesInMemoryTransport(IServiceProvider services)
+        => services.GetRequiredService<IOptionsMonitor<AiVisibilitySettings>>()
+            .CurrentValue.RenderStrategy.LoopbackTransport == LoopbackTransport.InMemory;
 }
