@@ -1,13 +1,23 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Umbraco.Cms.Core.DependencyInjection;
+using Umbraco.Cms.Core.Models.PublishedContent;
+using Umbraco.Cms.Core.Routing;
+using Umbraco.Cms.Core.Services;
+using Umbraco.Cms.Core.Web;
+using Microsoft.AspNetCore.Hosting.Server;
 using Umbraco.Community.AiVisibility.Composing;
+using Umbraco.Community.AiVisibility.Configuration;
+using Umbraco.Community.AiVisibility.Extraction;
+using Umbraco.Community.AiVisibility.Notifications;
 
 namespace Umbraco.Community.AiVisibility.Tests.Composing;
 
@@ -41,9 +51,57 @@ public class RoutingComposerLoopbackTransportTests
 
         Assert.That(primary, Is.InstanceOf<HttpClientHandler>());
         Assert.That(((HttpClientHandler)primary).AllowAutoRedirect, Is.False);
+        Assert.That(((HttpClientHandler)primary).ServerCertificateCustomValidationCallback, Is.Not.Null);
     }
 
-    private static ServiceProvider BuildServices(string? transport)
+    [TestCase(null, typeof(InMemoryLoopbackUrlResolver))]
+    [TestCase("Network", typeof(LoopbackUrlResolver))]
+    public void Compose_LoopbackTransport_PicksTheMatchingResolver(string? transport, Type expected)
+    {
+        using var services = BuildServices(transport);
+
+        Assert.That(services.GetRequiredService<ILoopbackUrlResolver>(), Is.InstanceOf(expected));
+    }
+
+    [TestCase(null)]
+    [TestCase("Network")]
+    public void Compose_LoopbackTransport_ResolvesUnderScopeValidation(string? transport)
+    {
+        using var services = BuildServices(transport);
+
+        Assert.DoesNotThrow(() =>
+        {
+            services.GetRequiredService<LoopbackTransportSelection>();
+            services.GetRequiredService<InMemoryPipelineHolder>();
+            services.GetServices<IStartupFilter>().Single();
+            services.GetRequiredService<ILoopbackUrlResolver>();
+            services.GetRequiredService<IHttpClientFactory>().CreateClient(Constants.Http.LoopbackHttpClientName);
+        });
+    }
+
+    [Test]
+    public void Compose_LoopbackTransport_LiveEditIsIgnoredUntilRestart()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        using var services = BuildServices(transport: null, config);
+        Assert.That(services.GetRequiredService<LoopbackTransportSelection>().IsInMemory, Is.True);
+
+        config["AiVisibility:RenderStrategy:LoopbackTransport"] = "Network";
+        config.Reload();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                services.GetRequiredService<IOptionsMonitor<AiVisibilitySettings>>().CurrentValue.RenderStrategy.LoopbackTransport,
+                Is.EqualTo(LoopbackTransport.Network),
+                "precondition: the options monitor saw the edit");
+            Assert.That(services.GetRequiredService<LoopbackTransportSelection>().IsInMemory, Is.True);
+            Assert.That(services.GetRequiredService<ILoopbackUrlResolver>(), Is.InstanceOf<InMemoryLoopbackUrlResolver>());
+            Assert.That(PrimaryHandler(services), Is.InstanceOf<InMemoryLoopbackHandler>());
+        });
+    }
+
+    private static ServiceProvider BuildServices(string? transport, IConfigurationRoot? config = null)
     {
         var services = new ServiceCollection();
         var builder = Substitute.For<IUmbracoBuilder>();
@@ -54,13 +112,33 @@ public class RoutingComposerLoopbackTransportTests
             settings["AiVisibility:RenderStrategy:LoopbackTransport"] = transport;
         }
 
-        builder.Config.Returns(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        builder.Config.Returns(config ?? new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
 
         new RoutingComposer().Compose(builder);
 
         services.AddLogging();
+        services.AddSingleton(Substitute.For<IServer>());
         services.AddSingleton<IHttpContextFactory>(sp => new DefaultHttpContextFactory(sp));
-        return services.BuildServiceProvider();
+
+        // Umbraco services the rest of RoutingComposer's graph consumes; stubbed so
+        // ValidateOnBuild can walk every registration, not just the loopback ones.
+        services.AddSingleton(Substitute.For<IPublishedRouter>());
+        services.AddSingleton(Substitute.For<IPublishedUrlProvider>());
+        services.AddSingleton(Substitute.For<IPublicAccessService>());
+        services.AddScoped(_ => Substitute.For<ISettingsResolver>());
+        services.AddSingleton(Substitute.For<IUmbracoContextFactory>());
+        services.AddSingleton(Substitute.For<IHttpContextAccessor>());
+        services.AddSingleton(Substitute.For<IFileService>());
+        services.AddSingleton(Substitute.For<ITemplateService>());
+        services.AddSingleton(Substitute.For<IRazorViewEngine>());
+        services.AddSingleton(Substitute.For<ITempDataProvider>());
+        services.AddSingleton(Substitute.For<IVariationContextAccessor>());
+        services.AddSingleton(Substitute.For<INotificationPublisher>());
+        return services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true,
+        });
     }
 
     private static HttpMessageHandler PrimaryHandler(IServiceProvider services)

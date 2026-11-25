@@ -80,7 +80,29 @@ internal sealed class InMemoryLoopbackHandler : HttpMessageHandler
         var context = _httpContextFactory.Create(features);
         try
         {
-            await pipeline(context).ConfigureAwait(false);
+            try
+            {
+                await pipeline(context).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Cancelled inside the page (e.g. its own HttpClient timed out), not by
+                // the caller. Report a failed request, as a network loopback's 500 would,
+                // so one page can't cancel a whole /llms-full.txt build.
+                throw new HttpRequestException(
+                    $"AiVisibility: the in-memory loopback request for {uri.AbsolutePath} was cancelled inside the page.",
+                    ex);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // A failure inside the page (e.g. its own HttpClient hitting a connection
+                // error) is not a loopback reach failure; wrap it so its HttpRequestError
+                // can't be mistaken for one.
+                throw new HttpRequestException(
+                    $"AiVisibility: the in-memory loopback request for {uri.AbsolutePath} failed inside the page.",
+                    ex);
+            }
+
             await responseFeature.FireOnStartingAsync().ConfigureAwait(false);
             await bodyFeature.CompleteAsync().ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();

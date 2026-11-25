@@ -92,6 +92,45 @@ public class InMemoryLoopbackHandlerTests
     }
 
     [Test]
+    public async Task Send_SplitsTheVisitorPathBaseFromThePath()
+    {
+        string? seen = null;
+        using var harness = Harness.Create(ctx =>
+        {
+            seen = $"{ctx.Request.PathBase}|{ctx.Request.Path}";
+            return Task.CompletedTask;
+        });
+        harness.Accessor.HttpContext = Visitor(scheme: "https", pathBase: "/sub");
+
+        using var _ = await harness.SendAsync(Get("http://localhost/sub/people/"));
+
+        Assert.That(seen, Is.EqualTo("/sub|/people/"));
+    }
+
+    [Test]
+    public void Send_PageCancelledItsOwnWork_SurfacesAsAFailedRequestNotACancellation()
+    {
+        using var harness = Harness.Create(_ => throw new TaskCanceledException("the page's own HttpClient timed out"));
+
+        Assert.ThrowsAsync<HttpRequestException>(async () => await harness.SendAsync(Get("http://localhost/people/")));
+    }
+
+    [Test]
+    public void Send_PageThrows_SurfacesAsWrappedRequestExceptionWithUnknownError()
+    {
+        var pageFailure = new HttpRequestException(HttpRequestError.ConnectionError, "the page's own HttpClient could not connect");
+        using var harness = Harness.Create(_ => throw pageFailure);
+
+        var ex = Assert.ThrowsAsync<HttpRequestException>(async () => await harness.SendAsync(Get("http://localhost/people/")));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ex!.HttpRequestError, Is.EqualTo(HttpRequestError.Unknown));
+            Assert.That(ex.InnerException, Is.SameAs(pageFailure));
+        });
+    }
+
+    [Test]
     public async Task Send_MarkedRequestIsDetectedByRecursionGuard()
     {
         bool? isRecursion = null;
@@ -152,6 +191,32 @@ public class InMemoryLoopbackHandlerTests
         Assert.ThrowsAsync(Is.InstanceOf<OperationCanceledException>(), async () => await send);
     }
 
+    [Test]
+    public async Task Send_UsesRequestUriScheme_WhenNoVisitorRequestIsCurrent()
+    {
+        string? scheme = null;
+        using var harness = Harness.Create(ctx =>
+        {
+            scheme = ctx.Request.Scheme;
+            return Task.CompletedTask;
+        });
+
+        using var _ = await harness.SendAsync(Get("http://localhost/people/"));
+
+        Assert.That(scheme, Is.EqualTo("http"));
+    }
+
+    [Test]
+    public void Send_NoCapturedPipeline_ThrowsAndPointsAtTheNetworkTransport()
+    {
+        using var harness = Harness.Create(pipeline: null);
+
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await harness.SendAsync(Get("http://localhost/people/")));
+
+        Assert.That(ex!.Message, Does.Contain("LoopbackTransport"));
+    }
+
     private static HttpRequestMessage Get(string url, string? host = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -163,10 +228,11 @@ public class InMemoryLoopbackHandlerTests
         return request;
     }
 
-    private static HttpContext Visitor(string scheme)
+    private static HttpContext Visitor(string scheme, string? pathBase = null)
     {
         var context = new DefaultHttpContext();
         context.Request.Scheme = scheme;
+        context.Request.PathBase = pathBase is null ? PathString.Empty : new PathString(pathBase);
         context.Request.Host = new HostString("www.example.com");
         context.Request.Path = "/people.md";
         return context;

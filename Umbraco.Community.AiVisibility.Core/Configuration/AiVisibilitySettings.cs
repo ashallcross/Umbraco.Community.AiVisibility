@@ -492,7 +492,10 @@ public sealed class RenderStrategySettings
     public RenderStrategyMode Mode { get; init; } = RenderStrategyMode.Auto;
 
     /// <summary>
-    /// Loopback transport target override. Consumed by
+    /// Loopback transport target override. Used only when
+    /// <see cref="LoopbackTransport"/> is
+    /// <see cref="Configuration.LoopbackTransport.Network"/>; the default in-memory
+    /// transport ignores it. Consumed by
     /// <c>LoopbackUrlResolver.Resolve()</c>. When set, the loopback
     /// strategy uses this URL as the TCP transport target instead of
     /// resolving via <c>IServerAddressesFeature</c>. Has no effect when
@@ -508,7 +511,15 @@ public sealed class RenderStrategySettings
     public string? LoopbackBaseUrl { get; init; }
 
     /// <summary>
-    /// How the Loopback strategy reaches the site. Default <c>InMemory</c>.
+    /// How the Loopback strategy reaches the site. Default
+    /// <see cref="Configuration.LoopbackTransport.InMemory"/>: the page request runs
+    /// through the site's own ASP.NET Core pipeline inside the process, so no socket,
+    /// TLS certificate, proxy or access restriction is involved, and
+    /// <see cref="LoopbackBaseUrl"/> is ignored.
+    /// <see cref="Configuration.LoopbackTransport.Network"/> sends a real HTTP request
+    /// to the site's binding or <see cref="LoopbackBaseUrl"/> (the v1.3.0 behaviour).
+    /// Read once, the first time a page is rendered through the loopback; restart
+    /// the site after changing it.
     /// </summary>
     public LoopbackTransport LoopbackTransport { get; init; } = LoopbackTransport.InMemory;
 }

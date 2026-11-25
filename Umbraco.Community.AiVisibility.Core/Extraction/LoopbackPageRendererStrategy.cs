@@ -251,6 +251,15 @@ internal sealed class LoopbackPageRendererStrategy : IPageRendererStrategy
             // RazorPageRendererStrategy convention.
             throw;
         }
+        catch (Exception ex) when (IsNetworkReachFailure(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "PageRenderer: Loopback render failed for {ContentKey} {Path}: the site could not be reached over the network (TLS, connection or DNS error). Set AiVisibility:RenderStrategy:LoopbackTransport to InMemory (the default) to render inside the app instead",
+                content.Key,
+                transportUri.AbsolutePath);
+            return PageRenderResult.Failed(ex, content, templateAlias, culture);
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(
@@ -261,4 +270,14 @@ internal sealed class LoopbackPageRendererStrategy : IPageRendererStrategy
             return PageRenderResult.Failed(ex, content, templateAlias, culture);
         }
     }
+
+    // TLS / connection / DNS failures only happen on the network transport; the
+    // in-memory transport opens no socket, so it is the fix to point adopters at.
+    private static bool IsNetworkReachFailure(Exception ex)
+        => ex is HttpRequestException
+        {
+            HttpRequestError: HttpRequestError.SecureConnectionError
+                or HttpRequestError.ConnectionError
+                or HttpRequestError.NameResolutionError,
+        };
 }

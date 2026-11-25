@@ -286,7 +286,7 @@ The full key reference lives in [`configuration.md`](configuration.md#aivisibili
 
 By default (`RenderStrategy:LoopbackTransport: InMemory`) the loopback request runs through the site's own ASP.NET Core pipeline inside the process. No socket is opened, so TLS certificates, firewalls, App Service access restrictions, reverse proxies, Application Gateways and WAFs play no part. It works the same on Kestrel and on Azure App Service in-process (IIS) hosting, and needs no per-site configuration: the `Host` header comes from the page's published URL, so every domain of a multisite install is routed as a visitor's request would be.
 
-Each loopback request gets its own `HttpContext` and request scope and runs on a clean execution context, so the visitor's `IHttpContextAccessor.HttpContext` is left untouched. The scheme and path base come from the visitor's request (after forwarded headers), so HTTPS-redirect rules don't turn the render into a 3xx.
+Each loopback request gets its own `HttpContext` and request scope and runs on a clean execution context, so the visitor's `IHttpContextAccessor.HttpContext` is left untouched. The scheme and path base come from the visitor's request (after forwarded headers), so when the render happens inside a visitor's request — as it does for `.md`, `Accept: text/markdown` and `/llms-full.txt` — HTTPS-redirect rules don't turn it into a 3xx. Code of your own that renders outside a request has no visitor to copy from, so the inner request is plain `http`; on a site that redirects to HTTPS, use `LoopbackTransport: Network` for that case. Because the path base is copied too, the in-memory transport works for sites hosted under a path base, which the network transport does not support.
 
 To send a real HTTP request to the site instead — the only behaviour in v1.3.0 and earlier — set the transport to `Network`:
 
@@ -301,7 +301,7 @@ To send a real HTTP request to the site instead — the only behaviour in v1.3.0
 }
 ```
 
-`LoopbackTransport` is read at startup; restart the site after changing it.
+`LoopbackTransport` is read once, the first time a page is rendered through the loopback; restart the site after changing it.
 
 #### `LoopbackBaseUrl` — escape hatch
 

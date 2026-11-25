@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Umbraco.Cms.Core.Models;
@@ -331,10 +332,80 @@ public class LoopbackPageRendererStrategyTests
         });
     }
 
+    /// <summary>
+    /// A TLS failure on the network transport is still a failed render, and
+    /// the warning names the <c>LoopbackTransport</c> setting so adopters can
+    /// find the in-memory transport from the log alone.
+    /// </summary>
+    [TestCase(HttpRequestError.SecureConnectionError)]
+    [TestCase(HttpRequestError.ConnectionError)]
+    [TestCase(HttpRequestError.NameResolutionError)]
+    public async Task RenderAsync_NetworkReachFailure_ReturnsFailedAndLogNamesLoopbackTransport(HttpRequestError error)
+    {
+        var content = BuildPublishedContent("homePage");
+        var absoluteUri = new Uri("https://incoming.example/about");
+        var inner = new HttpRequestException(error, "the site could not be reached");
+        var handler = new TestHttpMessageHandler(_ => throw inner);
+        var logger = new RecordingLogger<LoopbackPageRendererStrategy>();
+
+        var (strategy, _) = BuildStrategy(
+            handler: handler,
+            resolverReturns: new LoopbackTarget(new Uri("https://127.0.0.1:5001/"), true),
+            publishedUrl: "https://sitea.example/about",
+            logger: logger);
+
+        var result = await strategy.RenderAsync(content, absoluteUri, culture: null, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Status, Is.EqualTo(PageRenderStatus.Error));
+            Assert.That(result.Error, Is.SameAs(inner));
+            Assert.That(
+                logger.Entries,
+                Has.Some.Matches<(LogLevel Level, string Message)>(
+                    e => e.Level == LogLevel.Warning && e.Message.Contains("LoopbackTransport")),
+                "network reach failure log names the setting that switches transport");
+        });
+    }
+
+    /// <summary>
+    /// A request failure that is not a TLS / connection / DNS error (e.g. the
+    /// in-memory transport's wrapped page failure) is still a failed render but
+    /// must not point adopters at <c>LoopbackTransport</c>.
+    /// </summary>
+    [Test]
+    public async Task RenderAsync_UnknownRequestError_ReturnsFailedWithoutLoopbackTransportHint()
+    {
+        var content = BuildPublishedContent("homePage");
+        var absoluteUri = new Uri("https://incoming.example/about");
+        var inner = new HttpRequestException(HttpRequestError.Unknown, "failed inside the page");
+        var handler = new TestHttpMessageHandler(_ => throw inner);
+        var logger = new RecordingLogger<LoopbackPageRendererStrategy>();
+
+        var (strategy, _) = BuildStrategy(
+            handler: handler,
+            resolverReturns: new LoopbackTarget(new Uri("https://127.0.0.1:5001/"), true),
+            publishedUrl: "https://sitea.example/about",
+            logger: logger);
+
+        var result = await strategy.RenderAsync(content, absoluteUri, culture: null, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Status, Is.EqualTo(PageRenderStatus.Error));
+            Assert.That(result.Error, Is.SameAs(inner));
+            Assert.That(
+                logger.Entries.Select(e => e.Message),
+                Has.None.Contains("LoopbackTransport"),
+                "only network reach failures name the transport setting");
+        });
+    }
+
     private static (LoopbackPageRendererStrategy Strategy, IHttpClientFactory Factory) BuildStrategy(
         TestHttpMessageHandler handler,
         LoopbackTarget resolverReturns,
-        string publishedUrl)
+        string publishedUrl,
+        ILogger<LoopbackPageRendererStrategy>? logger = null)
     {
         var resolver = Substitute.For<ILoopbackUrlResolver>();
         resolver.Resolve().Returns(resolverReturns);
@@ -350,7 +421,7 @@ public class LoopbackPageRendererStrategyTests
             factory,
             resolver,
             publishedUrlProvider,
-            NullLogger<LoopbackPageRendererStrategy>.Instance);
+            logger ?? NullLogger<LoopbackPageRendererStrategy>.Instance);
 
         return (strategy, factory);
     }
@@ -402,5 +473,22 @@ public class LoopbackPageRendererStrategyTests
             Captured = request;
             return Task.FromResult(_respond(request));
         }
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception)));
     }
 }

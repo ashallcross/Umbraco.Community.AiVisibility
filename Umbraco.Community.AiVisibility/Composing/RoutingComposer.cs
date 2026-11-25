@@ -118,6 +118,11 @@ public sealed class RoutingComposer : IComposer
         // Lazy by contract — never throws at construction; environment-without-
         // a-binding adopters pinned to Mode=Razor boot clean.
         // LoopbackTransport=InMemory dials nothing, so it gets a fixed target.
+        // The transport is read once (LoopbackTransportSelection) so the resolver
+        // and the client's primary handler below can never disagree.
+        builder.Services.TryAddSingleton(sp => new LoopbackTransportSelection(
+            sp.GetRequiredService<IOptionsMonitor<AiVisibilitySettings>>()
+                .CurrentValue.RenderStrategy.LoopbackTransport));
         builder.Services.TryAddSingleton<LoopbackUrlResolver>();
         builder.Services.TryAddSingleton<ILoopbackUrlResolver>(sp =>
             UsesInMemoryTransport(sp)
@@ -157,6 +162,5 @@ public sealed class RoutingComposer : IComposer
     }
 
     private static bool UsesInMemoryTransport(IServiceProvider services)
-        => services.GetRequiredService<IOptionsMonitor<AiVisibilitySettings>>()
-            .CurrentValue.RenderStrategy.LoopbackTransport == LoopbackTransport.InMemory;
+        => services.GetRequiredService<LoopbackTransportSelection>().IsInMemory;
 }

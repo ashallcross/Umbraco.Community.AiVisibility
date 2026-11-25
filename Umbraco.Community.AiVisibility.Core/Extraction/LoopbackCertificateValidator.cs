@@ -10,7 +10,8 @@ namespace Umbraco.Community.AiVisibility.Extraction;
 /// <see cref="HttpClient"/>. Bypass fires <b>only</b> when the request's
 /// transport-target host resolves to a loopback IP via
 /// <c>IPAddress.IsLoopback</c>; otherwise the default chain runs. <b>NEVER
-/// blanket-bypass.</b>
+/// blanket-bypass.</b> Applies to the <c>Network</c> loopback transport only;
+/// the <c>InMemory</c> transport opens no socket and never runs this callback.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -39,9 +40,12 @@ internal static class LoopbackCertificateValidator
     /// default chain's verdict.
     /// </summary>
     /// <param name="request">The outbound HTTP request whose
-    /// <c>RequestUri.Host</c> is the transport-target host. The
-    /// <c>Headers.Host</c> value is irrelevant here — bypass scope is
-    /// decided by the actual TCP target, not the published Host header.</param>
+    /// <c>RequestUri.Host</c> is the transport-target host. Bypass scope is
+    /// decided by that TCP target alone. The TLS handshake itself uses the
+    /// <c>Headers.Host</c> value as the SNI name, so the
+    /// <paramref name="sslPolicyErrors"/> passed in (e.g. a name mismatch)
+    /// are evaluated against the Host/SNI name, not the transport-target
+    /// host.</param>
     /// <param name="certificate">The server cert; ignored — we look only at
     /// the host + policy errors.</param>
     /// <param name="chain">The cert chain; ignored — same reason.</param>

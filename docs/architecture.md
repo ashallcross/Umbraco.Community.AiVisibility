@@ -6,7 +6,7 @@ A one-page summary of how `Umbraco.Community.AiVisibility` is put together — f
 
 The package's design principle is **the Umbraco template is the canonical visual form of content.** When an AI crawler asks for `/some-page.md`, the package renders the page through Umbraco's normal Razor pipeline — same template, same Block List rendering, same Block Grid output — then parses the resulting HTML with AngleSharp, picks the main content region (`data-llms-content` → `<main>` → `<article>` → SmartReader fallback), strips boilerplate, absolutifies relative URLs, and converts to GitHub-flavoured Markdown via [ReverseMarkdown](https://github.com/mysticmind/reversemarkdown-net). The Markdown is then YAML-frontmatter-prefixed with `title`, `url`, `updated` and returned with `Content-Type: text/markdown; charset=utf-8`.
 
-The renderer is dual-strategy. The default `Auto` mode tries the in-process Razor render first; if the controller hijacks the pipeline with a non-`IPublishedContent` view model (a common pattern on agency-built sites), the package falls back to an in-process HTTP loopback render against the canonical published URL and parses *that* response — the extraction pipeline downstream is identical. Adopters can pin `Razor` or `Loopback` explicitly via `AiVisibility:RenderStrategy:Mode`. See [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content) for the full key reference.
+The renderer is dual-strategy. The default `Auto` mode tries the in-process Razor render first. If the controller hijacks the pipeline with a non-`IPublishedContent` view model (a common pattern on agency-built sites), the package falls back to a loopback render of the canonical published URL, by default run through the site's own request pipeline inside the process (optionally as a real HTTP request), and parses that response with the same extraction pipeline. Adopters can pin `Razor` or `Loopback` explicitly via `AiVisibility:RenderStrategy:Mode`. See [`configuration.md`](configuration.md#aivisibilityrenderstrategy--page-rendering-for-hijacked-content) for the full key reference.
 
 The package does **not** walk content properties and reconstruct content. It does not parse Block List children, does not template-fork, does not duplicate the renderer. Whatever your Razor templates produce — including any Block List / Block Grid composition, any custom view components, any third-party rendering integration — is what the AI gets, in clean Markdown form.
 
@@ -27,7 +27,7 @@ The package is built from two projects that ship as one NuGet package. Shared, p
 
 | Public surface | Source folder | Notes |
 |---|---|---|
-| `/{path}.md` route | `Routing/` + `Extraction/` + `Core/Extraction/` | Per-page Markdown via Umbraco's Razor pipeline (or HTTP loopback for hijacked pages) + AngleSharp + ReverseMarkdown |
+| `/{path}.md` route | `Routing/` + `Extraction/` + `Core/Extraction/` | Per-page Markdown via Umbraco's Razor pipeline (or a loopback render for hijacked pages) + AngleSharp + ReverseMarkdown |
 | `Accept: text/markdown` content negotiation | `Routing/` | Standard `Accept`-header negotiation on canonical URLs |
 | `/llms.txt` | `LlmsTxt/` (controller) + `Core/LlmsTxt/` (builder) | Index manifest (RFC-style links + summaries) |
 | `/llms-full.txt` | `LlmsTxt/` (controller) + `Core/LlmsTxt/` (builder) | Concatenated full-Markdown export with a configurable size cap |
